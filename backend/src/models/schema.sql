@@ -27,6 +27,7 @@ CREATE TABLE
         id SERIAL PRIMARY KEY,
         razon_social_id INTEGER REFERENCES razon_social (id) ON DELETE CASCADE,
         usuario_id INTEGER REFERENCES usuarios (id) ON DELETE SET NULL,
+        empresa_id INTEGER REFERENCES empresa (id) ON DELETE SET NULL,
         nombre_archivo VARCHAR(500) NOT NULL, -- Nombre original del archivo
         nombre_almacenado VARCHAR(500) NOT NULL, -- Nombre con timestamp en storage
         storage_key VARCHAR(1000) NOT NULL, -- Clave en R2 o ruta local
@@ -43,6 +44,26 @@ CREATE INDEX IF NOT EXISTS idx_historial_razon_social ON archivos_historial (raz
 CREATE INDEX IF NOT EXISTS idx_historial_anio_mes ON archivos_historial (anio, mes);
 
 CREATE INDEX IF NOT EXISTS idx_historial_usuario ON archivos_historial (usuario_id);
+
+CREATE INDEX IF NOT EXISTS idx_historial_empresa ON archivos_historial (empresa_id);
+
+-- Tabla de solicitudes de eliminacion de archivos (requiere aprobacion admin)
+CREATE TABLE IF NOT EXISTS archivo_delete_requests (
+    id SERIAL PRIMARY KEY,
+    archivo_id INTEGER NOT NULL REFERENCES archivos_historial(id) ON DELETE CASCADE,
+    solicitado_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+    motivo TEXT,
+    solicitado_at TIMESTAMP DEFAULT NOW(),
+    resuelto_por INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+    resuelto_at TIMESTAMP,
+    comentario_admin TEXT,
+    CONSTRAINT archivo_delete_requests_estado_chk CHECK (estado IN ('pendiente', 'aprobado', 'rechazado'))
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_archivo_delete_requests_pending_unique
+ON archivo_delete_requests (archivo_id)
+WHERE estado = 'pendiente';
 
 -- DATOS INICIALES DE EJEMPLO
 -- ==========================================

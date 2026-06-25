@@ -3,7 +3,7 @@
     border-radius: 12px;
     padding: 2rem;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    max-width: 600px;
+    max-width: 810px;
     margin: 0 auto;
 }
 
@@ -15,13 +15,22 @@
 }
 
 .period-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
     margin-bottom: 1.25rem;
 }
 
+.company-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.1rem;
+}
+
 .form-field {
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
@@ -36,6 +45,8 @@
 }
 
 .form-field select {
+    width: 100%;
+    box-sizing: border-box;
     padding: 0.6rem 0.875rem;
     border: 1.5px solid #d1d5db;
     border-radius: 8px;
@@ -213,27 +224,33 @@
 /* Modal de confirmación */
 .modal-confirm {
     position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.4);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
 }
+
 .modal-content {
     background: #fff;
     padding: 2rem;
     border-radius: 8px;
     max-width: 400px;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
     text-align: center;
 }
+
 .modal-actions {
     margin-top: 1.5rem;
     display: flex;
     gap: 1rem;
     justify-content: center;
 }
+
 .btn-cancel {
     background: #eee;
     color: #333;
@@ -242,6 +259,15 @@
     border-radius: 4px;
     cursor: pointer;
 }
+
 .btn-cancel:hover {
     background: #ddd;
+}
+
+@media (max-width: 720px) {
+
+    .period-row,
+    .company-row {
+        flex-direction: column;
+    }
 }

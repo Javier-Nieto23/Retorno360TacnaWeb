@@ -1,7 +1,7 @@
 .historial-page {
-    max-width: 1200px;
+    max-width: calc(100vw - 24px);
     margin: 0 auto;
-    padding: 2rem 1.5rem;
+    padding: 1.25rem 0.9rem;
 }
 
 .historial-header {
@@ -91,8 +91,8 @@
     background: white;
     border-radius: 12px;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
-    overflow-x: auto;
+    max-height: 68vh;
+    overflow: auto;
 }
 
 .historial-error {
@@ -123,7 +123,7 @@
 .historial-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.875rem;
+    min-width: 1120px;
 }
 
 .historial-table thead {
@@ -131,20 +131,26 @@
     border-bottom: 1px solid #e5e7eb;
 }
 
-.historial-table th {
-    padding: 0.875rem 1rem;
+.historial-table th,
+.historial-table td {
+    padding: 0.55rem 0.42rem;
+    border-bottom: 1px solid #e5e7eb;
     text-align: left;
-    font-size: 0.78rem;
+    font-size: 0.8rem;
+}
+
+.historial-table th {
     font-weight: 700;
-    color: #6b7280;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    color: #374151;
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #f8fafc;
+    box-shadow: inset 0 -1px 0 #e5e7eb;
 }
 
 .historial-table td {
-    padding: 0.875rem 1rem;
-    border-bottom: 1px solid #f3f4f6;
     vertical-align: middle;
 }
 
@@ -155,13 +161,13 @@
 .col-filename {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    min-width: 200px;
-    max-width: 320px;
+    gap: 0.35rem;
+    min-width: 140px;
+    max-width: 180px;
 }
 
 .file-icon-sm {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
 }
 
@@ -176,9 +182,9 @@
 .period-pill {
     background: #e0e7ff;
     color: #3730a3;
-    padding: 0.2rem 0.65rem;
+    padding: 0.16rem 0.45rem;
     border-radius: 12px;
-    font-size: 0.8rem;
+    font-size: 0.72rem;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -192,16 +198,17 @@
 
 .col-actions {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.28rem;
+    min-width: 132px;
 }
 
 .btn-action {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 6px;
     border: none;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.95rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -218,12 +225,35 @@
     opacity: 0.75;
 }
 
+.btn-download-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    display: block;
+}
+
+.btn-delete-icon {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    display: block;
+}
+
 .btn-delete {
     background: #fef2f2;
     color: #dc2626;
 }
 
+.btn-delete-direct {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
 .btn-delete:hover:not(:disabled) {
+    opacity: 0.75;
+}
+
+.btn-delete-direct:hover:not(:disabled) {
     opacity: 0.75;
 }
 
@@ -239,6 +269,136 @@
     margin-top: 0.75rem;
 }
 
+.historial-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    padding: 1rem;
+}
+
+.historial-modal {
+    width: min(560px, 100%);
+    background: white;
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+    padding: 1.2rem;
+}
+
+.historial-modal-success {
+    text-align: center;
+}
+
+.historial-feedback-icon {
+    font-size: 2.2rem;
+    line-height: 1;
+    margin-bottom: 0.55rem;
+    display: inline-block;
+}
+
+.historial-feedback-icon.success {
+    animation: hourglass-sway 1.1s ease-in-out infinite;
+}
+
+.historial-feedback-icon.error {
+    color: #dc2626;
+}
+
+@keyframes hourglass-sway {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+
+    25% {
+        transform: translateY(-2px) rotate(-8deg);
+    }
+
+    50% {
+        transform: translateY(0) rotate(0deg);
+    }
+
+    75% {
+        transform: translateY(-2px) rotate(8deg);
+    }
+
+    100% {
+        transform: translateY(0) rotate(0deg);
+    }
+}
+
+.historial-modal h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #1a1a2e;
+}
+
+.historial-modal p {
+    margin: 0.6rem 0;
+    color: #4b5563;
+    font-size: 0.9rem;
+}
+
+.historial-modal label {
+    display: block;
+    margin: 0.75rem 0 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #374151;
+}
+
+.historial-modal textarea {
+    width: 100%;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    padding: 0.7rem;
+    font-size: 0.92rem;
+    color: #111827;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+}
+
+.historial-modal textarea:focus {
+    border-color: #0f3460;
+    box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.15);
+}
+
+.historial-modal-actions {
+    margin-top: 0.9rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+.historial-btn-primary,
+.historial-btn-secondary {
+    border-radius: 8px;
+    border: none;
+    padding: 0.6rem 1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.historial-btn-primary {
+    background: #0f3460;
+    color: white;
+}
+
+.historial-btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.historial-btn-primary:disabled,
+.historial-btn-secondary:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
 @media (max-width: 700px) {
     .historial-page {
         padding: 1.25rem 1rem;
@@ -247,5 +407,13 @@
     .col-user,
     .col-size {
         display: none;
+    }
+
+    .historial-modal {
+        padding: 1rem;
+    }
+
+    .historial-modal-actions {
+        flex-direction: column;
     }
 }

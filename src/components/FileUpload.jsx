@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { fileService } from '../services/api';
 import './FileUpload.css';
 import { useAuth } from '../context/AuthContext';
-import { empresaService } from '../services/api';
 
 const MESES = [
     { num: 1, nombre: 'Enero' }, { num: 2, nombre: 'Febrero' }, { num: 3, nombre: 'Marzo' },
@@ -25,8 +24,19 @@ export default function FileUpload({ onUploadSuccess }) {
     const { user } = useAuth();
     const [showConfirm, setShowConfirm] = useState(false);
     const [confirmMsg, setConfirmMsg] = useState('');
+    const [razonesSociales, setRazonesSociales] = useState([]);
     const [empresas, setEmpresas] = useState([]);
+    const [razonSocialId, setRazonSocialId] = useState(String(user?.razon_social_id || ''));
     const [empresaId, setEmpresaId] = useState('');
+    const [loadingRazonesSociales, setLoadingRazonesSociales] = useState(false);
+    const [loadingEmpresas, setLoadingEmpresas] = useState(false);
+
+    const roleName = String(user?.rol_nombre || '').toLowerCase();
+    const isAdminRole = roleName === 'admin';
+    const isInventariosRole = roleName === 'inventarios';
+    const requiresCompanySelection = isInventariosRole || isAdminRole;
+    const razonSocialSeleccionada = razonesSociales.find((rs) => String(rs.id) === String(razonSocialId));
+    const empresaSeleccionada = empresas.find((e) => String(e.id) === String(empresaId));
 
     useEffect(() => {
         if (!user) {
@@ -36,29 +46,69 @@ export default function FileUpload({ onUploadSuccess }) {
 
     useEffect(() => {
         if (file && user) {
-            // Carpeta base de razón social y empresa (simulado, normalmente vendría de backend)
-            const razonSocialFolder = user.razon_social_r2_folder || '[carpeta_razon_social]';
-            const empresaFolder = '[carpeta_empresa]'; // Aquí deberías obtener la carpeta real de la empresa seleccionada
+            const razonSocialFolder = razonSocialSeleccionada?.r2_folder || user.r2_folder || '[carpeta_razon_social]';
             setConfirmMsg(
-                `El inventario será registrado para la empresa seleccionada, usando la relación de la razón social asociada a tu cuenta.\n` +
-                `El archivo se almacenará en la ruta: ${razonSocialFolder}${empresaFolder}/${anio}/${String(mes).padStart(2, '0')}/${file.name}`
+                `El inventario será registrado usando la razón social seleccionada.\n` +
+                `El archivo se almacenará en la ruta: ${razonSocialFolder}${(empresaSeleccionada?.nombre || '[empresa]')}/${anio}/${String(mes).padStart(2, '0')}/${file.name}`
             );
         } else {
             setConfirmMsg('');
         }
-    }, [file, user, anio, mes]);
+    }, [file, user, anio, mes, empresaSeleccionada?.nombre, razonSocialSeleccionada?.r2_folder]);
 
     useEffect(() => {
-        // Cargar empresas al montar si hay usuario
-        async function fetchEmpresas() {
-            if (user?.razon_social_id) {
-                const { data } = await empresaService.listar(user.razon_social_id);
-                setEmpresas(data.empresas);
-                if (data.empresas.length === 1) setEmpresaId(data.empresas[0].id);
+        if (!user || !requiresCompanySelection) return;
+
+        let active = true;
+
+        async function cargarRazonesSociales() {
+            setLoadingRazonesSociales(true);
+            try {
+                const { data } = await fileService.razonesSocialesDisponibles();
+                if (!active) return;
+
+                const razonesData = data.razones_sociales || [];
+                setRazonesSociales(razonesData);
+
+                if (!razonSocialId) {
+                    setRazonSocialId(String(user.razon_social_id || razonesData[0]?.id || ''));
+                }
+            } catch {
+                if (active) setRazonesSociales([]);
+            } finally {
+                if (active) setLoadingRazonesSociales(false);
             }
         }
-        fetchEmpresas();
-    }, [user]);
+
+        cargarRazonesSociales();
+
+        return () => {
+            active = false;
+        };
+    }, [user, requiresCompanySelection, razonSocialId]);
+
+    useEffect(() => {
+        if (!user || !requiresCompanySelection || !razonSocialId) return;
+
+        async function cargarEmpresas() {
+            setLoadingEmpresas(true);
+            try {
+                const { data } = await fileService.empresasDisponibles({ razon_social_id: razonSocialId });
+                const empresasData = data.empresas || [];
+                setEmpresas(empresasData);
+
+                if (empresasData.length === 1) {
+                    setEmpresaId(String(empresasData[0].id));
+                }
+            } catch {
+                setEmpresas([]);
+            } finally {
+                setLoadingEmpresas(false);
+            }
+        }
+
+        cargarEmpresas();
+    }, [user, requiresCompanySelection, razonSocialId]);
 
     const handleFile = (f) => {
         if (!f) return;
@@ -83,7 +133,10 @@ export default function FileUpload({ onUploadSuccess }) {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!file) { setResult({ success: false, message: 'Seleccione un archivo.' }); return; }
-        if (!empresaId) { setResult({ success: false, message: 'Seleccione una empresa.' }); return; }
+        if (requiresCompanySelection && (!razonSocialId || !empresaId)) {
+            setResult({ success: false, message: 'Seleccione una razón social y una empresa antes de subir el archivo.' });
+            return;
+        }
         setShowConfirm(true);
     };
 
@@ -96,7 +149,10 @@ export default function FileUpload({ onUploadSuccess }) {
             formData.append('archivo', file);
             formData.append('anio', anio);
             formData.append('mes', mes);
-            formData.append('empresa_id', empresaId);
+            if (requiresCompanySelection) {
+                formData.append('razon_social_id', razonSocialId);
+                formData.append('empresa_id', empresaId);
+            }
             await fileService.upload(formData);
             setResult({ success: true, message: `"${file.name}" subido correctamente.` });
             setFile(null);
@@ -129,16 +185,47 @@ export default function FileUpload({ onUploadSuccess }) {
                         {MESES.map((m) => <option key={m.num} value={m.num}>{m.nombre}</option>)}
                     </select>
                 </div>
-                <div className="form-field">
-                    <label>Empresa</label>
-                    <select value={empresaId} onChange={e => setEmpresaId(e.target.value)} disabled={uploading || empresas.length === 0} required>
-                        <option value="">Seleccione empresa</option>
-                        {empresas.map(emp => (
-                            <option key={emp.id} value={emp.id}>{emp.nombre}</option>
-                        ))}
-                    </select>
-                </div>
             </div>
+
+            {requiresCompanySelection && (
+                <div className="company-row">
+                    <div className="form-field">
+                        <label>Razón social*</label>
+                        <select
+                            value={razonSocialId}
+                            onChange={(e) => {
+                                setRazonSocialId(e.target.value);
+                                setEmpresaId('');
+                                setResult(null);
+                            }}
+                            disabled={uploading || loadingRazonesSociales}
+                            required
+                        >
+                            <option value="">Seleccione razón social</option>
+                            {razonesSociales.map((rs) => (
+                                <option key={rs.id} value={rs.id}>{rs.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="form-field">
+                        <label>Empresa*</label>
+                        <select
+                            value={empresaId}
+                            onChange={(e) => {
+                                setEmpresaId(e.target.value);
+                                setResult(null);
+                            }}
+                            disabled={uploading || loadingEmpresas || !razonSocialId}
+                            required
+                        >
+                            <option value="">Seleccione empresa</option>
+                            {empresas.map((empresa) => (
+                                <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            )}
 
             {/* Zona drag & drop */}
             <div
@@ -186,7 +273,7 @@ export default function FileUpload({ onUploadSuccess }) {
                 </div>
             )}
 
-            <button type="submit" className="btn-upload" disabled={!file || uploading}>
+            <button type="submit" className="btn-upload" disabled={!file || uploading || (requiresCompanySelection && (!razonSocialId || !empresaId))}>
                 {uploading ? <><span className="spinner-sm" /> Subiendo...</> : 'Subir archivo'}
             </button>
 

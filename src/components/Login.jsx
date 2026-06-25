@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
+import { getLandingPath } from '../utils/roles';
 
 export default function Login() {
     const { login, user } = useAuth();
@@ -14,7 +15,7 @@ export default function Login() {
 
     useEffect(() => {
         if (user) {
-            navigate('/dashboard', { replace: true });
+            navigate(getLandingPath(user), { replace: true });
         }
     }, [user, navigate]);
 
@@ -36,7 +37,11 @@ export default function Login() {
         try {
             await login(nombreUsuario, password);
         } catch (err) {
-            setError(err.response?.data?.error || 'Error al iniciar sesión.');
+            if (!err.response) {
+                setError('No se pudo conectar al servidor. Verifique que el backend esté activo.');
+            } else {
+                setError(err.response?.data?.error || 'Error al iniciar sesión.');
+            }
         } finally {
             setLoading(false);
         }
@@ -47,10 +52,10 @@ export default function Login() {
             <div className="login-card">
                 <div className="login-header">
                     <div className="login-logo">
-                        <span className="logo-icon">📊</span>
+                        <img src="/logo.png" alt="Retorno360 Tacna Logo" width="450" height="350" />
                     </div>
-                    <h1 className="login-title">Retorno360 Tacna</h1>
-                    <p className="login-subtitle">Gestión de archivos Excel</p>
+
+                    <p className="login-subtitle">Gestión de Inventarios Tacna</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="login-form" noValidate>
@@ -88,7 +93,11 @@ export default function Login() {
                                 tabIndex={-1}
                                 aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                             >
-                                {showPassword ? '🙈' : '👁️'}
+                                <img
+                                    src={showPassword ? '/eye-off.svg' : '/eye.svg'}
+                                    alt={showPassword ? 'Ocultar' : 'Mostrar'}
+                                    className="password-icon"
+                                />
                             </button>
                         </div>
                     </div>

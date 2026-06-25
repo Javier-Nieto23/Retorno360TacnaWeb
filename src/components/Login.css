@@ -12,7 +12,7 @@
     border-radius: 16px;
     padding: 2.5rem 2rem;
     width: 100%;
-    max-width: 400px;
+    max-width: 540px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
@@ -22,15 +22,10 @@
 }
 
 .login-logo {
-    width: 72px;
-    height: 72px;
-    background: linear-gradient(135deg, #0f3460, #533483);
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 1rem;
-    font-size: 2rem;
 }
 
 
@@ -114,6 +109,19 @@
     font-size: 1.1rem;
     padding: 0;
     line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.password-icon {
+    width: 20px;
+    height: 20px;
+    color: #6b7280;
+}
+
+.toggle-password:hover .password-icon {
+    color: #0f3460;
 }
 
 .login-error {
