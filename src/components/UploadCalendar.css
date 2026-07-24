@@ -1,0 +1,139 @@
+.upload-calendar-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 1.1rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.upload-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.7rem;
+}
+
+.upload-calendar-header h2 {
+    margin: 0;
+    color: #1a1a2e;
+    font-size: 1.05rem;
+}
+
+.upload-calendar-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.upload-calendar-nav-btn {
+    border: 1px solid #d1d5db;
+    background: #f8fafc;
+    color: #1f2937;
+    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.upload-calendar-label {
+    min-width: 110px;
+    text-align: center;
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.upload-calendar-subtitle {
+    margin: 0.55rem 0 0.7rem;
+    color: #6b7280;
+    font-size: 0.8rem;
+}
+
+.upload-calendar-error {
+    margin-bottom: 0.6rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 8px;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    font-size: 0.8rem;
+}
+
+.upload-calendar-loading {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 0.8rem 0;
+}
+
+.upload-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-rows: auto repeat(6, minmax(48px, 1fr));
+    gap: 0.4rem;
+    flex: 1;
+    align-content: stretch;
+}
+
+.upload-calendar-weekday {
+    text-align: center;
+    font-size: 0.72rem;
+    color: #6b7280;
+    font-weight: 700;
+    padding-bottom: 0.1rem;
+}
+
+.upload-calendar-day {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: #ffffff;
+}
+
+.upload-calendar-day.empty {
+    border-style: dashed;
+    background: #f9fafb;
+}
+
+.upload-calendar-day.today {
+    border-color: #2563eb;
+}
+
+.upload-calendar-day.has-upload {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+}
+
+.upload-calendar-day-number {
+    font-size: 0.82rem;
+    color: #111827;
+    font-weight: 600;
+}
+
+.upload-calendar-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: #16a34a;
+    position: absolute;
+    top: 4px;
+    right: 4px;
+}
+
+@media (max-width: 980px) {
+    .upload-calendar-grid {
+        grid-template-rows: auto repeat(6, minmax(42px, 1fr));
+    }
+
+    .upload-calendar-day {
+        min-height: 42px;
+    }
+}

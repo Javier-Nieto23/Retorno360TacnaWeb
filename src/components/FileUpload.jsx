@@ -113,6 +113,8 @@ export default function FileUpload({ onUploadSuccess }) {
     const handleFile = (f) => {
         if (!f) return;
         if (!f.name.match(/\.(xlsx|xls)$/i)) {
+            setFile(null);
+            if (inputRef.current) inputRef.current.value = '';
             setResult({ success: false, message: 'Solo se permiten archivos Excel (.xlsx, .xls).' });
             return;
         }

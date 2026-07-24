@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { adminService, fileService } from '../services/api';
 import FileUpload from './FileUpload';
+import UploadCalendar from './UploadCalendar';
 import './AdminDashboard.css';
 
 const MONTH_NAMES = [
@@ -31,19 +32,35 @@ function formatDateTime(value) {
 
 export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
-    const [creating, setCreating] = useState(false);
     const [loadingDeleteRequests, setLoadingDeleteRequests] = useState(false);
     const [resolvingRequestId, setResolvingRequestId] = useState(null);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [deleteRequests, setDeleteRequests] = useState([]);
+    const [observacionesRevision, setObservacionesRevision] = useState([]);
+    const [loadingObservacionesRevision, setLoadingObservacionesRevision] = useState(false);
+    const [nuevasRespuestasPorObsAdmin, setNuevasRespuestasPorObsAdmin] = useState({});
+    const [ultimoMensajeVistoPorObsAdmin, setUltimoMensajeVistoPorObsAdmin] = useState({});
+    const [indicadorNuevoEnChatAdmin, setIndicadorNuevoEnChatAdmin] = useState(false);
+    const [detalleObservacionModal, setDetalleObservacionModal] = useState({
+        open: false,
+        loading: false,
+        observacion: null,
+        mensajes: [],
+        respuesta: '',
+        permisos: { can_respond: false, can_close: false },
+    });
+    const [observacionActionLoading, setObservacionActionLoading] = useState(false);
     const [motivoModal, setMotivoModal] = useState({
         open: false,
+        requestId: null,
         archivo: '',
         solicitadoPor: '',
         motivo: '',
         fecha: '',
     });
+    const [startingObservationFromRequest, setStartingObservationFromRequest] = useState(false);
+    const ultimoMensajeAdminRef = useRef(null);
 
     const [dashboard, setDashboard] = useState({
         totales: {
@@ -74,26 +91,19 @@ export default function AdminDashboard() {
     });
 
     const [filteringDashboard, setFilteringDashboard] = useState(false);
-
-    const [form, setForm] = useState({
-        nombre_usuario: '',
-        alias: '',
-        password: '',
-        confirm_password: '',
-        rol_id: '',
-        razon_social_id: '',
-        empresa_id: '',
-    });
+    const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
 
     async function cargarDatos() {
         setLoading(true);
         setLoadingDeleteRequests(true);
+        setLoadingObservacionesRevision(true);
         setError('');
         try {
-            const [dashboardRes, catalogoRes, solicitudesRes] = await Promise.allSettled([
+            const [dashboardRes, catalogoRes, solicitudesRes, observacionesRes] = await Promise.allSettled([
                 adminService.dashboard(appliedFilters),
                 adminService.catalogo(),
                 fileService.listarSolicitudesEliminacion({ estado: 'pendiente' }),
+                fileService.listarObservaciones({ estado: 'en_revision' }),
             ]);
 
             if (dashboardRes.status === 'rejected' && catalogoRes.status === 'rejected') {
@@ -102,22 +112,46 @@ export default function AdminDashboard() {
 
             if (dashboardRes.status === 'fulfilled') setDashboard(dashboardRes.value.data);
             if (catalogoRes.status === 'fulfilled') {
-                const catalogoData = catalogoRes.value.data;
-                setCatalogo(catalogoData);
-                const defaultRole = catalogoData.roles.find((r) => String(r.nombrerol || '').toLowerCase() !== 'admin') || catalogoData.roles[0];
-                setForm((prev) => ({
-                    ...prev,
-                    rol_id: prev.rol_id || (defaultRole ? String(defaultRole.id) : ''),
-                }));
+                setCatalogo(catalogoRes.value.data);
             }
             if (solicitudesRes.status === 'fulfilled') {
                 setDeleteRequests(solicitudesRes.value.data.solicitudes || []);
             }
+            if (observacionesRes.status === 'fulfilled') {
+                const rows = observacionesRes.value.data.observaciones || [];
+                setObservacionesRevision(rows);
+                setNuevasRespuestasPorObsAdmin((prev) => {
+                    const next = { ...prev };
+
+                    rows.forEach((obs) => {
+                        const roleName = String(obs.ultimo_mensaje_rol || '').toLowerCase();
+                        const isIncomingForAdmin = roleName === 'cliente' || roleName === 'clientes';
+                        const ultimoMensajeAt = obs.ultimo_mensaje_at;
+                        const vistoAt = ultimoMensajeVistoPorObsAdmin[obs.id];
+
+                        if (!isIncomingForAdmin || !ultimoMensajeAt) {
+                            next[obs.id] = false;
+                            return;
+                        }
+
+                        if (!vistoAt || new Date(ultimoMensajeAt) > new Date(vistoAt)) {
+                            next[obs.id] = true;
+                            return;
+                        }
+
+                        next[obs.id] = false;
+                    });
+
+                    return next;
+                });
+            }
+            setCalendarRefreshKey((prev) => prev + 1);
         } catch (err) {
             setError(err.response?.data?.error || 'No se pudo cargar el dashboard de administración.');
         } finally {
             setLoading(false);
             setLoadingDeleteRequests(false);
+            setLoadingObservacionesRevision(false);
         }
     }
 
@@ -125,10 +159,113 @@ export default function AdminDashboard() {
         cargarDatos();
     }, []);
 
-    const empresasFiltradas = useMemo(() => {
-        if (!form.razon_social_id) return [];
-        return catalogo.empresas.filter((e) => String(e.razon_social_id) === String(form.razon_social_id));
-    }, [catalogo.empresas, form.razon_social_id]);
+    async function cargarObservacionesEnRevision({ silent = false } = {}) {
+        if (!silent) setLoadingObservacionesRevision(true);
+        try {
+            const { data } = await fileService.listarObservaciones({ estado: 'en_revision' });
+            const rows = data?.observaciones || [];
+            setObservacionesRevision(rows);
+
+            setNuevasRespuestasPorObsAdmin((prev) => {
+                const next = { ...prev };
+
+                rows.forEach((obs) => {
+                    const roleName = String(obs.ultimo_mensaje_rol || '').toLowerCase();
+                    const isIncomingForAdmin = roleName === 'cliente' || roleName === 'clientes';
+                    const ultimoMensajeAt = obs.ultimo_mensaje_at;
+                    const vistoAt = ultimoMensajeVistoPorObsAdmin[obs.id];
+
+                    if (!isIncomingForAdmin || !ultimoMensajeAt) {
+                        next[obs.id] = false;
+                        return;
+                    }
+
+                    if (!vistoAt || new Date(ultimoMensajeAt) > new Date(vistoAt)) {
+                        next[obs.id] = true;
+                        return;
+                    }
+
+                    next[obs.id] = false;
+                });
+
+                return next;
+            });
+        } catch {
+            // silencioso para refresco en vivo
+        } finally {
+            if (!silent) setLoadingObservacionesRevision(false);
+        }
+    }
+
+    async function refrescarDetalleObservacionAdmin(observacionId) {
+        if (!observacionId) return;
+
+        try {
+            const { data } = await fileService.obtenerDetalleObservacion(observacionId);
+            const mensajes = data?.mensajes || [];
+            setDetalleObservacionModal((prev) => ({
+                ...prev,
+                observacion: data?.observacion || prev.observacion,
+                mensajes,
+                permisos: data?.permisos || prev.permisos,
+            }));
+
+            const mensajesCliente = mensajes.filter((msg) => {
+                const role = String(msg.rol_nombre || '').toLowerCase();
+                return role === 'cliente' || role === 'clientes';
+            });
+            const ultimoCliente = mensajesCliente[mensajesCliente.length - 1];
+            const ultimoClienteAt = ultimoCliente?.created_at || null;
+
+            if (ultimoClienteAt) {
+                const vistoAt = ultimoMensajeVistoPorObsAdmin[observacionId];
+                if (detalleObservacionModal.open) {
+                    setUltimoMensajeVistoPorObsAdmin((prev) => ({
+                        ...prev,
+                        [observacionId]: ultimoClienteAt,
+                    }));
+                    setNuevasRespuestasPorObsAdmin((prev) => ({ ...prev, [observacionId]: false }));
+                    setIndicadorNuevoEnChatAdmin(false);
+                    return;
+                }
+
+                if (!vistoAt || new Date(ultimoClienteAt) > new Date(vistoAt)) {
+                    setNuevasRespuestasPorObsAdmin((prev) => ({ ...prev, [observacionId]: true }));
+                }
+            }
+        } catch {
+            // silencioso para refresco en vivo
+        }
+    }
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            cargarObservacionesEnRevision({ silent: true });
+
+            const observacionAbiertaId = detalleObservacionModal?.observacion?.id;
+            if (detalleObservacionModal.open && observacionAbiertaId) {
+                refrescarDetalleObservacionAdmin(observacionAbiertaId);
+            }
+        }, 5000);
+
+        return () => window.clearInterval(intervalId);
+    }, [detalleObservacionModal.open, detalleObservacionModal?.observacion?.id]);
+
+    useEffect(() => {
+        if (!detalleObservacionModal.open) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [detalleObservacionModal.open]);
+
+    useEffect(() => {
+        if (!detalleObservacionModal.open) return;
+        ultimoMensajeAdminRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, [detalleObservacionModal.open, detalleObservacionModal.mensajes.length]);
 
     const empresasFiltro = useMemo(() => {
         if (!tableFilters.razon_social_id) return catalogo.empresas;
@@ -163,19 +300,6 @@ export default function AdminDashboard() {
         [monthlyChart]
     );
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setSuccess('');
-        setError('');
-
-        if (name === 'razon_social_id') {
-            setForm((prev) => ({ ...prev, razon_social_id: value, empresa_id: '' }));
-            return;
-        }
-
-        setForm((prev) => ({ ...prev, [name]: value }));
-    };
-
     const handleDashboardFilterChange = (e) => {
         const { name, value } = e.target;
 
@@ -202,53 +326,11 @@ export default function AdminDashboard() {
             const { data } = await adminService.dashboard(tableFilters);
             setAppliedFilters(tableFilters);
             setDashboard(data);
+            setCalendarRefreshKey((prev) => prev + 1);
         } catch (err) {
             setError(err.response?.data?.error || 'No se pudo aplicar el filtro del dashboard.');
         } finally {
             setFilteringDashboard(false);
-        }
-    };
-
-    const handleCreateUser = async (e) => {
-        e.preventDefault();
-        setSuccess('');
-        setError('');
-
-        if (!form.nombre_usuario || !form.alias || !form.password || !form.confirm_password || !form.rol_id || !form.empresa_id) {
-            setError('Completa todos los campos para crear el usuario.');
-            return;
-        }
-
-        if (form.password !== form.confirm_password) {
-            setError('La confirmación de contraseña no coincide.');
-            return;
-        }
-
-        setCreating(true);
-        try {
-            await adminService.crearUsuario({
-                nombre_usuario: form.nombre_usuario.trim(),
-                alias: form.alias.trim(),
-                password: form.password,
-                confirm_password: form.confirm_password,
-                rol_id: Number(form.rol_id),
-                empresa_id: Number(form.empresa_id),
-            });
-
-            setSuccess('Usuario creado correctamente.');
-            setForm((prev) => ({
-                ...prev,
-                nombre_usuario: '',
-                alias: '',
-                password: '',
-                confirm_password: '',
-                empresa_id: '',
-            }));
-            await cargarDatos();
-        } catch (err) {
-            setError(err.response?.data?.error || 'No se pudo crear el usuario.');
-        } finally {
-            setCreating(false);
         }
     };
 
@@ -275,6 +357,7 @@ export default function AdminDashboard() {
     const abrirMotivoModal = (item) => {
         setMotivoModal({
             open: true,
+            requestId: item.id,
             archivo: item.nombre_archivo || 'Archivo no disponible',
             solicitadoPor: item.solicitado_por_alias || 'Usuario desconocido',
             motivo: item.motivo || 'No se registró un motivo para esta solicitud.',
@@ -285,11 +368,177 @@ export default function AdminDashboard() {
     const cerrarMotivoModal = () => {
         setMotivoModal({
             open: false,
+            requestId: null,
             archivo: '',
             solicitadoPor: '',
             motivo: '',
             fecha: '',
         });
+    };
+
+    const handleIniciarObservacionDesdeSolicitud = async () => {
+        const requestId = Number(motivoModal.requestId);
+        if (Number.isNaN(requestId) || !requestId) return;
+
+        setStartingObservationFromRequest(true);
+        setError('');
+        setSuccess('');
+        try {
+            await fileService.iniciarObservacionDesdeSolicitud(requestId);
+            cerrarMotivoModal();
+            await cargarDatos();
+            setSuccess('La solicitud pasó a caso de observación y quedó en proceso.');
+        } catch (err) {
+            setError(err.response?.data?.error || 'No se pudo iniciar la observación desde la solicitud.');
+        } finally {
+            setStartingObservationFromRequest(false);
+        }
+    };
+
+    const abrirDetalleObservacionModal = async (observacionId) => {
+        setDetalleObservacionModal({
+            open: true,
+            loading: true,
+            observacion: null,
+            mensajes: [],
+            respuesta: '',
+            permisos: { can_respond: false, can_close: false },
+        });
+
+        try {
+            const { data } = await fileService.obtenerDetalleObservacion(observacionId);
+            const mensajes = data?.mensajes || [];
+            const mensajesCliente = mensajes.filter((msg) => {
+                const role = String(msg.rol_nombre || '').toLowerCase();
+                return role === 'cliente' || role === 'clientes';
+            });
+            const ultimoCliente = mensajesCliente[mensajesCliente.length - 1];
+            const ultimoClienteAt = ultimoCliente?.created_at || null;
+
+            if (ultimoClienteAt) {
+                setUltimoMensajeVistoPorObsAdmin((prev) => ({
+                    ...prev,
+                    [observacionId]: ultimoClienteAt,
+                }));
+            }
+            setNuevasRespuestasPorObsAdmin((prev) => ({ ...prev, [observacionId]: false }));
+            setIndicadorNuevoEnChatAdmin(false);
+
+            setDetalleObservacionModal((prev) => ({
+                ...prev,
+                loading: false,
+                observacion: data?.observacion || null,
+                mensajes,
+                permisos: data?.permisos || { can_respond: false, can_close: false },
+            }));
+        } catch (err) {
+            setDetalleObservacionModal((prev) => ({ ...prev, loading: false }));
+            setError(err.response?.data?.error || 'No se pudo cargar el detalle de la observación.');
+        }
+    };
+
+    const cerrarDetalleObservacionModal = () => {
+        setDetalleObservacionModal({
+            open: false,
+            loading: false,
+            observacion: null,
+            mensajes: [],
+            respuesta: '',
+            permisos: { can_respond: false, can_close: false },
+        });
+        setObservacionActionLoading(false);
+        setIndicadorNuevoEnChatAdmin(false);
+    };
+
+    const handleRespuestaAdminObservacion = async () => {
+        const observacionId = detalleObservacionModal.observacion?.id;
+        const respuesta = String(detalleObservacionModal.respuesta || '').trim();
+        const canRespond = Boolean(detalleObservacionModal.permisos?.can_respond);
+
+        if (!observacionId) return;
+        if (!canRespond) {
+            setError('Este chat está en modo lectura para tu usuario.');
+            return;
+        }
+        if (!respuesta) {
+            setError('Debes ingresar una respuesta antes de enviar.');
+            return;
+        }
+
+        setObservacionActionLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            await fileService.responderObservacionAdmin(observacionId, respuesta);
+            const { data } = await fileService.obtenerDetalleObservacion(observacionId);
+            setDetalleObservacionModal((prev) => ({
+                ...prev,
+                observacion: data?.observacion || null,
+                mensajes: data?.mensajes || [],
+                respuesta: '',
+            }));
+            await cargarDatos();
+            setSuccess('Respuesta enviada al cliente correctamente.');
+        } catch (err) {
+            setError(err.response?.data?.error || 'No se pudo enviar la respuesta de administración.');
+        } finally {
+            setObservacionActionLoading(false);
+        }
+    };
+
+    const handleCerrarObservacion = async (observacionId) => {
+        const canClose = Boolean(detalleObservacionModal.permisos?.can_close);
+        if (!observacionId) return;
+        if (!canClose) {
+            setError('Este chat está en modo lectura para tu usuario.');
+            return;
+        }
+        setObservacionActionLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            await fileService.cerrarObservacion(observacionId);
+            await cargarDatos();
+            setSuccess('Observación cerrada correctamente.');
+            if (detalleObservacionModal.observacion?.id === observacionId) {
+                cerrarDetalleObservacionModal();
+            }
+        } catch (err) {
+            setError(err.response?.data?.error || 'No se pudo cerrar la observación.');
+        } finally {
+            setObservacionActionLoading(false);
+        }
+    };
+
+    const handleEliminarArchivoObservado = async () => {
+        const archivoId = Number(detalleObservacionModal.observacion?.archivo_id);
+        const observacionId = Number(detalleObservacionModal.observacion?.id);
+        const canClose = Boolean(detalleObservacionModal.permisos?.can_close);
+
+        if (Number.isNaN(archivoId) || !archivoId) return;
+        if (!canClose) {
+            setError('Este chat está en modo lectura para tu usuario.');
+            return;
+        }
+
+        setObservacionActionLoading(true);
+        setError('');
+        setSuccess('');
+        try {
+            await fileService.eliminar(archivoId);
+
+            if (!Number.isNaN(observacionId) && observacionId) {
+                await fileService.cerrarObservacion(observacionId);
+            }
+
+            await cargarDatos();
+            cerrarDetalleObservacionModal();
+            setSuccess('Archivo eliminado y observación cerrada correctamente.');
+        } catch (err) {
+            setError(err.response?.data?.error || 'No se pudo eliminar el archivo observado.');
+        } finally {
+            setObservacionActionLoading(false);
+        }
     };
 
     return (
@@ -508,114 +757,85 @@ export default function AdminDashboard() {
                         )}
                     </section>
 
+                    <section className="admin-card admin-observaciones-card">
+                        <div className="admin-requests-header">
+                            <h2>Observaciones en revisión (respuestas de clientes)</h2>
+                            <span className="admin-requests-count">{observacionesRevision.length}</span>
+                        </div>
+
+                        {loadingObservacionesRevision ? (
+                            <p className="admin-empty">Cargando observaciones...</p>
+                        ) : observacionesRevision.length === 0 ? (
+                            <p className="admin-empty">No hay observaciones en revisión por ahora.</p>
+                        ) : (
+                            <div className="admin-table-wrap">
+                                <table className="admin-table admin-observaciones-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Archivo</th>
+                                            <th>Empresa</th>
+                                            <th>Estado</th>
+                                            <th>Reportado por</th>
+                                            <th>Fecha observación</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {observacionesRevision.map((item) => (
+                                            <tr key={item.id}>
+                                                <td>{item.nombre_archivo || 'Archivo no disponible'}</td>
+                                                <td>{item.empresa_nombre || '—'}</td>
+                                                <td>
+                                                    <span>{item.estado || '—'}</span>
+                                                    {nuevasRespuestasPorObsAdmin[item.id] && (
+                                                        <span className="admin-live-badge">Nueva respuesta cliente</span>
+                                                    )}
+                                                </td>
+                                                <td>{item.reportado_por_alias || '—'}</td>
+                                                <td>{formatDateTime(item.created_at)}</td>
+                                                <td>
+                                                    <div className="admin-requests-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="admin-btn admin-btn-reason"
+                                                            onClick={() => abrirDetalleObservacionModal(item.id)}
+                                                            disabled={observacionActionLoading}
+                                                        >
+                                                            Ver respuestas
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="admin-btn admin-btn-close"
+                                                            onClick={() => handleCerrarObservacion(item.id)}
+                                                            disabled={observacionActionLoading}
+                                                        >
+                                                            Cerrar observación
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </section>
+
                     <div className="admin-grid">
                         <section className="admin-card admin-upload-card">
                             <h2>Subir archivo</h2>
-                            <FileUpload onUploadSuccess={cargarDatos} />
+                            <FileUpload onUploadSuccess={() => {
+                                cargarDatos();
+                                setCalendarRefreshKey((prev) => prev + 1);
+                            }} />
                         </section>
 
-                        <section className="admin-card admin-users-card">
-                            <h2>Crear usuario</h2>
-                            <form className="admin-form" onSubmit={handleCreateUser}>
-                                <div className="admin-form-row">
-                                    <label htmlFor="nombre_usuario">Usuario*</label>
-                                    <input
-                                        id="nombre_usuario"
-                                        name="nombre_usuario"
-                                        value={form.nombre_usuario}
-                                        onChange={handleChange}
-                                        disabled={creating}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="admin-form-row">
-                                    <label htmlFor="alias">Alias*</label>
-                                    <input
-                                        id="alias"
-                                        name="alias"
-                                        value={form.alias}
-                                        onChange={handleChange}
-                                        disabled={creating}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="admin-form-row">
-                                    <label htmlFor="password">Contraseña*</label>
-                                    <input
-                                        id="password"
-                                        name="password"
-                                        type="password"
-                                        value={form.password}
-                                        onChange={handleChange}
-                                        disabled={creating}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="admin-form-row">
-                                    <label htmlFor="confirm_password">Confirmar contraseña*</label>
-                                    <input
-                                        id="confirm_password"
-                                        name="confirm_password"
-                                        type="password"
-                                        value={form.confirm_password}
-                                        onChange={handleChange}
-                                        disabled={creating}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="admin-form-row">
-                                    <label htmlFor="rol_id">Rol*</label>
-                                    <select id="rol_id" name="rol_id" value={form.rol_id} onChange={handleChange} disabled={creating} required>
-                                        <option value="">Seleccione rol</option>
-                                        {catalogo.roles.map((r) => (
-                                            <option key={r.id} value={r.id}>{r.nombrerol}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="admin-form-row">
-                                    <label htmlFor="razon_social_id">Razón social*</label>
-                                    <select
-                                        id="razon_social_id"
-                                        name="razon_social_id"
-                                        value={form.razon_social_id}
-                                        onChange={handleChange}
-                                        disabled={creating}
-                                        required
-                                    >
-                                        <option value="">Seleccione razón social</option>
-                                        {catalogo.razones_sociales.map((rs) => (
-                                            <option key={rs.id} value={rs.id}>{rs.nombre}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="admin-form-row">
-                                    <label htmlFor="empresa_id">Empresa*</label>
-                                    <select
-                                        id="empresa_id"
-                                        name="empresa_id"
-                                        value={form.empresa_id}
-                                        onChange={handleChange}
-                                        disabled={creating || !form.razon_social_id}
-                                        required
-                                    >
-                                        <option value="">Seleccione empresa*</option>
-                                        {empresasFiltradas.map((e) => (
-                                            <option key={e.id} value={e.id}>{e.nombre}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <button type="submit" className="admin-btn" disabled={creating}>
-                                    {creating ? 'Creando...' : 'Crear usuario'}
-                                </button>
-                            </form>
-                        </section>
+                        <UploadCalendar
+                            title="Calendario de subidas"
+                            subtitle="Se marcan los días con archivos Excel cargados según el filtro aplicado."
+                            filterParams={appliedFilters}
+                            refreshKey={calendarRefreshKey}
+                        />
                     </div>
 
                     {motivoModal.open && (
@@ -627,10 +847,129 @@ export default function AdminDashboard() {
                                 <p><strong>Fecha:</strong> {formatDateTime(motivoModal.fecha)}</p>
                                 <div className="admin-modal-reason-box">{motivoModal.motivo}</div>
                                 <div className="admin-modal-actions">
-                                    <button type="button" className="admin-btn" onClick={cerrarMotivoModal}>
-                                        Cerrar
-                                    </button>
+                                    <div className="admin-requests-actions">
+                                        <button
+                                            type="button"
+                                            className="admin-btn admin-btn-observation"
+                                            onClick={handleIniciarObservacionDesdeSolicitud}
+                                            disabled={startingObservationFromRequest}
+                                        >
+                                            {startingObservationFromRequest ? 'Iniciando...' : 'Iniciar observación'}
+                                        </button>
+                                        <button type="button" className="admin-btn" onClick={cerrarMotivoModal} disabled={startingObservationFromRequest}>
+                                            Cerrar
+                                        </button>
+                                    </div>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {detalleObservacionModal.open && (
+                        <div className="admin-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="admin-observacion-title">
+                            <div className="admin-modal admin-modal-wide admin-modal-chat">
+                                {detalleObservacionModal.loading ? (
+                                    <p className="admin-empty">Cargando detalle de observación...</p>
+                                ) : !detalleObservacionModal.observacion ? (
+                                    <p className="admin-empty">No se encontró la observación seleccionada.</p>
+                                ) : (
+                                    <div className="admin-chat-layout">
+                                        <div className="admin-chat-header">
+                                            <h3 id="admin-observacion-title">Seguimiento de observación</h3>
+                                            <p><strong>Archivo:</strong> {detalleObservacionModal.observacion.nombre_archivo}</p>
+                                            <p><strong>Empresa:</strong> {detalleObservacionModal.observacion.empresa_nombre || '—'}</p>
+                                            <p><strong>Estado:</strong> {detalleObservacionModal.observacion.estado || '—'}</p>
+                                            <p><strong>Observación inicial:</strong> {detalleObservacionModal.observacion.descripcion || '—'}</p>
+                                        </div>
+
+                                        {indicadorNuevoEnChatAdmin && (
+                                            <p className="admin-live-badge admin-live-badge-chat">Recibiste una nueva respuesta del cliente.</p>
+                                        )}
+
+                                        <div className="admin-modal-messages">
+                                            {detalleObservacionModal.mensajes.length === 0 ? (
+                                                <p className="admin-empty">No hay respuestas registradas todavía.</p>
+                                            ) : (
+                                                detalleObservacionModal.mensajes.map((msg) => {
+                                                    const roleName = String(msg.rol_nombre || '').toLowerCase();
+                                                    const isAdminSide = roleName === 'admin' || roleName === 'inventarios';
+
+                                                    return (
+                                                        <div
+                                                            key={msg.id}
+                                                            className={`admin-modal-message-item ${isAdminSide ? 'admin-side' : 'client-side'}`}
+                                                        >
+                                                            <p className="admin-modal-message-meta">
+                                                                {msg.usuario_alias || 'Usuario'} · {formatDateTime(msg.created_at)}
+                                                            </p>
+                                                            <p className="admin-modal-message-body">{msg.mensaje}</p>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                            <div ref={ultimoMensajeAdminRef} aria-hidden="true" />
+                                        </div>
+
+                                        <div className="admin-chat-composer">
+                                            <div className="admin-form-row">
+                                                <label htmlFor="admin_observacion_respuesta">Responder al cliente</label>
+                                                {!detalleObservacionModal.permisos?.can_respond && (
+                                                    <p className="admin-readonly-note">Este chat está en modo lectura para tu usuario.</p>
+                                                )}
+                                                <textarea
+                                                    id="admin_observacion_respuesta"
+                                                    value={detalleObservacionModal.respuesta}
+                                                    onChange={(e) => setDetalleObservacionModal((prev) => ({ ...prev, respuesta: e.target.value }))}
+                                                    maxLength={1000}
+                                                    rows={3}
+                                                    placeholder="Escribe una respuesta o indicación para el cliente."
+                                                    disabled={observacionActionLoading || !detalleObservacionModal.permisos?.can_respond}
+                                                />
+                                            </div>
+
+                                            <div className="admin-modal-actions admin-modal-actions-split">
+                                                <div>
+                                                    <div className="admin-requests-actions">
+                                                        <button
+                                                            type="button"
+                                                            className="admin-btn admin-btn-delete-file"
+                                                            onClick={handleEliminarArchivoObservado}
+                                                            disabled={observacionActionLoading || !detalleObservacionModal.permisos?.can_close}
+                                                        >
+                                                            Eliminar archivo
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="admin-btn admin-btn-close"
+                                                            onClick={() => handleCerrarObservacion(detalleObservacionModal.observacion?.id)}
+                                                            disabled={observacionActionLoading || !detalleObservacionModal.permisos?.can_close}
+                                                        >
+                                                            Dar por cerrado
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="admin-requests-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="admin-btn admin-btn-reason"
+                                                        onClick={cerrarDetalleObservacionModal}
+                                                        disabled={observacionActionLoading}
+                                                    >
+                                                        Cerrar ventana
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="admin-btn admin-btn-approve"
+                                                        onClick={handleRespuestaAdminObservacion}
+                                                        disabled={observacionActionLoading || !String(detalleObservacionModal.respuesta || '').trim() || !detalleObservacionModal.permisos?.can_respond}
+                                                    >
+                                                        Enviar respuesta
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

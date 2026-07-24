@@ -1,13 +1,14 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
 import './Navbar.css';
-import { isAdminUser, isInventariosUser } from '../utils/roles';
+import { isAdminUser, isClientUser, isInventariosUser } from '../utils/roles';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const isAdmin = isAdminUser(user);
     const isInventarios = isInventariosUser(user);
+    const isClient = isClientUser(user);
     const dashboardPath = isAdmin ? '/admin' : isInventarios ? '/inventarios' : '/dashboard';
 
     const handleLogout = () => {
@@ -25,9 +26,29 @@ export default function Navbar() {
                 <NavLink to={dashboardPath} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                     Dashboard
                 </NavLink>
+                {isInventarios && (
+                    <NavLink to="/contabilidad" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                        Contabilidad
+                    </NavLink>
+                )}
+                {isClient && (
+                    <NavLink to="/archivos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                        Archivos
+                    </NavLink>
+                )}
+                {isClient && (
+                    <NavLink to="/solicitud-parte" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                        Solicitud de parte
+                    </NavLink>
+                )}
                 <NavLink to="/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                     Historial
                 </NavLink>
+                {isAdmin && (
+                    <NavLink to="/configuracion" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                        Configuración
+                    </NavLink>
+                )}
             </div>
 
             <div className="navbar-user">

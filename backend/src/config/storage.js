@@ -117,6 +117,7 @@ async function checkCloudflareConnection() {
             Bucket: process.env.R2_BUCKET_NAME,
         });
         await r2Client.send(command);
+
         return true;
     } catch (error) {
         console.error(`Error al conectar con Cloudflare R2: ${error.message}`);
@@ -124,4 +125,37 @@ async function checkCloudflareConnection() {
     }
 }
 
-module.exports = { uploadFile, deleteFile, checkCloudflareConnection, getDownloadUrl, r2Client };
+//fagregar streamToBuffer como helper interno 
+function streamToBuffer(stream) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        stream.on('data', (chunk) => chunks.push(chunk));
+        stream.on('error', (err) => reject(err));
+        stream.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+}
+
+/**
+ * Descarga unb archivo desde R2 y lo devuelve como buffer,para procesarlo en memoria.
+ * @param {string} storageKey - Clave/ruta del archivo
+ * @returns {Promise<Buffer>}   
+ */
+async function getFileBuffer(storageKey) {
+    const key = String(storageKey || '').trim();
+    if (!key || key.endsWith('/')) {
+        const error = new Error('storage_key invalido para lectura. ');
+        error.code = 'INVALID_STORAGE_KEY';
+        throw error;
+    }
+    const command = new GetObjectCommand({
+        Bucket: process.env.R2_BUCKET_NAME,
+        Key: key,
+    });
+    try {
+        const response = await r2Client.send(command);
+        return await streamToBuffer(response.Body);
+    } catch (error) {
+        throw wrapR2Error(`la lectura de objetos "${key}"`, error);
+    }
+}
+module.exports = { uploadFile, deleteFile, checkCloudflareConnection, getDownloadUrl, getFileBuffer, r2Client };

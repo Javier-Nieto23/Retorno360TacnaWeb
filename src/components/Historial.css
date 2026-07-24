@@ -21,6 +21,186 @@
     font-size: 0.9rem;
 }
 
+.historial-history-head {
+    margin: 0 0 1rem;
+    padding: 0 0.15rem;
+}
+
+.historial-history-head h2 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #1a1a2e;
+}
+
+.historial-history-head p {
+    margin: 0.35rem 0 0;
+    color: #6b7280;
+    font-size: 0.86rem;
+}
+
+.historial-client-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.historial-client-tool-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem 1.15rem;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.historial-client-tool-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.historial-client-tool-head h2 {
+    margin: 0;
+    font-size: 1rem;
+    color: #1a1a2e;
+}
+
+.historial-client-tool-head p {
+    margin: 0.35rem 0 0;
+    color: #6b7280;
+    font-size: 0.86rem;
+}
+
+.historial-client-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.historial-partes-form {
+    display: grid;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.historial-partes-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.historial-partes-field label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.historial-partes-field input,
+.historial-partes-field textarea {
+    padding: 0.55rem 0.875rem;
+    border: 1.5px solid #d1d5db;
+    border-radius: 7px;
+    font-size: 0.9rem;
+    color: #111827;
+    background: white;
+    outline: none;
+    font-family: inherit;
+}
+
+.historial-partes-field textarea {
+    resize: vertical;
+}
+
+.historial-partes-field input:focus,
+.historial-partes-field textarea:focus {
+    border-color: #0f3460;
+    box-shadow: 0 0 0 3px rgba(15, 52, 96, 0.1);
+}
+
+.historial-partes-message {
+    margin: 0;
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.84rem;
+}
+
+.historial-partes-message.error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.historial-partes-message.success {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+}
+
+.historial-partes-submit {
+    width: 100%;
+    background: linear-gradient(135deg, #0f3460, #2563eb);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.8rem 1rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.historial-partes-submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+.historial-partes-list {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.historial-parte-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 0.75rem 0.8rem;
+}
+
+.historial-parte-code {
+    margin: 0;
+    color: #0f3460;
+    font-weight: 700;
+    font-size: 0.92rem;
+}
+
+.historial-parte-meta {
+    margin: 0.25rem 0 0;
+    color: #6b7280;
+    font-size: 0.82rem;
+}
+
+.historial-parte-date {
+    color: #6b7280;
+    font-size: 0.76rem;
+    white-space: nowrap;
+}
+
 .filters-bar {
     display: flex;
     align-items: flex-end;
@@ -199,7 +379,7 @@
 .col-actions {
     display: flex;
     gap: 0.28rem;
-    min-width: 132px;
+    min-width: 176px;
 }
 
 .btn-action {
@@ -257,6 +437,16 @@
     opacity: 0.75;
 }
 
+.btn-observacion {
+    background: #fffbeb;
+    color: #b45309;
+    font-weight: 700;
+}
+
+.btn-observacion:hover:not(:disabled) {
+    opacity: 0.75;
+}
+
 .btn-delete:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -268,6 +458,7 @@
     font-size: 0.8rem;
     margin-top: 0.75rem;
 }
+
 
 .historial-modal-backdrop {
     position: fixed;
@@ -404,6 +595,14 @@
         padding: 1.25rem 1rem;
     }
 
+    .historial-client-tools {
+        grid-template-columns: 1fr;
+    }
+
+    .historial-history-head {
+        margin-top: 0.25rem;
+    }
+
     .col-user,
     .col-size {
         display: none;
@@ -416,4 +615,5 @@
     .historial-modal-actions {
         flex-direction: column;
     }
+
 }

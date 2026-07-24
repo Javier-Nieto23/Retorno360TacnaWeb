@@ -1,0 +1,199 @@
+.config-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+.config-header h1 {
+    margin: 0;
+    color: #1a1a2e;
+    font-size: 1.6rem;
+}
+
+.config-header p {
+    margin: 0.35rem 0 0;
+    color: #6b7280;
+}
+
+.config-alert {
+    margin-top: 1rem;
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+.config-alert-error {
+    background: #fee2e2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.config-alert-success {
+    background: #dcfce7;
+    border: 1px solid #bbf7d0;
+    color: #166534;
+}
+
+.config-loading {
+    margin-top: 1rem;
+    color: #6b7280;
+}
+
+.config-grid {
+    margin-top: 1.25rem;
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 1.2rem;
+    align-items: start;
+}
+
+.config-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 1.1rem 1.2rem;
+}
+
+.config-card h2 {
+    margin: 0 0 0.95rem;
+    color: #1a1a2e;
+    font-size: 1.05rem;
+}
+
+.config-card h3 {
+    margin: 0 0 0.9rem;
+    color: #1a1a2e;
+    font-size: 1rem;
+}
+
+.config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.config-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.config-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.config-row label {
+    font-size: 0.82rem;
+    color: #4b5563;
+    font-weight: 600;
+}
+
+.config-row input,
+.config-row select {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.58rem 0.68rem;
+    font-size: 0.9rem;
+}
+
+.config-row input:focus,
+.config-row select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.config-btn {
+    border: none;
+    border-radius: 8px;
+    background: #0f3460;
+    color: white;
+    padding: 0.62rem 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.config-btn:disabled {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+.config-btn-secondary {
+    background: #334155;
+}
+
+.config-btn-danger {
+    background: #b91c1c;
+}
+
+.config-table-wrap {
+    overflow: auto;
+}
+
+.config-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 760px;
+}
+
+.config-table th,
+.config-table td {
+    padding: 0.62rem 0.45rem;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    font-size: 0.86rem;
+    vertical-align: middle;
+}
+
+.config-table th {
+    background: #f8fafc;
+    color: #374151;
+    font-weight: 700;
+}
+
+.config-actions {
+    display: flex;
+    gap: 0.45rem;
+}
+
+.config-edit-form {
+    margin-top: 1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.config-actions-row {
+    display: flex;
+    gap: 0.6rem;
+}
+
+.config-empty {
+    margin: 0;
+    color: #6b7280;
+}
+
+@media (max-width: 980px) {
+    .config-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .config-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .config-page {
+        padding: 1.2rem 1rem;
+    }
+
+    .config-actions {
+        flex-direction: column;
+    }
+
+    .config-actions-row {
+        flex-direction: column;
+    }
+}

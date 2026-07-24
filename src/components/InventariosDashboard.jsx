@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import FileUpload from './FileUpload';
+import UploadCalendar from './UploadCalendar';
+import ContabilidadPanel from './ContabilidadPanel';
 import { fileService } from '../services/api';
 import { detectRazonSocialId } from '../utils/razonSocial';
 import './InventariosDashboard.css';
@@ -35,7 +37,7 @@ function formatDateTime(value) {
     });
 }
 
-export default function InventariosDashboard() {
+export default function InventariosDashboard({ view = 'dashboard' }) {
     const { user } = useAuth();
     const [razonesSociales, setRazonesSociales] = useState([]);
     const [empresasDisponibles, setEmpresasDisponibles] = useState([]);
@@ -59,6 +61,7 @@ export default function InventariosDashboard() {
     const [filteringDashboard, setFilteringDashboard] = useState(false);
     const [panelError, setPanelError] = useState('');
     const [solicitudesError, setSolicitudesError] = useState('');
+    const [solicitudesSuccess, setSolicitudesSuccess] = useState('');
     const [tableFilters, setTableFilters] = useState({
         razon_social_id: '',
         empresa_id: '',
@@ -74,6 +77,7 @@ export default function InventariosDashboard() {
         motivo: '',
         fecha: '',
     });
+    const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
     const razonSocialIdDetectado = detectRazonSocialId(appliedFilters.razon_social_id, user);
 
     useEffect(() => {
@@ -254,6 +258,7 @@ export default function InventariosDashboard() {
             const nextFilters = { ...tableFilters };
             setAppliedFilters(nextFilters);
             await cargarPanelPrincipal(nextFilters);
+            setCalendarRefreshKey((prev) => prev + 1);
         } finally {
             setFilteringDashboard(false);
         }
@@ -280,13 +285,20 @@ export default function InventariosDashboard() {
     };
 
     const handleResolverSolicitud = async (requestId, decision) => {
+        setSolicitudesError('');
+        setSolicitudesSuccess('');
         setResolvingRequestId(requestId);
         try {
             await fileService.resolverSolicitudEliminacion(requestId, decision);
             await cargarSolicitudesPendientes();
-            cargarPanelPrincipal(appliedFilters);
-        } catch {
-            // silencioso
+            await cargarPanelPrincipal(appliedFilters);
+            setSolicitudesSuccess(
+                decision === 'aprobar'
+                    ? 'Solicitud aprobada y archivo eliminado.'
+                    : 'Solicitud rechazada correctamente.'
+            );
+        } catch (err) {
+            setSolicitudesError(err.response?.data?.error || 'No se pudo resolver la solicitud.');
         } finally {
             setResolvingRequestId(null);
         }
@@ -306,6 +318,9 @@ export default function InventariosDashboard() {
                     {new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </div>
             </header>
+
+            {view === 'dashboard' ? (
+                <>
 
             <section className="inventarios-stats">
                 <article className="inventarios-stat-card">
@@ -476,6 +491,7 @@ export default function InventariosDashboard() {
                 </div>
 
                 {solicitudesError && <p className="inventarios-error">{solicitudesError}</p>}
+                {solicitudesSuccess && <p className="inventarios-success">{solicitudesSuccess}</p>}
 
                 {loadingDeleteRequests ? (
                     <div className="inventarios-loading">Cargando solicitudes...</div>
@@ -544,33 +560,43 @@ export default function InventariosDashboard() {
                     <h2>Subir archivo</h2>
                     <FileUpload onUploadSuccess={() => {
                         cargarPanelPrincipal(appliedFilters);
+                        setCalendarRefreshKey((prev) => prev + 1);
                     }} />
                 </section>
 
-                <section className="inventarios-periods-card">
-                    <h2>Períodos registrados</h2>
-                    <p className="inventarios-section-meta">Historial de la razón social ID: {razonSocialIdDetectado}</p>
-                    {loadingResumen ? (
-                        <div className="inventarios-loading">Cargando...</div>
-                    ) : resumen.length === 0 ? (
-                        <div className="inventarios-empty compact">
-                            <span>📭</span>
-                            <p>No hay archivos subidos aún.</p>
-                        </div>
-                    ) : (
-                        <div className="inventarios-periods-list">
-                            {resumen.map((item) => (
-                                <div key={`${item.anio}-${item.mes}`} className="inventarios-period-item">
-                                    <div>
-                                        <p className="inventarios-period-month">{formatPeriodLabel(item.anio, item.mes)}</p>
-                                        <p className="inventarios-period-note">{Number(item.total_archivos) || 0} archivo{Number(item.total_archivos) === 1 ? '' : 's'}</p>
+                <div className="inventarios-side-stack">
+                    <UploadCalendar
+                        title="Calendario de subidas"
+                        subtitle="Se marcan los días con archivos Excel cargados según el filtro aplicado."
+                        filterParams={appliedFilters}
+                        refreshKey={calendarRefreshKey}
+                    />
+
+                    <section className="inventarios-periods-card">
+                        <h2>Períodos registrados</h2>
+                        <p className="inventarios-section-meta">Historial de la razón social ID: {razonSocialIdDetectado}</p>
+                        {loadingResumen ? (
+                            <div className="inventarios-loading">Cargando...</div>
+                        ) : resumen.length === 0 ? (
+                            <div className="inventarios-empty compact">
+                                <span>📭</span>
+                                <p>No hay archivos subidos aún.</p>
+                            </div>
+                        ) : (
+                            <div className="inventarios-periods-list">
+                                {resumen.map((item) => (
+                                    <div key={`${item.anio}-${item.mes}`} className="inventarios-period-item">
+                                        <div>
+                                            <p className="inventarios-period-month">{formatPeriodLabel(item.anio, item.mes)}</p>
+                                            <p className="inventarios-period-note">{Number(item.total_archivos) || 0} archivo{Number(item.total_archivos) === 1 ? '' : 's'}</p>
+                                        </div>
+                                        <span className="inventarios-period-pill">Registrado</span>
                                     </div>
-                                    <span className="inventarios-period-pill">Registrado</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </section>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+                </div>
             </div>
 
             {motivoModal.open && (
@@ -588,6 +614,15 @@ export default function InventariosDashboard() {
                         </div>
                     </div>
                 </div>
+            )}
+
+                </>
+            ) : (
+                <ContabilidadPanel
+                    appliedFilters={appliedFilters}
+                    razonesSociales={razonesSociales}
+                    empresasDisponibles={empresasDisponibles}
+                />
             )}
         </div>
     );

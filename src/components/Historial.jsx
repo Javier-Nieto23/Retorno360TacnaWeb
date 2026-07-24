@@ -43,6 +43,9 @@ export default function Historial() {
     const [deleting, setDeleting] = useState(null);
     const [downloading, setDownloading] = useState(null);
     const [requestingDelete, setRequestingDelete] = useState(null);
+    const [reportingObservation, setReportingObservation] = useState(null);
+    const [error, setError] = useState('');
+
     const [deleteRequestModal, setDeleteRequestModal] = useState({
         open: false,
         id: null,
@@ -62,7 +65,19 @@ export default function Historial() {
         message: '',
         nombre: '',
     });
-    const [error, setError] = useState('');
+    const [observacionModal, setObservacionModal] = useState({
+        open: false,
+        id: null,
+        nombre: '',
+        empresaNombre: '—',
+        descripcion: '',
+    });
+    const [observacionFeedbackModal, setObservacionFeedbackModal] = useState({
+        open: false,
+        title: '',
+        message: '',
+        nombre: '',
+    });
 
     const cargarCatalogoFiltros = useCallback(async () => {
         try {
@@ -82,21 +97,16 @@ export default function Historial() {
                     filtroRazonSocial ? { razon_social_id: filtroRazonSocial } : undefined
                 );
                 const empresas = empresasRes.data?.empresas || [];
-
-                setCatalogo({
-                    razones_sociales: razones,
-                    empresas,
-                });
+                setCatalogo({ razones_sociales: razones, empresas });
             }
         } catch {
-            // silencioso
+            // Silencioso
         }
     }, [filtroRazonSocial, isAdmin, isInventarios]);
 
     const cargarResumen = useCallback(async () => {
         try {
             const params = {};
-
             if (canFilterByCatalog) {
                 if (filtroRazonSocial) params.razon_social_id = filtroRazonSocial;
                 if (filtroEmpresa) params.empresa_id = filtroEmpresa;
@@ -105,8 +115,10 @@ export default function Historial() {
             }
 
             const { data } = await fileService.resumenHistorial(params);
-            setResumen(data.resumen);
-        } catch { /* silencioso */ }
+            setResumen(data.resumen || []);
+        } catch {
+            setResumen([]);
+        }
     }, [canFilterByCatalog, filtroEmpresa, filtroRazonSocial, user?.razon_social_id]);
 
     const cargarArchivos = useCallback(async () => {
@@ -125,9 +137,10 @@ export default function Historial() {
             }
 
             const { data } = await fileService.historial(params);
-            setArchivos(data.archivos);
+            setArchivos(data.archivos || []);
         } catch (err) {
             setError(err.response?.data?.error || 'Error al cargar el historial.');
+            setArchivos([]);
         } finally {
             setLoading(false);
         }
@@ -138,11 +151,8 @@ export default function Historial() {
     useEffect(() => { cargarArchivos(); }, [cargarArchivos]);
 
     useEffect(() => {
-        if (!canFilterByCatalog) return;
-
-        if (!filtroRazonSocial) {
-            setFiltroEmpresa('');
-        }
+        if (!canFilterByCatalog || filtroRazonSocial) return;
+        setFiltroEmpresa('');
     }, [canFilterByCatalog, filtroRazonSocial]);
 
     const aniosDisponibles = [...new Set(resumen.map((r) => r.anio))].sort((a, b) => b - a);
@@ -159,30 +169,30 @@ export default function Historial() {
         : [];
 
     const getRazonSocialNombre = (archivo) => {
-        if (archivo?.razon_social_nombre) {
-            return archivo.razon_social_nombre;
-        }
+        if (archivo?.razon_social_nombre) return archivo.razon_social_nombre;
 
         const razonSocialId = detectRazonSocialId(archivo, filtroRazonSocial, user);
-        if (razonSocialId === '—') {
-            return '—';
-        }
+        if (razonSocialId === '—') return '—';
 
-        const razonSocial = (catalogo.razones_sociales || []).find(
-            (item) => String(item.id) === String(razonSocialId)
-        );
-
+        const razonSocial = (catalogo.razones_sociales || []).find((item) => String(item.id) === String(razonSocialId));
         return razonSocial?.nombre || '—';
     };
 
-    const motivoValidoSolicitud = deleteRequestModal.motivo.trim().length > 0;
     const razonSocialIdDetectado = detectRazonSocialId(filtroRazonSocial, user);
+    const motivoValidoSolicitud = deleteRequestModal.motivo.trim().length > 0;
 
-    const cerrarModalSolicitud = () => {
-        setDeleteRequestModal({ open: false, id: null, nombre: '', razonSocialId: '—', motivo: '' });
-    };
+    const cerrarModalSolicitud = () => setDeleteRequestModal({ open: false, id: null, nombre: '', razonSocialId: '—', motivo: '' });
+    const cerrarModalEliminar = () => setDeleteConfirmModal({ open: false, id: null, nombre: '' });
+    const cerrarModalSolicitudExitosa = () => setDeleteRequestFeedbackModal({ open: false, success: true, title: '', message: '', nombre: '' });
+    const cerrarModalObservacion = () => setObservacionModal({ open: false, id: null, nombre: '', empresaNombre: '—', descripcion: '' });
+    const cerrarModalObservacionFeedback = () => setObservacionFeedbackModal({ open: false, title: '', message: '', nombre: '' });
 
-    const abrirModalSolicitud = (archivo) => {
+    const handleEliminar = (archivo) => {
+        if (canDeleteDirectly) {
+            setDeleteConfirmModal({ open: true, id: archivo.id, nombre: archivo.nombre_archivo });
+            return;
+        }
+
         setDeleteRequestModal({
             open: true,
             id: archivo.id,
@@ -192,49 +202,28 @@ export default function Historial() {
         });
     };
 
-    const cerrarModalEliminar = () => {
-        setDeleteConfirmModal({ open: false, id: null, nombre: '' });
+    const handleEliminarDirecto = (archivo) => {
+        setDeleteConfirmModal({ open: true, id: archivo.id, nombre: archivo.nombre_archivo });
     };
 
-    const abrirModalEliminar = (archivo) => {
-        setDeleteConfirmModal({
+    const handleReportarObservacion = (archivo) => {
+        if (!isAdmin) return;
+        setObservacionModal({
             open: true,
             id: archivo.id,
             nombre: archivo.nombre_archivo,
+            empresaNombre: archivo.empresa_nombre || '—',
+            descripcion: '',
         });
-    };
-
-    const cerrarModalSolicitudExitosa = () => {
-        setDeleteRequestFeedbackModal({
-            open: false,
-            success: true,
-            title: '',
-            message: '',
-            nombre: '',
-        });
-    };
-
-    const handleEliminar = async (archivo) => {
-        if (canDeleteDirectly) {
-            alert('Para este rol usa el botón de eliminación directa (🗑).');
-            return;
-        }
-
-        abrirModalSolicitud(archivo);
-    };
-
-    const handleEliminarDirecto = async (archivo) => {
-        abrirModalEliminar(archivo);
     };
 
     const handleConfirmarEliminacionDirecta = async () => {
-        const id = deleteConfirmModal.id;
-        if (!id) return;
+        if (!deleteConfirmModal.id) return;
 
-        setDeleting(id);
+        setDeleting(deleteConfirmModal.id);
         try {
-            await fileService.eliminar(id);
-            setArchivos((prev) => prev.filter((a) => a.id !== id));
+            await fileService.eliminar(deleteConfirmModal.id);
+            setArchivos((prev) => prev.filter((item) => item.id !== deleteConfirmModal.id));
             cargarResumen();
             cerrarModalEliminar();
         } catch (err) {
@@ -268,56 +257,68 @@ export default function Historial() {
 
         const motivoLimpio = deleteRequestModal.motivo.trim();
         if (!motivoLimpio) {
-            if (isCliente) {
-                setDeleteRequestFeedbackModal({
-                    open: true,
-                    success: false,
-                    title: 'No se pudo enviar la solicitud',
-                    message: 'Debes indicar el motivo de la solicitud de eliminación.',
-                    nombre: deleteRequestModal.nombre || '',
-                });
-            } else {
-                alert('Debes indicar el motivo de la solicitud de eliminación.');
-            }
+            setDeleteRequestFeedbackModal({
+                open: true,
+                success: false,
+                title: 'No se pudo enviar la solicitud',
+                message: 'Debes indicar el motivo de la solicitud de eliminación.',
+                nombre: deleteRequestModal.nombre || '',
+            });
             return;
         }
 
-        const id = deleteRequestModal.id;
-        setRequestingDelete(id);
+        setRequestingDelete(deleteRequestModal.id);
         try {
-            await fileService.solicitarEliminacion(id, motivoLimpio);
-            setArchivos((prev) => prev.map((a) => (
-                a.id === id
-                    ? { ...a, delete_request_status: 'pendiente', delete_requested_at: new Date().toISOString() }
-                    : a
+            await fileService.solicitarEliminacion(deleteRequestModal.id, motivoLimpio);
+            setArchivos((prev) => prev.map((item) => (
+                item.id === deleteRequestModal.id
+                    ? { ...item, delete_request_status: 'pendiente', delete_requested_at: new Date().toISOString() }
+                    : item
             )));
             cerrarModalSolicitud();
-            if (isCliente) {
-                setDeleteRequestFeedbackModal({
-                    open: true,
-                    success: true,
-                    title: 'Solicitud enviada',
-                    message: 'Un administrador debe aprobar o rechazar la eliminación.',
-                    nombre: deleteRequestModal.nombre || 'archivo seleccionado',
-                });
-            } else {
-                alert('Solicitud enviada. Un administrador debe aprobar o rechazar la eliminación.');
-            }
+            setDeleteRequestFeedbackModal({
+                open: true,
+                success: true,
+                title: 'Solicitud enviada',
+                message: 'Un administrador debe aprobar o rechazar la eliminación.',
+                nombre: deleteRequestModal.nombre || 'archivo seleccionado',
+            });
         } catch (err) {
-            const message = err.response?.data?.error || 'No se pudo enviar la solicitud de eliminación.';
-            if (isCliente) {
-                setDeleteRequestFeedbackModal({
-                    open: true,
-                    success: false,
-                    title: 'No se pudo enviar la solicitud',
-                    message,
-                    nombre: deleteRequestModal.nombre || '',
-                });
-            } else {
-                alert(message);
-            }
+            setDeleteRequestFeedbackModal({
+                open: true,
+                success: false,
+                title: 'No se pudo enviar la solicitud',
+                message: err.response?.data?.error || 'No se pudo enviar la solicitud de eliminación.',
+                nombre: deleteRequestModal.nombre || '',
+            });
         } finally {
             setRequestingDelete(null);
+        }
+    };
+
+    const handleConfirmarObservacion = async () => {
+        if (!observacionModal.id) return;
+
+        const descripcionLimpia = observacionModal.descripcion.trim();
+        if (!descripcionLimpia) {
+            alert('Debes ingresar una observación.');
+            return;
+        }
+
+        setReportingObservation(observacionModal.id);
+        try {
+            await fileService.crearObservacion(observacionModal.id, descripcionLimpia);
+            cerrarModalObservacion();
+            setObservacionFeedbackModal({
+                open: true,
+                title: 'Observación enviada',
+                message: 'La observación se registró correctamente para este archivo.',
+                nombre: observacionModal.nombre || '',
+            });
+        } catch (err) {
+            alert(err.response?.data?.error || 'No se pudo registrar la observación.');
+        } finally {
+            setReportingObservation(null);
         }
     };
 
@@ -340,7 +341,13 @@ export default function Historial() {
                 </p>
             </div>
 
-            {/* Filtros */}
+            <div className="historial-history-head">
+                <h2>Historial de archivos de la empresa</h2>
+                <p>Consulta todos los archivos cargados, filtrados por período y razón social.</p>
+            </div>
+
+            {error && <div className="historial-error">{error}</div>}
+
             <div className="filters-bar">
                 {canFilterByCatalog && (
                     <>
@@ -355,10 +362,7 @@ export default function Historial() {
                         </div>
                         <div className="filter-group">
                             <label>Empresa</label>
-                            <select
-                                value={filtroEmpresa}
-                                onChange={(e) => setFiltroEmpresa(e.target.value)}
-                            >
+                            <select value={filtroEmpresa} onChange={(e) => setFiltroEmpresa(e.target.value)}>
                                 <option value="">Todas las empresas</option>
                                 {empresasDisponibles.map((emp) => (
                                     <option key={emp.id} value={emp.id}>{emp.nombre}</option>
@@ -367,35 +371,44 @@ export default function Historial() {
                         </div>
                     </>
                 )}
+
                 <div className="filter-group">
                     <label>Año</label>
                     <select value={filtroAnio} onChange={handleAnioChange}>
                         <option value="">Todos los años</option>
-                        {aniosDisponibles.map((a) => (
-                            <option key={a} value={a}>{a}</option>
+                        {aniosDisponibles.map((anio) => (
+                            <option key={anio} value={anio}>{anio}</option>
                         ))}
                     </select>
                 </div>
+
                 <div className="filter-group">
                     <label>Mes</label>
                     <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} disabled={!filtroAnio}>
                         <option value="">Todos los meses</option>
-                        {mesesDisponibles.map((m) => (
-                            <option key={m} value={m}>{MESES_NOMBRES[m]}</option>
+                        {mesesDisponibles.map((mes) => (
+                            <option key={mes} value={mes}>{MESES_NOMBRES[mes]}</option>
                         ))}
                     </select>
                 </div>
+
                 {(filtroAnio || filtroMes || filtroRazonSocial || filtroEmpresa) && (
-                    <button className="btn-clear-filter" onClick={() => { setFiltroAnio(''); setFiltroMes(''); setFiltroRazonSocial(''); setFiltroEmpresa(''); }}>
+                    <button
+                        className="btn-clear-filter"
+                        type="button"
+                        onClick={() => {
+                            setFiltroAnio('');
+                            setFiltroMes('');
+                            setFiltroRazonSocial('');
+                            setFiltroEmpresa('');
+                        }}
+                    >
                         Limpiar filtros
                     </button>
                 )}
             </div>
 
-            {/* Tabla de archivos */}
             <div className="historial-table-wrapper">
-                {error && <div className="historial-error">{error}</div>}
-
                 {loading ? (
                     <div className="historial-loading">Cargando archivos...</div>
                 ) : archivos.length === 0 ? (
@@ -420,74 +433,78 @@ export default function Historial() {
                             </tr>
                         </thead>
                         <tbody>
-                            {archivos.map((a) => (
-                                <tr key={a.id}>
+                            {archivos.map((archivo) => (
+                                <tr key={archivo.id}>
                                     <td className="col-filename">
                                         <span className="file-icon-sm">📄</span>
-                                        <span className="filename-text" title={a.nombre_archivo}>{a.nombre_archivo}</span>
+                                        <span className="filename-text" title={archivo.nombre_archivo}>{archivo.nombre_archivo}</span>
                                     </td>
-                                    <td className="col-user">{getRazonSocialNombre(a)}</td>
-                                    <td className="col-user">{a.empresa_nombre || '—'}</td>
+                                    <td className="col-user">{getRazonSocialNombre(archivo)}</td>
+                                    <td className="col-user">{archivo.empresa_nombre || '—'}</td>
                                     <td className="col-period">
-                                        <span className="period-pill">{MESES_NOMBRES[a.mes]} {a.anio}</span>
+                                        <span className="period-pill">{MESES_NOMBRES[archivo.mes]} {archivo.anio}</span>
                                     </td>
-                                    <td className="col-size">{formatBytes(a.tamano)}</td>
-                                    <td className="col-user">{a.usuario_alias || '—'}</td>
-                                    <td className="col-user">{a.razon_social_folder || user?.r2_folder || '—'}</td>
-                                    <td className="col-date">{formatDate(a.uploaded_at)}</td>
+                                    <td className="col-size">{formatBytes(archivo.tamano)}</td>
+                                    <td className="col-user">{archivo.usuario_alias || '—'}</td>
+                                    <td className="col-user">{archivo.razon_social_folder || user?.r2_folder || '—'}</td>
+                                    <td className="col-date">{formatDate(archivo.uploaded_at)}</td>
                                     <td className="col-user">
-                                        {a.delete_request_status === 'pendiente' && 'Pendiente de aprobación'}
-                                        {a.delete_request_status === 'rechazado' && 'Rechazada por admin'}
-                                        {a.delete_request_status === 'aprobado' && 'Aprobada'}
-                                        {!a.delete_request_status && 'Sin solicitud'}
+                                        {archivo.delete_request_status === 'pendiente' && 'Pendiente de aprobación'}
+                                        {archivo.delete_request_status === 'rechazado' && 'Rechazada por admin'}
+                                        {archivo.delete_request_status === 'aprobado' && 'Aprobada'}
+                                        {!archivo.delete_request_status && 'Sin solicitud'}
                                     </td>
                                     <td className="col-actions">
-                                        {a.storage_url && (
+                                        {archivo.storage_url && (
                                             <button
                                                 className="btn-action btn-download"
-                                                onClick={() => handleDescargar(a)}
-                                                disabled={downloading === a.id}
+                                                onClick={() => handleDescargar(archivo)}
+                                                disabled={downloading === archivo.id}
                                                 title="Descargar"
+                                                type="button"
                                             >
-                                                {downloading === a.id ? '...' : (
-                                                    <img
-                                                        src="/download_78516.png"
-                                                        alt="Descargar"
-                                                        className="btn-download-icon"
-                                                    />
+                                                {downloading === archivo.id ? '...' : (
+                                                    <img src="/download_78516.png" alt="Descargar" className="btn-download-icon" />
                                                 )}
                                             </button>
                                         )}
+
                                         <button
                                             className="btn-action btn-delete"
-                                            onClick={() => handleEliminar(a)}
-                                            disabled={canDeleteDirectly || deleting === a.id || requestingDelete === a.id || a.delete_request_status === 'pendiente'}
-                                            title={canDeleteDirectly ? 'Solicitud no disponible para este rol' : 'Solicitar eliminación'}
+                                            onClick={() => handleEliminar(archivo)}
+                                            disabled={deleting === archivo.id || requestingDelete === archivo.id || archivo.delete_request_status === 'pendiente'}
+                                            title={canDeleteDirectly ? 'Eliminar directamente' : 'Solicitar eliminación'}
+                                            type="button"
                                         >
-                                            {deleting === a.id || requestingDelete === a.id
-                                                ? '...'
-                                                : (
-                                                    <img
-                                                        src="/file_78434.png"
-                                                        alt="Solicitar eliminación"
-                                                        className="btn-delete-icon"
-                                                    />
-                                                )}
+                                            {deleting === archivo.id || requestingDelete === archivo.id ? '...' : (
+                                                <img src="/file_78434.png" alt="Eliminar o solicitar eliminación" className="btn-delete-icon" />
+                                            )}
                                         </button>
 
                                         {canDeleteDirectly && (
                                             <button
                                                 className="btn-action btn-delete-direct"
-                                                onClick={() => handleEliminarDirecto(a)}
-                                                disabled={deleting === a.id}
+                                                onClick={() => handleEliminarDirecto(archivo)}
+                                                disabled={deleting === archivo.id}
                                                 title="Eliminar directamente"
+                                                type="button"
                                             >
-                                                {deleting === a.id ? '...' : (
-                                                    <img
-                                                        src="/cubo-de-la-basura.png"
-                                                        alt="Eliminar directamente"
-                                                        className="btn-delete-icon"
-                                                    />
+                                                {deleting === archivo.id ? '...' : (
+                                                    <img src="/cubo-de-la-basura.png" alt="Eliminar directamente" className="btn-delete-icon" />
+                                                )}
+                                            </button>
+                                        )}
+
+                                        {isAdmin && (
+                                            <button
+                                                className="btn-action btn-observacion"
+                                                onClick={() => handleReportarObservacion(archivo)}
+                                                disabled={reportingObservation === archivo.id}
+                                                title="Registrar observación"
+                                                type="button"
+                                            >
+                                                {reportingObservation === archivo.id ? '...' : (
+                                                    <img src="/emblemimportant_103451.png" alt="Registrar observación" className="btn-delete-icon" />
                                                 )}
                                             </button>
                                         )}
@@ -507,12 +524,8 @@ export default function Historial() {
                 <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-request-title">
                     <div className="historial-modal">
                         <h3 id="delete-request-title">Solicitar eliminación de archivo</h3>
-                        <p>
-                            Archivo: <strong>{deleteRequestModal.nombre}</strong>
-                        </p>
-                        <p>
-                            ID Razón Social: <strong>{deleteRequestModal.razonSocialId}</strong>
-                        </p>
+                        <p>Archivo: <strong>{deleteRequestModal.nombre}</strong></p>
+                        <p>ID Razón Social: <strong>{deleteRequestModal.razonSocialId}</strong></p>
                         <label htmlFor="delete-request-motivo">Motivo de la solicitud</label>
                         <textarea
                             id="delete-request-motivo"
@@ -525,12 +538,7 @@ export default function Historial() {
                             disabled={requestingDelete === deleteRequestModal.id}
                         />
                         <div className="historial-modal-actions">
-                            <button
-                                type="button"
-                                className="historial-btn-secondary"
-                                onClick={cerrarModalSolicitud}
-                                disabled={requestingDelete === deleteRequestModal.id}
-                            >
+                            <button type="button" className="historial-btn-secondary" onClick={cerrarModalSolicitud} disabled={requestingDelete === deleteRequestModal.id}>
                                 Cancelar
                             </button>
                             <button
@@ -550,25 +558,13 @@ export default function Historial() {
                 <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
                     <div className="historial-modal">
                         <h3 id="delete-confirm-title">Confirmar eliminación</h3>
-                        <p>
-                            Estás por eliminar el archivo <strong>{deleteConfirmModal.nombre}</strong>.
-                        </p>
+                        <p>Estás por eliminar el archivo <strong>{deleteConfirmModal.nombre}</strong>.</p>
                         <p>Esta acción no se puede deshacer.</p>
                         <div className="historial-modal-actions">
-                            <button
-                                type="button"
-                                className="historial-btn-secondary"
-                                onClick={cerrarModalEliminar}
-                                disabled={deleting === deleteConfirmModal.id}
-                            >
+                            <button type="button" className="historial-btn-secondary" onClick={cerrarModalEliminar} disabled={deleting === deleteConfirmModal.id}>
                                 Cancelar
                             </button>
-                            <button
-                                type="button"
-                                className="historial-btn-primary"
-                                onClick={handleConfirmarEliminacionDirecta}
-                                disabled={deleting === deleteConfirmModal.id}
-                            >
+                            <button type="button" className="historial-btn-primary" onClick={handleConfirmarEliminacionDirecta} disabled={deleting === deleteConfirmModal.id}>
                                 {deleting === deleteConfirmModal.id ? 'Eliminando...' : 'Eliminar archivo'}
                             </button>
                         </div>
@@ -576,29 +572,67 @@ export default function Historial() {
                 </div>
             )}
 
-            {deleteRequestFeedbackModal.open && isCliente && (
+            {deleteRequestFeedbackModal.open && (
                 <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-success-title">
                     <div className="historial-modal historial-modal-success">
-                        <div
-                            className={`historial-feedback-icon ${deleteRequestFeedbackModal.success ? 'success' : 'error'}`}
-                            aria-hidden="true"
-                        >
+                        <div className={`historial-feedback-icon ${deleteRequestFeedbackModal.success ? 'success' : 'error'}`} aria-hidden="true">
                             {deleteRequestFeedbackModal.success ? '⏳' : '⚠'}
                         </div>
                         <h3 id="delete-success-title">{deleteRequestFeedbackModal.title}</h3>
-                        {!!deleteRequestFeedbackModal.nombre && (
-                            <p>
-                                Archivo: <strong>{deleteRequestFeedbackModal.nombre}</strong>
-                            </p>
-                        )}
+                        {!!deleteRequestFeedbackModal.nombre && <p>Archivo: <strong>{deleteRequestFeedbackModal.nombre}</strong></p>}
                         <p>{deleteRequestFeedbackModal.message}</p>
                         <div className="historial-modal-actions">
+                            <button type="button" className="historial-btn-primary" onClick={cerrarModalSolicitudExitosa}>
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {observacionFeedbackModal.open && isAdmin && (
+                <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="observation-feedback-title">
+                    <div className="historial-modal historial-modal-success">
+                        <div className="historial-feedback-icon success" aria-hidden="true">⏳</div>
+                        <h3 id="observation-feedback-title">{observacionFeedbackModal.title}</h3>
+                        {!!observacionFeedbackModal.nombre && <p>Archivo: <strong>{observacionFeedbackModal.nombre}</strong></p>}
+                        <p>{observacionFeedbackModal.message}</p>
+                        <div className="historial-modal-actions">
+                            <button type="button" className="historial-btn-primary" onClick={cerrarModalObservacionFeedback}>
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {observacionModal.open && isAdmin && (
+                <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="observation-modal-title">
+                    <div className="historial-modal">
+                        <h3 id="observation-modal-title">Registrar observación</h3>
+                        <p>Archivo: <strong>{observacionModal.nombre}</strong></p>
+                        <p>Empresa: <strong>{observacionModal.empresaNombre}</strong></p>
+                        <label htmlFor="observacion-descripcion">Descripción</label>
+                        <textarea
+                            id="observacion-descripcion"
+                            value={observacionModal.descripcion}
+                            onChange={(e) => setObservacionModal((prev) => ({ ...prev, descripcion: e.target.value }))}
+                            placeholder="Describe qué irregularidad se encontró en este archivo."
+                            rows={4}
+                            maxLength={500}
+                            disabled={reportingObservation === observacionModal.id}
+                        />
+                        <div className="historial-modal-actions">
+                            <button type="button" className="historial-btn-secondary" onClick={cerrarModalObservacion} disabled={reportingObservation === observacionModal.id}>
+                                Cancelar
+                            </button>
                             <button
                                 type="button"
                                 className="historial-btn-primary"
-                                onClick={cerrarModalSolicitudExitosa}
+                                onClick={handleConfirmarObservacion}
+                                disabled={reportingObservation === observacionModal.id || !observacionModal.descripcion.trim()}
                             >
-                                Entendido
+                                {reportingObservation === observacionModal.id ? 'Guardando...' : 'Registrar observación'}
                             </button>
                         </div>
                     </div>

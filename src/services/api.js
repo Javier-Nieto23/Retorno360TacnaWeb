@@ -82,15 +82,24 @@ export const fileService = {
         api.post('/files/upload', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
         }),
+    listarNumerosParte: () => api.get('/files/numeros-parte'),
+    crearNumeroParte: (data) => api.post('/files/numeros-parte', data),
     razonesSocialesDisponibles: () => api.get('/files/razones-sociales-disponibles'),
     empresasDisponibles: (params) => api.get('/files/empresas-disponibles', { params }),
     historial: (params) => api.get('/files/historial', { params }),
     resumenHistorial: (params) => api.get('/files/historial/resumen', { params }),
     dashboardSummary: (params) => api.get('/files/dashboard-summary', { params }),
+    listarObservaciones: (params) => api.get('/files/observaciones', { params }),
+    obtenerDetalleObservacion: (id) => api.get(`/files/observaciones/${id}`),
+    responderObservacion: (id, mensaje) => api.post(`/files/observaciones/${id}/responder`, { mensaje }),
+    responderObservacionAdmin: (id, mensaje) => api.post(`/files/observaciones/${id}/responder-admin`, { mensaje }),
+    cerrarObservacion: (id) => api.patch(`/files/observaciones/${id}/cerrar`),
+    crearObservacion: (id, descripcion) => api.post(`/files/${id}/observaciones`, { descripcion }),
     obtenerUrlDescarga: (id) => api.get(`/files/${id}/download-url`),
     eliminar: (id) => api.delete(`/files/${id}`),
     solicitarEliminacion: (id, motivo) => api.post(`/files/${id}/delete-request`, { motivo }),
     listarSolicitudesEliminacion: (params) => api.get('/files/delete-requests', { params }),
+    iniciarObservacionDesdeSolicitud: (requestId, descripcion) => api.post(`/files/delete-requests/${requestId}/start-observation`, { descripcion }),
     resolverSolicitudEliminacion: (requestId, decision) => api.patch(`/files/delete-requests/${requestId}`, { decision }),
 };
 
@@ -104,7 +113,15 @@ export const razonSocialService = {
 export const adminService = {
     dashboard: (params) => api.get('/admin/dashboard', { params }),
     catalogo: () => api.get('/admin/catalogo'),
+    listarUsuarios: () => api.get('/admin/users'),
     crearUsuario: (data) => api.post('/admin/users', data),
+    actualizarUsuario: (id, data) => api.put(`/admin/users/${id}`, data),
+    eliminarUsuario: (id) => api.delete(`/admin/users/${id}`),
+};
+
+// Contabilidad
+export const contabilidadService = {
+    generarReporte: (params) => api.get('/contabilidad/reporte', { params, responseType: 'blob' }),
 };
 
 export default api;

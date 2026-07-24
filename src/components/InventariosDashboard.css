@@ -40,6 +40,111 @@
     padding-top: 0.25rem;
 }
 
+.inventarios-tabs {
+    display: inline-flex;
+    gap: 0.4rem;
+    background: #e2e8f0;
+    border-radius: 999px;
+    padding: 0.3rem;
+    margin-bottom: 1.2rem;
+}
+
+.inventarios-tab {
+    border: none;
+    border-radius: 999px;
+    padding: 0.5rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #334155;
+    background: transparent;
+    cursor: pointer;
+}
+
+.inventarios-tab.active {
+    background: #0f3460;
+    color: #ffffff;
+}
+
+.inventarios-contabilidad-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 1.25rem 1.5rem;
+}
+
+.inventarios-contabilidad-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.inventarios-contabilidad-header h2 {
+    margin: 0;
+    color: #1a1a2e;
+    font-size: 1.1rem;
+}
+
+.inventarios-contabilidad-header p {
+    margin: 0.35rem 0 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+    max-width: 760px;
+}
+
+.inventarios-contabilidad-scope {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 10px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.inventarios-contabilidad-scope p {
+    margin: 0;
+    font-size: 0.86rem;
+    color: #334155;
+}
+
+.inventarios-contabilidad-form {
+    display: grid;
+    grid-template-columns: 1fr 180px auto;
+    gap: 0.85rem;
+    align-items: end;
+    margin-bottom: 0.8rem;
+}
+
+.inventarios-contabilidad-form input {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.6rem 0.7rem;
+    font-size: 0.9rem;
+    background: #ffffff;
+    color: #111827;
+}
+
+.inventarios-contabilidad-form input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.inventarios-contabilidad-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.inventarios-contabilidad-note {
+    margin: 0.6rem 0 0;
+    color: #64748b;
+    font-size: 0.84rem;
+}
+
 .inventarios-stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -188,6 +293,11 @@
 
 .inventarios-btn-secondary {
     background: #334155;
+    color: white;
+}
+
+.inventarios-btn-primary {
+    background: linear-gradient(135deg, #0f3460, #2563eb);
     color: white;
 }
 
@@ -402,19 +512,176 @@
 
 .inventarios-upload-card,
 .inventarios-periods-card {
-    padding: 1.2rem 1.2rem;
-    min-height: 100%;
-    max-width: 620px;
+    padding: 1.1rem 1.15rem;
+    min-height: 0;
     width: 100%;
+}
+
+.inventarios-partes-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    padding: 1.1rem 1.15rem;
+    width: 100%;
+}
+
+.inventarios-partes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.inventarios-partes-header h2 {
+    margin: 0;
+    color: #1a1a2e;
+    font-size: 1.05rem;
+}
+
+.inventarios-partes-header p {
+    margin: 0.35rem 0 0;
+    color: #6b7280;
+    font-size: 0.88rem;
+}
+
+.inventarios-partes-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #0f766e;
+    font-size: 0.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.inventarios-partes-form {
+    display: grid;
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.inventarios-form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.inventarios-form-field label {
+    font-size: 0.82rem;
+    color: #4b5563;
+    font-weight: 600;
+}
+
+.inventarios-form-field input,
+.inventarios-form-field textarea {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.6rem 0.7rem;
+    font-size: 0.9rem;
+    background: white;
+    color: #111827;
+    font-family: inherit;
+}
+
+.inventarios-form-field textarea {
+    resize: vertical;
+}
+
+.inventarios-form-field input:focus,
+.inventarios-form-field textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.inventarios-form-message {
+    margin: 0;
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    font-size: 0.84rem;
+}
+
+.inventarios-form-message.error {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.inventarios-form-message.success {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+}
+
+.inventarios-partes-list {
+    display: grid;
+    gap: 0.55rem;
+}
+
+.inventarios-parte-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 0.75rem 0.8rem;
+}
+
+.inventarios-parte-code {
+    margin: 0;
+    color: #0f3460;
+    font-weight: 700;
+    font-size: 0.92rem;
+}
+
+.inventarios-parte-meta {
+    margin: 0.25rem 0 0;
+    color: #6b7280;
+    font-size: 0.82rem;
+}
+
+.inventarios-parte-date {
+    color: #6b7280;
+    font-size: 0.76rem;
+    white-space: nowrap;
+}
+
+.inventarios-side-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    width: 100%;
+    justify-self: end;
+}
+
+.inventarios-side-stack .upload-calendar-card {
+    width: 100%;
+    height: auto;
+}
+
+.inventarios-side-stack .upload-calendar-grid {
+    grid-template-rows: auto repeat(6, minmax(40px, 1fr));
+}
+
+.inventarios-side-stack .upload-calendar-day {
+    min-height: 40px;
 }
 
 .inventarios-upload-card .upload-form {
     box-shadow: none;
     border-radius: 0;
     background: transparent;
-    padding: 2.5rem 0 0;
+    padding: 0.35rem 0 0;
     margin: 0;
-    max-width: 650px;
+    max-width: none;
 }
 
 .inventarios-upload-card .upload-title {
@@ -426,7 +693,9 @@
 }
 
 .inventarios-periods-card {
-    justify-self: end;
+    justify-self: stretch;
+    display: flex;
+    flex-direction: column;
 }
 
 .inventarios-loading,
@@ -438,6 +707,13 @@
 .inventarios-error {
     margin: 0 0 0.8rem;
     color: #b91c1c;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.inventarios-success {
+    margin: 0 0 0.8rem;
+    color: #166534;
     font-size: 0.86rem;
     font-weight: 600;
 }
@@ -482,7 +758,7 @@
     flex-direction: column;
     gap: 0.65rem;
     margin-top: 1rem;
-    max-height: 560px;
+    max-height: 420px;
     overflow-y: auto;
 }
 
@@ -533,6 +809,18 @@
 
 @media (max-width: 980px) {
 
+    .inventarios-contabilidad-form {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .inventarios-contabilidad-actions {
+        grid-column: 1 / -1;
+    }
+
+    .inventarios-contabilidad-actions .inventarios-btn {
+        width: 100%;
+    }
+
     .inventarios-stats,
     .inventarios-body {
         grid-template-columns: 1fr 1fr;
@@ -558,6 +846,26 @@
 @media (max-width: 720px) {
     .inventarios-page {
         padding: 1.25rem 1rem;
+    }
+
+    .inventarios-tabs {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .inventarios-tab {
+        width: 100%;
+        text-align: center;
+    }
+
+    .inventarios-contabilidad-card {
+        padding: 1rem;
+    }
+
+    .inventarios-contabilidad-scope,
+    .inventarios-contabilidad-form {
+        grid-template-columns: 1fr;
     }
 
     .inventarios-header,
@@ -588,6 +896,15 @@
     .inventarios-chart-card {
         padding: 1rem;
         max-width: none;
+    }
+
+    .inventarios-parte-item {
+        flex-direction: column;
+    }
+
+    .inventarios-side-stack {
+        max-width: none;
+        justify-self: stretch;
     }
 
     .inventarios-requests-card {

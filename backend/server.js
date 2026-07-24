@@ -7,6 +7,7 @@ const { checkCloudflareConnection } = require('./src/config/storage');
 
 const authRoutes = require('./src/routes/auth');
 const fileRoutes = require('./src/routes/files');
+const adminRoutes = require('./src/routes/admin');
 
 const razonsocialRoutes = require('./src/routes/razonsocial');
 
@@ -60,6 +61,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/contabilidad', require('./src/routes/contabilidad'));
+app.use('/api/admin', adminRoutes);
 
 app.use('/api/razonsocial', razonsocialRoutes);
 

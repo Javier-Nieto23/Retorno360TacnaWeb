@@ -169,4 +169,152 @@ async function crearUsuario(req, res) {
     }
 }
 
-module.exports = { dashboard, catalogo, crearUsuario };
+async function listarUsuarios(req, res) {
+    try {
+        const result = await pool.query(
+            `SELECT
+                u.id,
+                u.nombre_usuario,
+                u.alias,
+                u.empresa_id,
+                u.rol AS rol_id,
+                u.created_at,
+                r.nombrerol AS rol_nombre,
+                e.nombre AS empresa_nombre,
+                e.razon_social_id,
+                rs.nombre AS razon_social_nombre
+             FROM usuarios u
+             LEFT JOIN roles r ON r.id = u.rol
+             LEFT JOIN empresa e ON e.id = u.empresa_id
+             LEFT JOIN razon_social rs ON rs.id = e.razon_social_id
+             ORDER BY u.created_at DESC, u.id DESC`
+        );
+
+        return res.json({ usuarios: result.rows });
+    } catch (err) {
+        console.error('[ADMIN][LIST_USERS] Error:', err);
+        return res.status(500).json({ error: 'Error al listar usuarios.' });
+    }
+}
+
+async function actualizarUsuario(req, res) {
+    const userId = Number(req.params?.id);
+    const { nombre_usuario, alias, rol_id, empresa_id, password, confirm_password } = req.body || {};
+
+    if (Number.isNaN(userId)) {
+        return res.status(400).json({ error: 'Usuario inválido.' });
+    }
+
+    if (!nombre_usuario || !alias || !rol_id || !empresa_id) {
+        return res.status(400).json({
+            error: 'nombre_usuario, alias, rol_id y empresa_id son requeridos.',
+        });
+    }
+
+    if (password && password !== confirm_password) {
+        return res.status(400).json({ error: 'La confirmación de contraseña no coincide.' });
+    }
+
+    try {
+        const existsResult = await pool.query('SELECT id FROM usuarios WHERE id = $1', [userId]);
+        if (!existsResult.rows.length) {
+            return res.status(404).json({ error: 'Usuario no encontrado.' });
+        }
+
+        const validacion = await pool.query(
+            `SELECT
+                EXISTS(SELECT 1 FROM empresa WHERE id = $1) AS empresa_existe,
+                EXISTS(SELECT 1 FROM roles WHERE id = $2) AS rol_existe`,
+            [Number(empresa_id), Number(rol_id)]
+        );
+
+        const { empresa_existe, rol_existe } = validacion.rows[0] || {};
+        if (!empresa_existe) {
+            return res.status(400).json({ error: 'La empresa seleccionada no existe.' });
+        }
+        if (!rol_existe) {
+            return res.status(400).json({ error: 'El rol seleccionado no existe.' });
+        }
+
+        let passwordHash = null;
+        if (password) {
+            const salt = await bcrypt.genSalt(12);
+            passwordHash = await bcrypt.hash(password, salt);
+        }
+
+        const query = passwordHash
+            ? `UPDATE usuarios
+               SET nombre_usuario = $1,
+                   alias = $2,
+                   rol = $3,
+                   empresa_id = $4,
+                   password_hash = $5
+               WHERE id = $6
+               RETURNING id, nombre_usuario, alias, empresa_id, rol AS rol_id, created_at`
+            : `UPDATE usuarios
+               SET nombre_usuario = $1,
+                   alias = $2,
+                   rol = $3,
+                   empresa_id = $4
+               WHERE id = $5
+               RETURNING id, nombre_usuario, alias, empresa_id, rol AS rol_id, created_at`;
+
+        const values = passwordHash
+            ? [
+                String(nombre_usuario).trim(),
+                String(alias).trim(),
+                Number(rol_id),
+                Number(empresa_id),
+                passwordHash,
+                userId,
+            ]
+            : [
+                String(nombre_usuario).trim(),
+                String(alias).trim(),
+                Number(rol_id),
+                Number(empresa_id),
+                userId,
+            ];
+
+        const updateResult = await pool.query(query, values);
+        return res.json({ user: updateResult.rows[0] });
+    } catch (err) {
+        if (err.code === '23505') {
+            return res.status(409).json({ error: 'El nombre de usuario ya existe.' });
+        }
+        console.error('[ADMIN][UPDATE_USER] Error:', err);
+        return res.status(500).json({ error: 'Error al actualizar usuario.' });
+    }
+}
+
+async function eliminarUsuario(req, res) {
+    const userId = Number(req.params?.id);
+    if (Number.isNaN(userId)) {
+        return res.status(400).json({ error: 'Usuario inválido.' });
+    }
+
+    if (Number(req.user?.id) === userId) {
+        return res.status(400).json({ error: 'No puede eliminar su propio usuario.' });
+    }
+
+    try {
+        const result = await pool.query('DELETE FROM usuarios WHERE id = $1 RETURNING id', [userId]);
+        if (!result.rows.length) {
+            return res.status(404).json({ error: 'Usuario no encontrado.' });
+        }
+
+        return res.status(204).send();
+    } catch (err) {
+        console.error('[ADMIN][DELETE_USER] Error:', err);
+        return res.status(500).json({ error: 'Error al eliminar usuario.' });
+    }
+}
+
+module.exports = {
+    dashboard,
+    catalogo,
+    crearUsuario,
+    listarUsuarios,
+    actualizarUsuario,
+    eliminarUsuario,
+};
