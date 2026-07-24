@@ -1,8 +1,18 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const rawApiUrl = import.meta.env.VITE_API_URL;
+const normalizedApiUrl = typeof rawApiUrl === 'string'
+    ? rawApiUrl.replace(/^[\s]*VITE_API_URL\s*=\s*/i, '').trim()
+    : rawApiUrl;
+const API_URL = (typeof normalizedApiUrl === 'string' && normalizedApiUrl.length > 0)
+    ? normalizedApiUrl
+    : 'http://localhost:3001/api';
 const SESSION_TOKEN_KEY = 'session_token';
 const SESSION_EXPIRES_AT_KEY = 'session_expires_at';
+
+if (typeof API_URL !== 'string' || !API_URL.startsWith('http')) {
+    console.warn(`API base URL inválida detectada: ${String(API_URL)}. Revisar VITE_API_URL en Vercel.`);
+}
 
 function clearStoredSession() {
     localStorage.removeItem('user');

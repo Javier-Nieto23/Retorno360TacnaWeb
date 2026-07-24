@@ -40,7 +40,8 @@ export default function Login() {
             if (!err.response) {
                 setError('No se pudo conectar al servidor. Verifique que el backend esté activo.');
             } else {
-                setError(err.response?.data?.error || 'Error al iniciar sesión.');
+                const backendError = err.response?.data?.error;
+                setError(typeof backendError === 'string' ? backendError : 'Error al iniciar sesión.');
             }
         } finally {
             setLoading(false);
