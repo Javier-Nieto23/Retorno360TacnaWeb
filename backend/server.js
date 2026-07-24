@@ -2,8 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const pool = require('./src/config/database');
+const { pool } = require('./src/config/database');
 const { checkCloudflareConnection } = require('./src/config/storage');
+const { initDatabase } = require('./src/models/initDb');
 
 const authRoutes = require('./src/routes/auth');
 const fileRoutes = require('./src/routes/files');
@@ -13,6 +14,7 @@ const razonsocialRoutes = require('./src/routes/razonsocial');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const HOST = process.env.HOST || '0.0.0.0';
 
 async function logDatabaseConnectionStatus() {
     try {
@@ -71,18 +73,27 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', mode: process.env.STORAGE_MODE || 'local', timestamp: new Date() });
 });
 
-const server = app.listen(PORT, async () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
-    console.log(`Modo de almacenamiento: ${process.env.STORAGE_MODE || 'local'}`);
-    await logDatabaseConnectionStatus();
-    await logCloudflareConnectionStatus();
-});
+async function startServer() {
+    await initDatabase();
 
-server.on('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        console.error(`El puerto ${PORT} ya está en uso. Cierra la otra instancia del backend antes de iniciar una nueva.`);
+    const server = app.listen(PORT, HOST, async () => {
+        console.log(`Servidor corriendo en http://${HOST}:${PORT}`);
+        console.log(`Modo de almacenamiento: ${process.env.STORAGE_MODE || 'local'}`);
+        await logDatabaseConnectionStatus();
+        await logCloudflareConnectionStatus();
+    });
+
+    server.on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(`El puerto ${PORT} ya está en uso. Cierra la otra instancia del backend antes de iniciar una nueva.`);
+            process.exit(1);
+        }
+        console.error('Error al iniciar servidor:', err);
         process.exit(1);
-    }
-    console.error('Error al iniciar servidor:', err);
+    });
+}
+
+startServer().catch((error) => {
+    console.error('Error al arrancar el servidor:', error);
     process.exit(1);
 });
