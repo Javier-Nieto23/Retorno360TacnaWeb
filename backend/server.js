@@ -74,7 +74,12 @@ app.get('/api/health', (req, res) => {
 });
 
 async function startServer() {
-    await initDatabase();
+    const shouldInitDb = String(process.env.RUN_DB_INIT || '').toLowerCase() === 'true';
+    if (shouldInitDb) {
+        await initDatabase();
+    } else {
+        console.log('RUN_DB_INIT no está habilitado. No se inicializa la base de datos automáticamente.');
+    }
 
     const server = app.listen(PORT, HOST, async () => {
         console.log(`Servidor corriendo en http://${HOST}:${PORT}`);
