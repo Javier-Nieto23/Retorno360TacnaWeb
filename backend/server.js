@@ -50,9 +50,18 @@ async function logCloudflareConnectionStatus() {
 }
 
 // Middlewares
+const allowedOrigins = [process.env.FRONTEND_URL, 'http://localhost:5173']
+    .filter(Boolean)
+    .map((origin) => origin.replace(/\/+$/, ''));
+
 app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error(`CORS origin no permitido: ${origin}`));
+    },
+    credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
