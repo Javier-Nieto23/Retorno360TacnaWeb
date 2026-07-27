@@ -1,5 +1,7 @@
 /* Reset y base */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -9,6 +11,17 @@ body {
   background: #f4f6fb;
   color: #111827;
   -webkit-font-smoothing: antialiased;
+}
+
+.app-credit {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 30;
+  font-size: 0.8rem;
+  color: #6b7280;
+  pointer-events: none;
+  user-select: none;
 }
 
 .app-main {

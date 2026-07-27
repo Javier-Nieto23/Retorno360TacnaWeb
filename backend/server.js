@@ -50,7 +50,11 @@ async function logCloudflareConnectionStatus() {
 }
 
 // Middlewares
-const allowedOrigins = [process.env.FRONTEND_URL, 'http://localhost:5173']
+const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'http://localhost:5173',
+    'https://retorno.tacna.net'
+]
     .filter(Boolean)
     .map((origin) => origin.replace(/\/+$/, ''));
 

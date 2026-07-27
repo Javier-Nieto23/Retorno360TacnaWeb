@@ -115,6 +115,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        <div className="app-credit">Portal desarrollado por Javier Nieto ©2026</div>
       </AuthProvider>
     </BrowserRouter>
   );

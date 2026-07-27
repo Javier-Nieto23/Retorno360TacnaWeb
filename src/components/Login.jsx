@@ -108,8 +108,13 @@ export default function Login() {
                     <button type="submit" className="btn-login" disabled={loading}>
                         {loading ? <span className="spinner" /> : 'Ingresar'}
                     </button>
+                    <a href="/register" className="btn-register">
+                        No tienes cuenta? Regístrate.
+                    </a>
                 </form>
             </div>
+
         </div>
+
     );
 }
