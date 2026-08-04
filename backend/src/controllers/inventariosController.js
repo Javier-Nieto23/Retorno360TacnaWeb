@@ -1,5 +1,7 @@
-// Ruta para consultar los datos de la tabla anexos
-app.get('/admin/inventarios', async (req, res) => {
+const pool = require('../config/database');
+
+
+export const getInventariosMetrics = async (req, res) => {
     try {
         const query = `
             SELECT 
@@ -20,7 +22,7 @@ app.get('/admin/inventarios', async (req, res) => {
         const { rows } = await pool.query(query);
         res.json({ success: true, data: rows });
     } catch (error) {
-        console.error('Error al consultar la tabla anexos:', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor' });
+        console.error('Error al consultar anexos:', error);
+        res.status(500).json({ success: false, message: 'Error interno en la base de datos' });
     }
-});
+};
