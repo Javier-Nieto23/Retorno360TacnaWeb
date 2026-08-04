@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { pool } = require('../config/database'); // <-- IMPORTANTE: Importar pool
 const authMiddleware = require('../middleware/auth');
 const requireAdmin = require('../middleware/requireAdmin');
 const {
@@ -11,13 +12,16 @@ const {
 	eliminarUsuario,
 } = require('../controllers/adminController');
 
+// Rutas de administración
 router.get('/dashboard', authMiddleware, requireAdmin, dashboard);
 router.get('/catalogo', authMiddleware, requireAdmin, catalogo);
 router.get('/users', authMiddleware, requireAdmin, listarUsuarios);
 router.post('/users', authMiddleware, requireAdmin, crearUsuario);
 router.put('/users/:id', authMiddleware, requireAdmin, actualizarUsuario);
 router.delete('/users/:id', authMiddleware, requireAdmin, eliminarUsuario);
-router.get('/inventarios', async (req, res) => {
+
+// Ruta de métricas de inventarios
+router.get('/inventarios', authMiddleware, requireAdmin, async (req, res) => {
 	try {
 		const query = `
             SELECT 
@@ -28,7 +32,7 @@ router.get('/inventarios', async (req, res) => {
                 razon_social,
                 COALESCE(total_np, 0) as total_np,
                 COALESCE(altas_np, 0) as altas_np,
-                vigente_bom, 0) as vigente_bom,
+                COALESCE(vigente_bom, 0) as vigente_bom,
                 COALESCE(pct_base_limpia, 0) as pct_base_limpia,
                 COALESCE(pct_retorno_cubierto, 0) as pct_retorno_cubierto,
                 fecha_calculo
