@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../config/database'); // <-- IMPORTANTE: Importar pool
+const pool = require('../config/database'); // <-- Esto devuelve undefined // <-- IMPORTANTE: Importar pool
 const authMiddleware = require('../middleware/auth');
 const requireAdmin = require('../middleware/requireAdmin');
 const {
