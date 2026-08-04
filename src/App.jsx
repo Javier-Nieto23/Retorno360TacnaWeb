@@ -5,6 +5,7 @@ import Login from './components/Login';
 import Dashboard from './components/Dashboard';
 import Historial from './components/Historial';
 import AdminDashboard from './components/AdminDashboard';
+import DashboardCalidad from './components/DashboardCalidad';
 import ConfiguracionUsuarios from './components/ConfiguracionUsuarios';
 import './App.css';
 import ArchivosCliente from './components/ArchivosCliente';
@@ -104,6 +105,7 @@ function AppRoutes() {
       <Route path="/contabilidad" element={<InventariosRoute><InventariosDashboard view="contabilidad" /></InventariosRoute>} />
       <Route path="/historial" element={<ProtectedRoute><Historial /></ProtectedRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+      <Route path="/dashboard-calidad" element={<AdminRoute><DashboardCalidad /></AdminRoute>} />
       <Route path="/configuracion" element={<AdminRoute><ConfiguracionUsuarios /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
