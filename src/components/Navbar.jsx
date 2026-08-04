@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
 import './Navbar.css';
-import { isAdminUser, isClientUser, isInventariosUser } from '../utils/roles';
+import { isAdminUser, isClientUser, isInventariosUser, isCluster } from '../utils/roles';
 // barra de navegación que se muestra en todas las páginas después de iniciar sesión. Muestra enlaces según el rol del usuario y permite cerrar sesión.
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -9,6 +9,7 @@ export default function Navbar() {
     const isAdmin = isAdminUser(user);
     const isInventarios = isInventariosUser(user);
     const isClient = isClientUser(user);
+    const isCluster = isCluster(user);
     const dashboardPath = isAdmin ? '/admin' : isInventarios ? '/inventarios' : '/dashboard';
 
     const handleLogout = () => {
@@ -49,7 +50,7 @@ export default function Navbar() {
                         Configuración
                     </NavLink>
                 )}
-                {isAdmin && (
+                {isCluster && (
                     <NavLink to="/dashboard-calidad" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                         Analytics Tacna
                     </NavLink>

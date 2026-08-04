@@ -16,3 +16,7 @@ export function getLandingPath(user) {
     if (isInventariosUser(user)) return '/inventarios';
     return '/dashboard';
 }
+
+export function isCluster(user) {
+    return String(user?.rol_nombre || '').toLowerCase() === 'Cluster';
+}
