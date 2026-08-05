@@ -1,3 +1,4 @@
+
 export function isAdminUser(user) {
     return String(user?.rol_nombre || '').toLowerCase() === 'admin' || user?.is_admin;
 }

@@ -11,7 +11,7 @@ import './App.css';
 import ArchivosCliente from './components/ArchivosCliente';
 import SolicitudParte from './components/SolicitudParte';
 import InventariosDashboard from './components/InventariosDashboard';
-import { getLandingPath, isAdminUser, isClientUser, isInventariosUser } from './utils/roles';
+import { getLandingPath, isAdminUser, isClientUser, isInventariosUser, isClusterUser } from './utils/roles';
 
 function DashboardRoute() {
   const { user, loading } = useAuth();
@@ -94,6 +94,20 @@ function AdminRoute({ children }) {
   );
 }
 
+function ClusterRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="app-loading">Cargando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isClusterUser(user)) return <Navigate to={getLandingPath(user)} replace />;
+
+  return (
+    <>
+      <Navbar />
+      <main className="app-main">{children}</main>
+    </>
+  );
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -105,7 +119,7 @@ function AppRoutes() {
       <Route path="/contabilidad" element={<InventariosRoute><InventariosDashboard view="contabilidad" /></InventariosRoute>} />
       <Route path="/historial" element={<ProtectedRoute><Historial /></ProtectedRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
-      <Route path="/dashboard-calidad" element={<AdminRoute><DashboardCalidad /></AdminRoute>} />
+      <Route path="/dashboard-calidad" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
       <Route path="/configuracion" element={<AdminRoute><ConfiguracionUsuarios /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
