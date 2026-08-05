@@ -18,5 +18,5 @@ export function getLandingPath(user) {
 }
 
 export function isCluster(user) {
-    return String(user?.rol_nombre || '').toLowerCase() === 'Cluster';
+    return String(user?.rol_nombre || '').toLowerCase() === 'cluster';
 }

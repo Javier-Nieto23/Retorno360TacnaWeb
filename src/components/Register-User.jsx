@@ -212,9 +212,9 @@ export default function RegisterPage() {
                             <input
                                 id="confirmar"
                                 type="password"
-                                placeholder="Repite la contraseña"
-                                value={form.confirmar}
-                                onChange={handleChange("confirmar")}
+                                placeholder="Repite la contraseña" ja
+                                value={form.confirmar} ja
+                                onChange={handleChange("confirmar")} ja
                                 autoComplete="new-password"
                             />
                             {errores.confirmar && <p className="registro-error">{errores.confirmar}</p>}

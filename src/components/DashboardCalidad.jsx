@@ -1,5 +1,8 @@
 // src/views/DashboardCalidad.jsx
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { isCluster } from '../utils/roles';
 import { fetchDashboardMetrics, fetchInventoryMetrics } from '../services/dashboardService';
 import './DashboardCalidad.css';
 
@@ -30,15 +33,27 @@ ChartJS.register(
 const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
 export default function DashboardCalidad() {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+
     const [rawData, setRawData] = useState([]);
     const [inventoryData, setInventoryData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'graficas' | 'inventarios'
+    const [activeTab, setActiveTab] = useState('dashboard');
+
+    // Validar permisos antes de realizar cualquier carga de datos
+    const userIsCluster = useMemo(() => isCluster(user), [user]);
 
     useEffect(() => {
+        if (!userIsCluster) {
+            // Si no es Cluster, bloqueamos acceso y redirigimos
+            navigate('/dashboard', { replace: true });
+            return;
+        }
+
         loadAllData();
-    }, []);
+    }, [userIsCluster, navigate]);
 
     const loadAllData = async () => {
         setLoading(true);
@@ -48,15 +63,15 @@ export default function DashboardCalidad() {
                 fetchInventoryMetrics()
             ]);
 
-            if (dashRes.success) {
+            if (dashRes?.success) {
                 setRawData(dashRes.data || []);
             }
-            if (invRes.success) {
+            if (invRes?.success) {
                 setInventoryData(invRes.data || []);
             }
             setError(null);
         } catch (err) {
-            setError('Error al conectar con la API en Railway.');
+            setError('Error al conectar con la API.');
         } finally {
             setLoading(false);
         }
@@ -94,6 +109,16 @@ export default function DashboardCalidad() {
             pctLimpia: avgLimpia.toFixed(1)
         };
     }, [inventoryData]);
+
+    // Render de seguridad si no tiene permisos o si la redirección se está procesando
+    if (!userIsCluster) {
+        return (
+            <div className="dashboard-container" style={{ padding: '2rem', textAlign: 'center' }}>
+                <h2>Acceso denegado</h2>
+                <p>No tienes permisos suficientes para visualizar Analytics Tacna.</p>
+            </div>
+        );
+    }
 
     return (
         <div className="dashboard-container">
