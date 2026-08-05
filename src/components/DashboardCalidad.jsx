@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { isCluster, isClusterUser } from '../utils/roles';
+import { isClusterUser } from '../utils/roles';
 import { fetchDashboardMetrics, fetchInventoryMetrics } from '../services/dashboardService';
 import './DashboardCalidad.css';
 
