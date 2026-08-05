@@ -11,12 +11,14 @@ export function isClientUser(user) {
     return roleName === 'cliente' || roleName === 'clientes';
 }
 
-export function getLandingPath(user) {
-    if (isAdminUser(user)) return '/admin';
-    if (isInventariosUser(user)) return '/inventarios';
-    return '/dashboard';
-}
-
 export function isClusterUser(user) {
     return String(user?.rol_nombre || '').toLowerCase() === 'cluster';
 }
+
+export function getLandingPath(user) {
+    if (isAdminUser(user)) return '/admin';
+    if (isInventariosUser(user)) return '/inventarios';
+    if (isClusterUser(user)) return '/dashboard-calidad';
+    return '/dashboard';
+}
+
