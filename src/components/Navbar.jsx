@@ -19,14 +19,18 @@ export default function Navbar() {
 
     return (
         <nav className="navbar">
+            
             <div className="navbar-brand">
                 <img src="/logo.png" alt="Retorno360 Tacna Logo" width="180" height="170" />
             </div>
+           
 
             <div className="navbar-links">
+                {isAdmin && isInventarios(
                 <NavLink to={dashboardPath} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                     Dashboard
                 </NavLink>
+                )}
                 {isInventarios && (
                     <NavLink to="/contabilidad" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                         Contabilidad
@@ -42,9 +46,11 @@ export default function Navbar() {
                         Solicitud de parte
                     </NavLink>
                 )}
-                <NavLink to="/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                    Historial
-                </NavLink>
+                {isInventarios && (
+                    <NavLink to="/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                        Historial
+                    </NavLink>
+                )}
                 {isAdmin && (
                     <NavLink to="/configuracion" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                         Configuración
