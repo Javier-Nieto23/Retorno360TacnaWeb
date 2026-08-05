@@ -9,8 +9,11 @@ const { initDatabase } = require('./src/models/initDb');
 const authRoutes = require('./src/routes/auth');
 const fileRoutes = require('./src/routes/files');
 const adminRoutes = require('./src/routes/admin');
+const clusterRoutes = require('./src/routes/cluster');
 
 const razonsocialRoutes = require('./src/routes/razonsocial');
+
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -78,6 +81,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/contabilidad', require('./src/routes/contabilidad'));
 app.use('/api/admin', adminRoutes);
+app.use('/api/cluster', clusterRoutes);
 
 app.use('/api/razonsocial', razonsocialRoutes);
 
