@@ -35,14 +35,21 @@ const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "
 export default function DashboardCalidad() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [rawData, setRawData] = useState([]);
     const [inventoryData, setInventoryData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+
+
     // Al abrir el componente, se sitúa automáticamente en la pestaña de Analytics (dashboard)
-    const [activeTab, setActiveTab] = useState('dashboard');
+    const activeTab = useMemo(() => {
+        if (location.pathname.endsWith('/graficas')) return 'graficas';
+        if (location.pathname.endsWith('/inventarios')) return 'inventarios';
+        return 'dashboard';
+    }, [location.pathname]);
 
     // Validar permisos antes de realizar cualquier carga de datos
     const userIsCluster = useMemo(() => isClusterUser(user), [user]);
@@ -125,29 +132,8 @@ export default function DashboardCalidad() {
 
     return (
         <div className="dashboard-container">
-            {/* SUB-PESTAÑAS (Analytics Tacna) */}
-            <div className="subtabs-header">
-                <nav className="nav-tabs">
-                    <button
-                        className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('dashboard')}
-                    >
-                        Dashboard
-                    </button>
-                    <button
-                        className={`nav-btn ${activeTab === 'graficas' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('graficas')}
-                    >
-                        Gráficas
-                    </button>
-                    <button
-                        className={`nav-btn ${activeTab === 'inventarios' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('inventarios')}
-                    >
-                        Inventarios
-                    </button>
-                </nav>
-            </div>
+
+
 
             {/* RIBBON KPI */}
             <div className="metrics-ribbon-container">
