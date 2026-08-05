@@ -3,6 +3,8 @@ const router = express.Router();
 const pool = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 const requireAdmin = require('../middleware/requireAdmin');
+const requireAdminOrCluster = require('../middleware/requireAdminOrCluster');
+
 const {
 	dashboard,
 	catalogo,
@@ -13,6 +15,7 @@ const {
 } = require('../controllers/adminController');
 
 // Rutas de administración
+router.get('/dashboard', authMiddleware, requireAdminOrCluster, dashboard);
 router.get('/dashboard', authMiddleware, requireAdmin, dashboard);
 router.get('/catalogo', authMiddleware, requireAdmin, catalogo);
 router.get('/users', authMiddleware, requireAdmin, listarUsuarios);
