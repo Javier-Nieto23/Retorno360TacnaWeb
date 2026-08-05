@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { isCluster } from '../utils/roles';
+import { isCluster, isClusterUser } from '../utils/roles';
 import { fetchDashboardMetrics, fetchInventoryMetrics } from '../services/dashboardService';
 import './DashboardCalidad.css';
 
@@ -43,7 +43,7 @@ export default function DashboardCalidad() {
     const [activeTab, setActiveTab] = useState('dashboard');
 
     // Validar permisos antes de realizar cualquier carga de datos
-    const userIsCluster = useMemo(() => isCluster(user), [user]);
+    const userIsCluster = useMemo(() => isClusterUser(user), [user]);
 
     useEffect(() => {
         if (!userIsCluster) {
