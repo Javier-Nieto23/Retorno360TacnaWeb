@@ -3,7 +3,8 @@ import api from './api';
 
 export const fetchDashboardMetrics = async () => {
     try {
-        const response = await api.get('/admin/dashboard');
+        // Se cambió /admin/dashboard por /cluster/dashboard para validar requireCluster
+        const response = await api.get('/cluster/dashboard');
         return response.data;
     } catch (error) {
         console.error('Error al obtener métricas del dashboard:', error);
@@ -13,7 +14,8 @@ export const fetchDashboardMetrics = async () => {
 
 export const fetchInventoryMetrics = async () => {
     try {
-        const response = await api.get('/admin/inventarios');
+        // Se cambió /admin/inventarios por /cluster/inventarios para validar requireCluster
+        const response = await api.get('/cluster/inventarios');
         return response.data;
     } catch (error) {
         console.error('Error al obtener métricas de inventarios:', error);

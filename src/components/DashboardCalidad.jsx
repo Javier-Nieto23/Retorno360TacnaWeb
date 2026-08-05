@@ -40,6 +40,8 @@ export default function DashboardCalidad() {
     const [inventoryData, setInventoryData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Al abrir el componente, se sitúa automáticamente en la pestaña de Analytics (dashboard)
     const [activeTab, setActiveTab] = useState('dashboard');
 
     // Validar permisos antes de realizar cualquier carga de datos
@@ -48,12 +50,13 @@ export default function DashboardCalidad() {
     useEffect(() => {
         if (!userIsCluster) {
             // Si no es Cluster, bloqueamos acceso y redirigimos
-            navigate('/dashboard', { replace: true });
+            const targetPath = getLandingPath(user);
+            navigate(targetPath, { replace: true });
             return;
         }
 
         loadAllData();
-    }, [userIsCluster, navigate]);
+    }, [userIsCluster, user, navigate]);
 
     const loadAllData = async () => {
         setLoading(true);
@@ -122,7 +125,7 @@ export default function DashboardCalidad() {
 
     return (
         <div className="dashboard-container">
-            {/* SUB-PESTAÑAS */}
+            {/* SUB-PESTAÑAS (Analytics Tacna) */}
             <div className="subtabs-header">
                 <nav className="nav-tabs">
                     <button
@@ -197,7 +200,7 @@ export default function DashboardCalidad() {
                     <div className="error-banner">{error}</div>
                 ) : (
                     <>
-                        {/* PESTAÑA 1: DASHBOARD */}
+                        {/* PESTAÑA 1: DASHBOARD (ANALYTICS) */}
                         {activeTab === 'dashboard' && (
                             <div className="data-card">
                                 <div className="card-header">
