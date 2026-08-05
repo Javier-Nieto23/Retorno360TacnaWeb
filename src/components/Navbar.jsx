@@ -50,7 +50,7 @@ export default function Navbar() {
                         Configuración
                     </NavLink>
                 )}
-                {isCluster && (
+                {isClusterUser && (
                     <NavLink to="/dashboard-calidad" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                         Analytics Tacna
                     </NavLink>
