@@ -47,7 +47,7 @@ export default function DashboardCalidad() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // 🟢 DETECTAR PESTAÑA ACTIVA SEGÚN LA URL ACTUAL (REACT ROUTER)
+    // Identificar pestaña activa basándose ÚNICAMENTE en la URL del Navbar
     const activeTab = useMemo(() => {
         const path = location.pathname;
         if (path.includes('/graficas')) return 'graficas';
@@ -56,17 +56,10 @@ export default function DashboardCalidad() {
         return 'dashboard';
     }, [location.pathname]);
 
-    // Función para cambiar de pestaña actualizando la ruta en la URL
-    const handleTabChange = (tab) => {
-        if (tab === 'dashboard') navigate('/dashboard-calidad');
-        else navigate(`/dashboard-calidad/${tab}`);
-    };
-
     // Estados para filtro por etiquetas
     const [selectedCompanies, setSelectedCompanies] = useState([]);
     const [companyInput, setCompanyInput] = useState('');
 
-    // Validar si es Cluster
     const userIsCluster = useMemo(() => isClusterUser(user), [user]);
 
     useEffect(() => {
@@ -100,7 +93,6 @@ export default function DashboardCalidad() {
         }
     };
 
-    // Manejo de Etiquetas para Filtro por Razón Social
     const handleAddCompany = (companyName) => {
         const trimmed = companyName.trim();
         if (trimmed && !selectedCompanies.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
@@ -191,43 +183,13 @@ export default function DashboardCalidad() {
         return (
             <div className="dashboard-container" style={{ padding: '2rem', textAlign: 'center' }}>
                 <h2>Acceso denegado</h2>
-                <p>Solo los usuarios con rol Cluster pueden acceder a Analytics Tacna.</p>
+                <p>Solo los usuarios con rol Cluster pueden acceder a esta sección.</p>
             </div>
         );
     }
 
     return (
         <div className="dashboard-container">
-            {/* PESTAÑAS PRINCIPALES INTERNAS */}
-            <div className="subtabs-header">
-                <nav className="nav-tabs">
-                    <button
-                        className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-                        onClick={() => handleTabChange('dashboard')}
-                    >
-                        Dashboard
-                    </button>
-                    <button
-                        className={`nav-btn ${activeTab === 'graficas' ? 'active' : ''}`}
-                        onClick={() => handleTabChange('graficas')}
-                    >
-                        Gráficas
-                    </button>
-                    <button
-                        className={`nav-btn ${activeTab === 'inventarios' ? 'active' : ''}`}
-                        onClick={() => handleTabChange('inventarios')}
-                    >
-                        Inventarios
-                    </button>
-                    <button
-                        className={`nav-btn ${activeTab === 'cumplimiento' ? 'active' : ''}`}
-                        onClick={() => handleTabChange('cumplimiento')}
-                    >
-                        Cumplimiento
-                    </button>
-                </nav>
-            </div>
-
             {/* RIBBON KPI */}
             <div className="metrics-ribbon-container">
                 {activeTab === 'cumplimiento' ? (
@@ -298,7 +260,7 @@ export default function DashboardCalidad() {
                     <div className="error-banner">{error}</div>
                 ) : (
                     <>
-                        {/* PESTAÑA 1: DASHBOARD */}
+                        {/* PESTAÑA DASHBOARD */}
                         {activeTab === 'dashboard' && (
                             <div className="data-card">
                                 <div className="card-header">
@@ -346,7 +308,7 @@ export default function DashboardCalidad() {
                             </div>
                         )}
 
-                        {/* PESTAÑA 2: GRÁFICAS */}
+                        {/* PESTAÑA GRÁFICAS */}
                         {activeTab === 'graficas' && (
                             <div className="charts-grid">
                                 <div className="chart-box">
@@ -386,7 +348,7 @@ export default function DashboardCalidad() {
                             </div>
                         )}
 
-                        {/* PESTAÑA 3: INVENTARIOS */}
+                        {/* PESTAÑA INVENTARIOS */}
                         {activeTab === 'inventarios' && (
                             <div className="data-card">
                                 <div className="card-header">
@@ -434,7 +396,7 @@ export default function DashboardCalidad() {
                             </div>
                         )}
 
-                        {/* PESTAÑA 4: CUMPLIMIENTO T-MEC / IMMEX */}
+                        {/* PESTAÑA CUMPLIMIENTO */}
                         {activeTab === 'cumplimiento' && (
                             <div className="data-card">
                                 <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
@@ -454,7 +416,7 @@ export default function DashboardCalidad() {
                                             <input
                                                 type="text"
                                                 className="tag-input"
-                                                placeholder={selectedCompanies.length === 0 ? "Filtrar por Razón Social (Presiona Enter o elige opción)..." : "Agregar otra empresa..."}
+                                                placeholder={selectedCompanies.length === 0 ? "Filtrar por Razón Social..." : "Agregar otra empresa..."}
                                                 value={companyInput}
                                                 onChange={(e) => setCompanyInput(e.target.value)}
                                                 onKeyDown={handleKeyDownCompany}
