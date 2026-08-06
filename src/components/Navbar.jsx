@@ -65,6 +65,9 @@ export default function Navbar() {
                         <NavLink to="/dashboard-calidad/inventarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Inventarios
                         </NavLink>
+                        <NavLink to="/dashboard-calidad/cumplimiento" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            cumplimiento
+                        </NavLink>
                     </>
                 )}
                 {!isCluster && (
