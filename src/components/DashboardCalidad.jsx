@@ -401,7 +401,7 @@ export default function DashboardCalidad() {
                             <div className="data-card">
                                 <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
                                     <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span>DESGLOSE DE CUMPLIMIENTO FISCAL (IGI / IVA)</span>
+                                        <span>Buscar </span>
                                         <span className="badge-count">{filteredCumplimiento.length} Registros</span>
                                     </div>
 
