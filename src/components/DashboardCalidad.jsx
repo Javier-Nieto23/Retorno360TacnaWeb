@@ -1,6 +1,6 @@
 // src/views/DashboardCalidad.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isClusterUser, getLandingPath } from '../utils/roles';
 import {
@@ -39,6 +39,7 @@ const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "
 export default function DashboardCalidad() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [rawData, setRawData] = useState([]);
     const [inventoryData, setInventoryData] = useState([]);
@@ -46,10 +47,22 @@ export default function DashboardCalidad() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // Pestaña activa ('dashboard', 'graficas', 'inventarios', 'cumplimiento')
-    const [activeTab, setActiveTab] = useState('dashboard');
+    // 🟢 DETECTAR PESTAÑA ACTIVA SEGÚN LA URL ACTUAL (REACT ROUTER)
+    const activeTab = useMemo(() => {
+        const path = location.pathname;
+        if (path.includes('/graficas')) return 'graficas';
+        if (path.includes('/inventarios')) return 'inventarios';
+        if (path.includes('/cumplimiento')) return 'cumplimiento';
+        return 'dashboard';
+    }, [location.pathname]);
 
-    // 🟢 ESTADOS PARA FILTRO DE ETIQUETAS (MULTIPLE EMPRESA)
+    // Función para cambiar de pestaña actualizando la ruta en la URL
+    const handleTabChange = (tab) => {
+        if (tab === 'dashboard') navigate('/dashboard-calidad');
+        else navigate(`/dashboard-calidad/${tab}`);
+    };
+
+    // Estados para filtro por etiquetas
     const [selectedCompanies, setSelectedCompanies] = useState([]);
     const [companyInput, setCompanyInput] = useState('');
 
@@ -87,7 +100,7 @@ export default function DashboardCalidad() {
         }
     };
 
-    // 🏷️ MANEJO DE ETIQUETAS/TAGS PARA EL FILTRO POR RAZÓN SOCIAL
+    // Manejo de Etiquetas para Filtro por Razón Social
     const handleAddCompany = (companyName) => {
         const trimmed = companyName.trim();
         if (trimmed && !selectedCompanies.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
@@ -107,13 +120,11 @@ export default function DashboardCalidad() {
         setSelectedCompanies(selectedCompanies.filter(c => c !== companyToRemove));
     };
 
-    // Obtener lista de empresas sugeridas para un autocompletado rápido
     const availableCompanies = useMemo(() => {
         const setCompanies = new Set(cumplimientoData.map(r => r.razon_social).filter(Boolean));
         return Array.from(setCompanies);
     }, [cumplimientoData]);
 
-    // 📊 DATOS FILTRADOS DE CUMPLIMIENTO (POR ETIQUETAS)
     const filteredCumplimiento = useMemo(() => {
         if (selectedCompanies.length === 0) return cumplimientoData;
         return cumplimientoData.filter(row =>
@@ -123,7 +134,6 @@ export default function DashboardCalidad() {
         );
     }, [cumplimientoData, selectedCompanies]);
 
-    // 🧮 TOTALES CONSOLIDADOS PARA LA TABLA CUMPLIMIENTO
     const cumplimientoTotals = useMemo(() => {
         return filteredCumplimiento.reduce((acc, row) => {
             const pIgi = Number(row.pago_igi) || 0;
@@ -135,14 +145,13 @@ export default function DashboardCalidad() {
             acc.operaciones += ops;
             acc.pagoIgi += pIgi;
             acc.ahorroIgi += aIgi;
-            acc.calculadoIgi += (pIgi + aIgi); // IGI Calculado = Pagado + Ahorrado
+            acc.calculadoIgi += (pIgi + aIgi);
             acc.pagoIva += pIva;
             acc.ahorroIva += aIva;
             return acc;
         }, { operaciones: 0, pagoIgi: 0, ahorroIgi: 0, calculadoIgi: 0, pagoIva: 0, ahorroIva: 0 });
     }, [filteredCumplimiento]);
 
-    // KPIs Dashboard Operaciones
     const kpisOps = useMemo(() => {
         if (!rawData || !rawData.length) {
             return { ehs: '0.0', nc: 0, pago: '0', aging: '0.0', ahorro: '0.0' };
@@ -159,7 +168,6 @@ export default function DashboardCalidad() {
         };
     }, [rawData]);
 
-    // KPIs Inventarios
     const kpisInv = useMemo(() => {
         if (!inventoryData || !inventoryData.length) {
             return { totalNp: 0, pctRetorno: '0.0', pctLimpia: '0.0' };
@@ -190,30 +198,30 @@ export default function DashboardCalidad() {
 
     return (
         <div className="dashboard-container">
-            {/* PESTAÑAS PRINCIPALES */}
+            {/* PESTAÑAS PRINCIPALES INTERNAS */}
             <div className="subtabs-header">
                 <nav className="nav-tabs">
                     <button
                         className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('dashboard')}
+                        onClick={() => handleTabChange('dashboard')}
                     >
                         Dashboard
                     </button>
                     <button
                         className={`nav-btn ${activeTab === 'graficas' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('graficas')}
+                        onClick={() => handleTabChange('graficas')}
                     >
                         Gráficas
                     </button>
                     <button
                         className={`nav-btn ${activeTab === 'inventarios' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('inventarios')}
+                        onClick={() => handleTabChange('inventarios')}
                     >
                         Inventarios
                     </button>
                     <button
                         className={`nav-btn ${activeTab === 'cumplimiento' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('cumplimiento')}
+                        onClick={() => handleTabChange('cumplimiento')}
                     >
                         Cumplimiento
                     </button>
@@ -435,7 +443,6 @@ export default function DashboardCalidad() {
                                         <span className="badge-count">{filteredCumplimiento.length} Registros</span>
                                     </div>
 
-                                    {/* CONTENEDOR DEL BUSCADOR DE ETIQUETAS */}
                                     <div className="tag-filter-container">
                                         <div className="tag-chips-wrapper">
                                             {selectedCompanies.map((comp, i) => (
@@ -489,7 +496,7 @@ export default function DashboardCalidad() {
                                             {filteredCumplimiento.map((row) => {
                                                 const pIgi = Number(row.pago_igi) || 0;
                                                 const aIgi = Number(row.ahorro_igi) || 0;
-                                                const cIgi = pIgi + aIgi; // Calculado = Pagado + Ahorrado
+                                                const cIgi = pIgi + aIgi;
                                                 const pIva = Number(row.pago_iva) || 0;
                                                 const aIva = Number(row.ahorro_iva) || 0;
 
@@ -508,7 +515,6 @@ export default function DashboardCalidad() {
                                                 );
                                             })}
                                         </tbody>
-                                        {/* FILA DE TOTALES CONSOLIDADOS */}
                                         {filteredCumplimiento.length > 0 && (
                                             <tfoot>
                                                 <tr style={{ background: '#f8fafc', fontWeight: 700, borderTop: '2px solid #e2e8f0' }}>

@@ -122,6 +122,7 @@ function AppRoutes() {
       <Route path="/dashboard-calidad" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
       <Route path="/dashboard-calidad/graficas" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
       <Route path="/dashboard-calidad/inventarios" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
+      <Route path="/dashboard-calidad/cumplimiento" element={<DashboardCalidad />} />
       <Route path="/configuracion" element={<AdminRoute><ConfiguracionUsuarios /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
