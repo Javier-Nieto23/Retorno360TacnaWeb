@@ -396,6 +396,8 @@ export default function DashboardCalidad() {
                             </div>
                         )}
 
+
+
                         {/* PESTAÑA CUMPLIMIENTO */}
                         {activeTab === 'cumplimiento' && (
                             <div className="data-card">
