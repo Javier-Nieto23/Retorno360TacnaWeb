@@ -119,10 +119,13 @@ function AppRoutes() {
       <Route path="/contabilidad" element={<InventariosRoute><InventariosDashboard view="contabilidad" /></InventariosRoute>} />
       <Route path="/historial" element={<ProtectedRoute><Historial /></ProtectedRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+
+      {/*rutas para cluster protegidas correctamente*/}
       <Route path="/dashboard-calidad" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
       <Route path="/dashboard-calidad/graficas" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
       <Route path="/dashboard-calidad/inventarios" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
-      <Route path="/dashboard-calidad/cumplimiento" element={<DashboardCalidad />} />
+      <Route path="/dashboard-calidad/cumplimiento" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
+
       <Route path="/configuracion" element={<AdminRoute><ConfiguracionUsuarios /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
