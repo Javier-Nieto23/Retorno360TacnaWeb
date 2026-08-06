@@ -1,9 +1,13 @@
 // src/views/DashboardCalidad.jsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { isClusterUser, getLandingPath } from '../utils/roles';
-import { fetchDashboardMetrics, fetchInventoryMetrics } from '../services/dashboardService';
+import {
+    fetchDashboardMetrics,
+    fetchInventoryMetrics,
+    fetchCumplimientoMetrics
+} from '../services/dashboardService';
 import './DashboardCalidad.css';
 
 import {
@@ -35,51 +39,108 @@ const MONTHS = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "
 export default function DashboardCalidad() {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const location = useLocation();
 
     const [rawData, setRawData] = useState([]);
     const [inventoryData, setInventoryData] = useState([]);
+    const [cumplimientoData, setCumplimientoData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    // La pestaña activa viene de la URL (controlada ahora desde el Navbar)
-    const activeTab = useMemo(() => {
-        if (location.pathname.endsWith('/graficas')) return 'graficas';
-        if (location.pathname.endsWith('/inventarios')) return 'inventarios';
-        return 'dashboard';
-    }, [location.pathname]);
+    // Pestaña activa ('dashboard', 'graficas', 'inventarios', 'cumplimiento')
+    const [activeTab, setActiveTab] = useState('dashboard');
 
+    // 🟢 ESTADOS PARA FILTRO DE ETIQUETAS (MULTIPLE EMPRESA)
+    const [selectedCompanies, setSelectedCompanies] = useState([]);
+    const [companyInput, setCompanyInput] = useState('');
+
+    // Validar si es Cluster
     const userIsCluster = useMemo(() => isClusterUser(user), [user]);
 
     useEffect(() => {
         if (!userIsCluster) {
-            navigate(getLandingPath(user), { replace: true });
+            const targetPath = getLandingPath(user);
+            navigate(targetPath, { replace: true });
             return;
         }
+
         loadAllData();
     }, [userIsCluster, user, navigate]);
 
     const loadAllData = async () => {
         setLoading(true);
         try {
-            const [dashRes, invRes] = await Promise.all([
+            const [dashRes, invRes, cumpRes] = await Promise.all([
                 fetchDashboardMetrics(),
-                fetchInventoryMetrics()
+                fetchInventoryMetrics(),
+                fetchCumplimientoMetrics()
             ]);
 
-            if (dashRes?.success) {
-                setRawData(dashRes.data || []);
-            }
-            if (invRes?.success) {
-                setInventoryData(invRes.data || []);
-            }
+            if (dashRes?.success) setRawData(dashRes.data || []);
+            if (invRes?.success) setInventoryData(invRes.data || []);
+            if (cumpRes?.success) setCumplimientoData(cumpRes.data || []);
+
             setError(null);
         } catch (err) {
-            setError('Error al conectar con la API.');
+            setError('Acceso denegado o error al conectar con la API.');
         } finally {
             setLoading(false);
         }
     };
+
+    // 🏷️ MANEJO DE ETIQUETAS/TAGS PARA EL FILTRO POR RAZÓN SOCIAL
+    const handleAddCompany = (companyName) => {
+        const trimmed = companyName.trim();
+        if (trimmed && !selectedCompanies.some(c => c.toLowerCase() === trimmed.toLowerCase())) {
+            setSelectedCompanies([...selectedCompanies, trimmed]);
+        }
+        setCompanyInput('');
+    };
+
+    const handleKeyDownCompany = (e) => {
+        if (e.key === 'Enter' || e.key === ',') {
+            e.preventDefault();
+            handleAddCompany(companyInput);
+        }
+    };
+
+    const handleRemoveCompany = (companyToRemove) => {
+        setSelectedCompanies(selectedCompanies.filter(c => c !== companyToRemove));
+    };
+
+    // Obtener lista de empresas sugeridas para un autocompletado rápido
+    const availableCompanies = useMemo(() => {
+        const setCompanies = new Set(cumplimientoData.map(r => r.razon_social).filter(Boolean));
+        return Array.from(setCompanies);
+    }, [cumplimientoData]);
+
+    // 📊 DATOS FILTRADOS DE CUMPLIMIENTO (POR ETIQUETAS)
+    const filteredCumplimiento = useMemo(() => {
+        if (selectedCompanies.length === 0) return cumplimientoData;
+        return cumplimientoData.filter(row =>
+            selectedCompanies.some(company =>
+                (row.razon_social || '').toLowerCase().includes(company.toLowerCase())
+            )
+        );
+    }, [cumplimientoData, selectedCompanies]);
+
+    // 🧮 TOTALES CONSOLIDADOS PARA LA TABLA CUMPLIMIENTO
+    const cumplimientoTotals = useMemo(() => {
+        return filteredCumplimiento.reduce((acc, row) => {
+            const pIgi = Number(row.pago_igi) || 0;
+            const aIgi = Number(row.ahorro_igi) || 0;
+            const pIva = Number(row.pago_iva) || 0;
+            const aIva = Number(row.ahorro_iva) || 0;
+            const ops = Number(row.operaciones) || 0;
+
+            acc.operaciones += ops;
+            acc.pagoIgi += pIgi;
+            acc.ahorroIgi += aIgi;
+            acc.calculadoIgi += (pIgi + aIgi); // IGI Calculado = Pagado + Ahorrado
+            acc.pagoIva += pIva;
+            acc.ahorroIva += aIva;
+            return acc;
+        }, { operaciones: 0, pagoIgi: 0, ahorroIgi: 0, calculadoIgi: 0, pagoIva: 0, ahorroIva: 0 });
+    }, [filteredCumplimiento]);
 
     // KPIs Dashboard Operaciones
     const kpisOps = useMemo(() => {
@@ -114,21 +175,88 @@ export default function DashboardCalidad() {
         };
     }, [inventoryData]);
 
-    // Render de seguridad si no tiene permisos o si la redirección se está procesando
+    const formatCurrency = (val) => {
+        return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val || 0);
+    };
+
     if (!userIsCluster) {
         return (
             <div className="dashboard-container" style={{ padding: '2rem', textAlign: 'center' }}>
                 <h2>Acceso denegado</h2>
-                <p>No tienes permisos suficientes para visualizar Analytics Tacna.</p>
+                <p>Solo los usuarios con rol Cluster pueden acceder a Analytics Tacna.</p>
             </div>
         );
     }
 
     return (
         <div className="dashboard-container">
+            {/* PESTAÑAS PRINCIPALES */}
+            <div className="subtabs-header">
+                <nav className="nav-tabs">
+                    <button
+                        className={`nav-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('dashboard')}
+                    >
+                        Dashboard
+                    </button>
+                    <button
+                        className={`nav-btn ${activeTab === 'graficas' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('graficas')}
+                    >
+                        Gráficas
+                    </button>
+                    <button
+                        className={`nav-btn ${activeTab === 'inventarios' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('inventarios')}
+                    >
+                        Inventarios
+                    </button>
+                    <button
+                        className={`nav-btn ${activeTab === 'cumplimiento' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('cumplimiento')}
+                    >
+                        Cumplimiento
+                    </button>
+                </nav>
+            </div>
+
             {/* RIBBON KPI */}
             <div className="metrics-ribbon-container">
-                {activeTab !== 'inventarios' ? (
+                {activeTab === 'cumplimiento' ? (
+                    <div className="metrics-ribbon">
+                        <div className="kpi-card blue">
+                            <div className="kpi-value">{cumplimientoTotals.operaciones.toLocaleString()}</div>
+                            <div className="kpi-label">Operaciones Totales</div>
+                        </div>
+                        <div className="kpi-card yellow">
+                            <div className="kpi-value">{formatCurrency(cumplimientoTotals.pagoIgi)}</div>
+                            <div className="kpi-label">IGI Pagado Total</div>
+                        </div>
+                        <div className="kpi-card purple">
+                            <div className="kpi-value">{formatCurrency(cumplimientoTotals.calculadoIgi)}</div>
+                            <div className="kpi-label">IGI Calculado Total</div>
+                        </div>
+                        <div className="kpi-card green">
+                            <div className="kpi-value">{formatCurrency(cumplimientoTotals.ahorroIgi + cumplimientoTotals.ahorroIva)}</div>
+                            <div className="kpi-label">Ahorro Total T-MEC/IMMEX</div>
+                        </div>
+                    </div>
+                ) : activeTab === 'inventarios' ? (
+                    <div className="metrics-ribbon">
+                        <div className="kpi-card blue">
+                            <div className="kpi-value">{kpisInv.totalNp}</div>
+                            <div className="kpi-label">Total Números de Parte</div>
+                        </div>
+                        <div className="kpi-card green">
+                            <div className="kpi-value">{kpisInv.pctRetorno}%</div>
+                            <div className="kpi-label">% Retorno Cubierto</div>
+                        </div>
+                        <div className="kpi-card purple">
+                            <div className="kpi-value">{kpisInv.pctLimpia}%</div>
+                            <div className="kpi-label">% Base de Datos Limpia</div>
+                        </div>
+                    </div>
+                ) : (
                     <div className="metrics-ribbon">
                         <div className="kpi-card green">
                             <div className="kpi-value">{kpisOps.ehs}%</div>
@@ -149,21 +277,6 @@ export default function DashboardCalidad() {
                         <div className="kpi-card green">
                             <div className="kpi-value">${kpisOps.ahorro}M</div>
                             <div className="kpi-label">Ahorro T-MEC</div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="metrics-ribbon">
-                        <div className="kpi-card blue">
-                            <div className="kpi-value">{kpisInv.totalNp}</div>
-                            <div className="kpi-label">Total Números de Parte</div>
-                        </div>
-                        <div className="kpi-card green">
-                            <div className="kpi-value">{kpisInv.pctRetorno}%</div>
-                            <div className="kpi-label">% Retorno Cubierto</div>
-                        </div>
-                        <div className="kpi-card purple">
-                            <div className="kpi-value">{kpisInv.pctLimpia}%</div>
-                            <div className="kpi-label">% Base de Datos Limpia</div>
                         </div>
                     </div>
                 )}
@@ -265,7 +378,7 @@ export default function DashboardCalidad() {
                             </div>
                         )}
 
-                        {/* PESTAÑA 3: INVENTARIOS (SISTEMA SEER) */}
+                        {/* PESTAÑA 3: INVENTARIOS */}
                         {activeTab === 'inventarios' && (
                             <div className="data-card">
                                 <div className="card-header">
@@ -308,6 +421,107 @@ export default function DashboardCalidad() {
                                                 </tr>
                                             ))}
                                         </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* PESTAÑA 4: CUMPLIMIENTO T-MEC / IMMEX */}
+                        {activeTab === 'cumplimiento' && (
+                            <div className="data-card">
+                                <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+                                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>DESGLOSE DE CUMPLIMIENTO FISCAL (IGI / IVA)</span>
+                                        <span className="badge-count">{filteredCumplimiento.length} Registros</span>
+                                    </div>
+
+                                    {/* CONTENEDOR DEL BUSCADOR DE ETIQUETAS */}
+                                    <div className="tag-filter-container">
+                                        <div className="tag-chips-wrapper">
+                                            {selectedCompanies.map((comp, i) => (
+                                                <span key={i} className="chip">
+                                                    {comp}
+                                                    <button type="button" onClick={() => handleRemoveCompany(comp)}>×</button>
+                                                </span>
+                                            ))}
+                                            <input
+                                                type="text"
+                                                className="tag-input"
+                                                placeholder={selectedCompanies.length === 0 ? "Filtrar por Razón Social (Presiona Enter o elige opción)..." : "Agregar otra empresa..."}
+                                                value={companyInput}
+                                                onChange={(e) => setCompanyInput(e.target.value)}
+                                                onKeyDown={handleKeyDownCompany}
+                                                list="companies-list"
+                                            />
+                                        </div>
+                                        {selectedCompanies.length > 0 && (
+                                            <button
+                                                className="btn-clear-tags"
+                                                onClick={() => setSelectedCompanies([])}
+                                            >
+                                                Limpiar Filtros
+                                            </button>
+                                        )}
+                                        <datalist id="companies-list">
+                                            {availableCompanies.map((c, idx) => (
+                                                <option key={idx} value={c} />
+                                            ))}
+                                        </datalist>
+                                    </div>
+                                </div>
+
+                                <div className="table-responsive">
+                                    <table className="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Razón Social</th>
+                                                <th>Planta</th>
+                                                <th>Período</th>
+                                                <th>Operaciones</th>
+                                                <th>IGI Pagado</th>
+                                                <th>IGI Calculado</th>
+                                                <th>Ahorro IGI</th>
+                                                <th>Pago IVA</th>
+                                                <th>Ahorro IVA</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredCumplimiento.map((row) => {
+                                                const pIgi = Number(row.pago_igi) || 0;
+                                                const aIgi = Number(row.ahorro_igi) || 0;
+                                                const cIgi = pIgi + aIgi; // Calculado = Pagado + Ahorrado
+                                                const pIva = Number(row.pago_iva) || 0;
+                                                const aIva = Number(row.ahorro_iva) || 0;
+
+                                                return (
+                                                    <tr key={row.id}>
+                                                        <td style={{ fontWeight: 600 }}>{row.razon_social || 'N/A'}</td>
+                                                        <td>{row.planta || 'N/A'}</td>
+                                                        <td>{row.mes ? MONTHS[row.mes - 1] : ''} {row.anio || ''}</td>
+                                                        <td>{(Number(row.operaciones) || 0).toLocaleString()}</td>
+                                                        <td style={{ color: '#d97706', fontWeight: 600 }}>{formatCurrency(pIgi)}</td>
+                                                        <td style={{ color: '#2563eb', fontWeight: 600 }}>{formatCurrency(cIgi)}</td>
+                                                        <td style={{ color: '#059669', fontWeight: 700 }}>{formatCurrency(aIgi)}</td>
+                                                        <td>{formatCurrency(pIva)}</td>
+                                                        <td style={{ color: '#059669', fontWeight: 700 }}>{formatCurrency(aIva)}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                        {/* FILA DE TOTALES CONSOLIDADOS */}
+                                        {filteredCumplimiento.length > 0 && (
+                                            <tfoot>
+                                                <tr style={{ background: '#f8fafc', fontWeight: 700, borderTop: '2px solid #e2e8f0' }}>
+                                                    <td colSpan="3">TOTALES CONSOLIDADOS</td>
+                                                    <td>{cumplimientoTotals.operaciones.toLocaleString()}</td>
+                                                    <td style={{ color: '#d97706' }}>{formatCurrency(cumplimientoTotals.pagoIgi)}</td>
+                                                    <td style={{ color: '#2563eb' }}>{formatCurrency(cumplimientoTotals.calculadoIgi)}</td>
+                                                    <td style={{ color: '#059669' }}>{formatCurrency(cumplimientoTotals.ahorroIgi)}</td>
+                                                    <td>{formatCurrency(cumplimientoTotals.pagoIva)}</td>
+                                                    <td style={{ color: '#059669' }}>{formatCurrency(cumplimientoTotals.ahorroIva)}</td>
+                                                </tr>
+                                            </tfoot>
+                                        )}
                                     </table>
                                 </div>
                             </div>

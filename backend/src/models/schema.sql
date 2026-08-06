@@ -215,3 +215,4 @@ ALTER TABLE IF EXISTS public.observaciones
     REFERENCES public.usuarios (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE SET NULL;
+

@@ -22,3 +22,23 @@ export const fetchInventoryMetrics = async () => {
         return { success: false, data: [] };
     }
 };
+
+export const fetchCumplimientoMetrics = async () => {
+    try {
+        const response = await api.get('/cluster/cumplimiento');
+        return response.data;
+    } catch (error) {
+        console.error('Error al obtener métricas de cumplimiento:', error);
+        return { success: false, data: [] };
+    }
+};
+
+export const fetchCumplimientoMetrics = async () => {
+    try {
+        const response = await api.get('/cluster/cumplimiento');
+        return response.data;
+    } catch (error) {
+        console.error('Error al obtener métricas de cumplimiento:', error);
+        return { success: false, data: [] };
+    }
+};

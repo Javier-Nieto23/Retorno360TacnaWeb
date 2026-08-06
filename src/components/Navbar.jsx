@@ -67,6 +67,11 @@ export default function Navbar() {
                         </NavLink>
                     </>
                 )}
+                {!isCluster && (
+                    <NavLink to="/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                        Cumplimiento
+                    </NavLink>
+                )}
             </div>
 
             <div className="navbar-user">

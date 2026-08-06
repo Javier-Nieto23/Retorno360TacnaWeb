@@ -261,3 +261,77 @@
     color: var(--red-status);
     border: 1px solid var(--red-status);
 }
+
+/* Filtro de etiquetas Razón Social */
+.tag-filter-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.tag-chips-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 6px 10px;
+    flex: 1;
+    min-height: 42px;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    background-color: #e0e7ff;
+    color: #1e40af;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 16px;
+    gap: 6px;
+}
+
+.chip button {
+    background: none;
+    border: none;
+    color: #1e40af;
+    font-weight: bold;
+    font-size: 1.1rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.chip button:hover {
+    color: #ef4444;
+}
+
+.tag-input {
+    border: none;
+    outline: none;
+    flex: 1;
+    min-width: 200px;
+    font-size: 0.9rem;
+    background: transparent;
+}
+
+.btn-clear-tags {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.btn-clear-tags:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
