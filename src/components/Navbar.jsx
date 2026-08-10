@@ -56,6 +56,7 @@ export default function Navbar() {
                 )}
                 {isCluster && (
                     <>
+
                         <NavLink to="/dashboard-calidad" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Dashboard
                         </NavLink>
