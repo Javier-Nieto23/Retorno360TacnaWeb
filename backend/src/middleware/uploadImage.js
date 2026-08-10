@@ -13,6 +13,8 @@ const uploadImage = multer({
             'image/gif',
         ];
 
+
+
         if (allowed.includes(file.mimetype)) {
             cb(null, true);
             return;
