@@ -130,6 +130,7 @@ export default function DashboardCalidad() {
         return filteredCumplimiento.reduce((acc, row) => {
             const pIgi = Number(row.pago_igi) || 0;
             const aIgi = Number(row.ahorro_igi) || 0;
+            const cIgi = Number(row.igi_calculado ?? 0) || 0;
             const pIva = Number(row.pago_iva) || 0;
             const aIva = Number(row.ahorro_iva) || 0;
             const ops = Number(row.operaciones) || 0;
@@ -137,7 +138,7 @@ export default function DashboardCalidad() {
             acc.operaciones += ops;
             acc.pagoIgi += pIgi;
             acc.ahorroIgi += aIgi;
-            acc.calculadoIgi += (pIgi + aIgi);
+            acc.calculadoIgi += cIgi;
             acc.pagoIva += pIva;
             acc.ahorroIva += aIva;
             return acc;
@@ -461,7 +462,7 @@ export default function DashboardCalidad() {
                                             {filteredCumplimiento.map((row) => {
                                                 const pIgi = Number(row.pago_igi) || 0;
                                                 const aIgi = Number(row.ahorro_igi) || 0;
-                                                const cIgi = pIgi + aIgi;
+                                                const cIgi = Number(row.igi_calculado ?? 0) || 0;
                                                 const pIva = Number(row.pago_iva) || 0;
                                                 const aIva = Number(row.ahorro_iva) || 0;
 
