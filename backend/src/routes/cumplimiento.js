@@ -34,4 +34,6 @@ router.get('/cumplimiento', authMiddleware, requireCluster, async (req, res) => 
 	}
 });
 
+
+
 module.exports = router;
