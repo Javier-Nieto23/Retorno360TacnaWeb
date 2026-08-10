@@ -61,11 +61,11 @@ router.get('/cumplimiento', authMiddleware, requireCluster, async (req, res) => 
 				planta,
 				periodo,
 				operaciones,
-				COALESCE(pago_igi, igi_pagado) AS igi_pagado,
-				COALESCE(igi_calculado, COALESCE(pago_igi, igi_pagado) + COALESCE(ahorro_igi, 0)) AS igi_calculado,
+				COALESCE(igi_pagado, 0) AS igi_pagado,
+				COALESCE(igi_calculado, COALESCE(igi_pagado, 0) + COALESCE(ahorro_igi, 0)) AS igi_calculado,
 				ahorro_igi,
-				COALESCE(pago_iva, iva_pagado) AS pago_iva,
-				COALESCE(ahorro_iva, iva_ahorro) AS ahorro_iva,
+				COALESCE(pago_iva, 0) AS pago_iva,
+				COALESCE(ahorro_iva, 0) AS ahorro_iva,
 				fecha_calculo
 			FROM public.cumplimiento
 			ORDER BY periodo DESC NULLS LAST, id DESC;
@@ -84,7 +84,7 @@ router.get('/cumplimiento', authMiddleware, requireCluster, async (req, res) => 
 			}
 
 			sourceTable = 'public.cumplimiento';
-			console.warn(`[CUMPLIMIENTO][FALLBACK] usando tabla alterna ${sourceTable} por error code=${primaryError?.code || 'NA'}`);
+			console.warn(`[CUMPLIMIENTO][FALLBACK] usando tabla alterna ${sourceTable} por error code=${primaryError?.code || 'NA'} mensaje=${primaryError?.message || 'sin mensaje'}`);
 			const result = await pool.query(fallbackQuery);
 			rows = result.rows;
 			console.log(`[CUMPLIMIENTO][QUERY_OK] tabla=${sourceTable} rows=${rows.length}`);
