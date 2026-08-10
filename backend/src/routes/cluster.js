@@ -23,10 +23,6 @@ router.get('/inventarios', authMiddleware, requireCluster, async (req, res) => {
 		const { rows } = await pool.query(query);
 		res.json({ success: true, data: rows });
 	} catch (error) {
-		if (error?.code === '42P01') {
-			// Tabla inexistente en algunos entornos: responde vacío para no romper la vista.
-			return res.json({ success: true, data: [], warning: 'Tabla anexos no encontrada.' });
-		}
 		console.error('Error al consultar tabla anexos:', error);
 		res.status(500).json({ success: false, message: 'Error interno del servidor' });
 	}
@@ -35,29 +31,45 @@ router.get('/inventarios', authMiddleware, requireCluster, async (req, res) => {
 router.get('/cumplimiento', authMiddleware, requireCluster, async (req, res) => {
 	try {
 		const query = `
-			SELECT
-				id,
-				mes,
-				anio,
-				razon_social,
-				planta,
-				COALESCE(operaciones, 0) as operaciones,
-				COALESCE(pago_igi, 0) as pago_igi,
-				COALESCE(ahorro_igi, 0) as ahorro_igi,
-				COALESCE(pago_iva, 0) as pago_iva,
-				COALESCE(ahorro_iva, 0) as ahorro_iva
-			FROM cumplimiento
-			ORDER BY anio DESC, mes DESC;
+			SELECT *
+			FROM retorno_porcentaje
+			ORDER BY periodo DESC NULLS LAST;
 		`;
 
 		const { rows } = await pool.query(query);
-		res.json({ success: true, data: rows });
+		const mappedRows = rows.map((row, index) => {
+			const periodo = row?.periodo ? new Date(row.periodo) : null;
+			const mes = periodo && !Number.isNaN(periodo.getTime())
+				? (periodo.getUTCMonth() + 1)
+				: Number(row?.mes) || null;
+			const anio = periodo && !Number.isNaN(periodo.getTime())
+				? periodo.getUTCFullYear()
+				: Number(row?.anio) || null;
+
+			const pagoIgi = Number(row?.pago_igi ?? row?.igi_pagado ?? 0) || 0;
+			const ahorroIgi = Number(row?.ahorro_igi ?? 0) || 0;
+			const calculadoIgi = Number(row?.igi_calculado ?? (pagoIgi + ahorroIgi)) || 0;
+			const pagoIva = Number(row?.pago_iva ?? row?.iva_pagado ?? 0) || 0;
+			const ahorroIva = Number(row?.ahorro_iva ?? row?.iva_ahorro ?? 0) || 0;
+
+			return {
+				id: row?.id || index + 1,
+				mes,
+				anio,
+				razon_social: row?.razon_social || row?.cliente || row?.empresa || 'N/A',
+				planta: row?.planta || row?.site || 'N/A',
+				operaciones: Number(row?.operaciones ?? 0) || 0,
+				pago_igi: pagoIgi,
+				ahorro_igi: ahorroIgi,
+				igi_calculado: calculadoIgi,
+				pago_iva: pagoIva,
+				ahorro_iva: ahorroIva,
+			};
+		});
+
+		res.json({ success: true, data: mappedRows });
 	} catch (error) {
-		if (error?.code === '42P01') {
-			// Tabla inexistente en algunos entornos: responde vacío para no romper la vista.
-			return res.json({ success: true, data: [], warning: 'Tabla cumplimiento no encontrada.' });
-		}
-		console.error('Error al consultar tabla cumplimiento:', error);
+		console.error('Error al consultar tabla retorno_porcentaje (cumplimiento):', error);
 		res.status(500).json({ success: false, message: 'Error interno del servidor' });
 	}
 });

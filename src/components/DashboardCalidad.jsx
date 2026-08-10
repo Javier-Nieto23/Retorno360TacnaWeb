@@ -81,34 +81,11 @@ export default function DashboardCalidad() {
                 fetchCumplimientoMetrics()
             ]);
 
-            const failedSources = [];
+            if (dashRes?.success) setRawData(dashRes.data || []);
+            if (invRes?.success) setInventoryData(invRes.data || []);
+            if (cumpRes?.success) setCumplimientoData(cumpRes.data || []);
 
-            if (dashRes?.success) {
-                setRawData(dashRes.data || []);
-            } else {
-                setRawData([]);
-                failedSources.push('Dashboard');
-            }
-
-            if (invRes?.success) {
-                setInventoryData(invRes.data || []);
-            } else {
-                setInventoryData([]);
-                failedSources.push('Inventarios');
-            }
-
-            if (cumpRes?.success) {
-                setCumplimientoData(cumpRes.data || []);
-            } else {
-                setCumplimientoData([]);
-                failedSources.push('Cumplimiento');
-            }
-
-            if (failedSources.length > 0) {
-                setError(`No se pudo cargar: ${failedSources.join(', ')}.`);
-            } else {
-                setError(null);
-            }
+            setError(null);
         } catch (err) {
             setError('Acceso denegado o error al conectar con la API.');
         } finally {
