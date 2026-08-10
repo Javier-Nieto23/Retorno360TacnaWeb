@@ -8,8 +8,8 @@ const { dashboard } = require('../controllers/adminController'); // reutiliza el
 router.get('/dashboard', authMiddleware, requireCluster, dashboard);
 
 router.get('/inventarios', authMiddleware, requireCluster, async (req, res) => {
-    try {
-        const query = `
+	try {
+		const query = `
 			SELECT id, mes, anio, planta, razon_social,
 				COALESCE(total_np, 0) as total_np,
 				COALESCE(altas_np, 0) as altas_np,
@@ -20,17 +20,17 @@ router.get('/inventarios', authMiddleware, requireCluster, async (req, res) => {
 			FROM anexos
 			ORDER BY anio DESC, mes DESC;
 			`;
-        const { rows } = await pool.query(query);
-        res.json({ success: true, data: rows });
-    } catch (error) {
-        console.error('Error al consultar tabla anexos:', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor' });
-    }
+		const { rows } = await pool.query(query);
+		res.json({ success: true, data: rows });
+	} catch (error) {
+		console.error('Error al consultar tabla anexos:', error);
+		res.status(500).json({ success: false, message: 'Error interno del servidor' });
+	}
 });
 
 router.get('/cumplimiento', authMiddleware, requireCluster, async (req, res) => {
-    try {
-        const query = `
+	try {
+		const query = `
 			SELECT
 				id,
 				razon_social,
@@ -49,12 +49,12 @@ router.get('/cumplimiento', authMiddleware, requireCluster, async (req, res) => 
 			ORDER BY periodo DESC NULLS LAST, id DESC;
 			`;
 
-        const { rows } = await pool.query(query);
-        res.json({ success: true, data: rows });
-    } catch (error) {
-        console.error('Error al consultar tabla de cumplimiento:', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor' });
-    }
+		const { rows } = await pool.query(query);
+		res.json({ success: true, data: rows });
+	} catch (error) {
+		console.error('Error al consultar tabla de cumplimiento:', error);
+		res.status(500).json({ success: false, message: 'Error interno del servidor' });
+	}
 });
 
 module.exports = router;
