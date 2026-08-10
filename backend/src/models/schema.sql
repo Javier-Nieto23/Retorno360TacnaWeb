@@ -107,6 +107,24 @@ CREATE TABLE IF NOT EXISTS public.usuarios
     CONSTRAINT usuarios_nombre_usuario_key UNIQUE (nombre_usuario)
 );
 
+
+CREATE TABLE IF NOT EXISTS public.anexos
+(
+    id serial NOT NULL, 
+    razon_social character varying(500) COLLATE pg_catalog."default" NOT NULL,
+    planta character varying(500) COLLATE pg_catalog."default" NOT NULL,
+    periodo timestamp without time zone, 
+    operaciones integer DEFAULT 0, 
+    igi_pagado double precision DEFAULT 0, 
+    igi_calculado double precision DEFAULT 0,
+    ahorro_igi double precision DEFAULT 0, 
+    pago_iva double precision DEFAULT 0,
+    ahorro_iva double precision DEFAULT 0,
+
+    CONSTRAINT anexos_pkey PRIMARY KEY (id)
+);
+
+
 ALTER TABLE IF EXISTS public.archivo_delete_requests
     ADD CONSTRAINT archivo_delete_requests_archivo_id_fkey FOREIGN KEY (archivo_id)
     REFERENCES public.archivos_historial (id) MATCH SIMPLE

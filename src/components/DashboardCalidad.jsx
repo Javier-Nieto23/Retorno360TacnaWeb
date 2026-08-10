@@ -128,8 +128,9 @@ export default function DashboardCalidad() {
 
     const cumplimientoTotals = useMemo(() => {
         return filteredCumplimiento.reduce((acc, row) => {
-            const pIgi = Number(row.pago_igi) || 0;
+            const pIgi = Number(row.igi_pagado ?? row.pago_igi) || 0;
             const aIgi = Number(row.ahorro_igi) || 0;
+            const cIgi = Number(row.igi_calculado) || (pIgi + aIgi);
             const pIva = Number(row.pago_iva) || 0;
             const aIva = Number(row.ahorro_iva) || 0;
             const ops = Number(row.operaciones) || 0;
@@ -137,12 +138,27 @@ export default function DashboardCalidad() {
             acc.operaciones += ops;
             acc.pagoIgi += pIgi;
             acc.ahorroIgi += aIgi;
-            acc.calculadoIgi += (pIgi + aIgi);
+            acc.calculadoIgi += cIgi;
             acc.pagoIva += pIva;
             acc.ahorroIva += aIva;
             return acc;
         }, { operaciones: 0, pagoIgi: 0, ahorroIgi: 0, calculadoIgi: 0, pagoIva: 0, ahorroIva: 0 });
     }, [filteredCumplimiento]);
+
+    const formatPeriodoCumplimiento = (periodo, mes, anio) => {
+        if (periodo) {
+            const date = new Date(periodo);
+            if (!Number.isNaN(date.getTime())) {
+                return `${MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+            }
+        }
+
+        if (mes && anio) {
+            return `${MONTHS[mes - 1] || mes} ${anio}`;
+        }
+
+        return 'N/A';
+    };
 
     const kpisOps = useMemo(() => {
         if (!rawData || !rawData.length) {
@@ -456,9 +472,9 @@ export default function DashboardCalidad() {
                                         </thead>
                                         <tbody>
                                             {filteredCumplimiento.map((row) => {
-                                                const pIgi = Number(row.pago_igi) || 0;
+                                                const pIgi = Number(row.igi_pagado ?? row.pago_igi) || 0;
                                                 const aIgi = Number(row.ahorro_igi) || 0;
-                                                const cIgi = pIgi + aIgi;
+                                                const cIgi = Number(row.igi_calculado) || (pIgi + aIgi);
                                                 const pIva = Number(row.pago_iva) || 0;
                                                 const aIva = Number(row.ahorro_iva) || 0;
 
@@ -466,7 +482,7 @@ export default function DashboardCalidad() {
                                                     <tr key={row.id}>
                                                         <td style={{ fontWeight: 600 }}>{row.razon_social || 'N/A'}</td>
                                                         <td>{row.planta || 'N/A'}</td>
-                                                        <td>{row.mes ? MONTHS[row.mes - 1] : ''} {row.anio || ''}</td>
+                                                        <td>{formatPeriodoCumplimiento(row.periodo, row.mes, row.anio)}</td>
                                                         <td>{(Number(row.operaciones) || 0).toLocaleString()}</td>
                                                         <td style={{ color: '#d97706', fontWeight: 600 }}>{formatCurrency(pIgi)}</td>
                                                         <td style={{ color: '#2563eb', fontWeight: 600 }}>{formatCurrency(cIgi)}</td>
