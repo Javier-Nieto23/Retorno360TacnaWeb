@@ -23,7 +23,41 @@ router.get('/inventarios', authMiddleware, requireCluster, async (req, res) => {
         const { rows } = await pool.query(query);
         res.json({ success: true, data: rows });
     } catch (error) {
+        if (error?.code === '42P01') {
+            // Tabla inexistente en algunos entornos: responde vacío para no romper la vista.
+            return res.json({ success: true, data: [], warning: 'Tabla anexos no encontrada.' });
+        }
         console.error('Error al consultar tabla anexos:', error);
+        res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+});
+
+router.get('/cumplimiento', authMiddleware, requireCluster, async (req, res) => {
+    try {
+        const query = `
+			SELECT
+				id,
+				mes,
+				anio,
+				razon_social,
+				planta,
+				COALESCE(operaciones, 0) as operaciones,
+				COALESCE(pago_igi, 0) as pago_igi,
+				COALESCE(ahorro_igi, 0) as ahorro_igi,
+				COALESCE(pago_iva, 0) as pago_iva,
+				COALESCE(ahorro_iva, 0) as ahorro_iva
+			FROM cumplimiento
+			ORDER BY anio DESC, mes DESC;
+		`;
+
+        const { rows } = await pool.query(query);
+        res.json({ success: true, data: rows });
+    } catch (error) {
+        if (error?.code === '42P01') {
+            // Tabla inexistente en algunos entornos: responde vacío para no romper la vista.
+            return res.json({ success: true, data: [], warning: 'Tabla cumplimiento no encontrada.' });
+        }
+        console.error('Error al consultar tabla cumplimiento:', error);
         res.status(500).json({ success: false, message: 'Error interno del servidor' });
     }
 });

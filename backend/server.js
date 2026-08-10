@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { pool } = require('./src/config/database');
+const pool = require('./src/config/database');
 const { checkCloudflareConnection } = require('./src/config/storage');
 const { initDatabase } = require('./src/models/initDb');
 
@@ -22,11 +22,15 @@ const HOST = process.env.HOST || '0.0.0.0';
 async function logDatabaseConnectionStatus() {
     try {
         await pool.query('SELECT 1');
+        const usingRailway = Boolean(String(process.env.DATABASE_URL || '').trim());
+        const dbSource = usingRailway
+            ? 'Railway (DATABASE_URL)'
+            : `${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'retorno360db'}`;
         console.log(
-            `Conexion a PostgreSQL OK (${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'retorno360db'})`
+            `Conexion a PostgreSQL OK (${dbSource})`
         );
     } catch (error) {
-        console.error('No se pudo conectar a PostgreSQL local. Verifica variables DB_* en .env y que el servicio este activo.');
+        console.error('No se pudo conectar a PostgreSQL. Verifica DATABASE_URL (Railway) o variables DB_* en .env.');
         console.error(`Detalle: ${error.message}`);
     }
 }
