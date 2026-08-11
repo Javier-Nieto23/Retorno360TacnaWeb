@@ -11,7 +11,6 @@ export const getInventariosMetrics = async (req, res) => {
                 planta,
                 razon_social,
                 COALESCE(total_np, 0) as total_np,
-                COALESCE(altas_np, 0) as altas_np,
                 COALESCE(vigente_bom, 0) as vigente_bom,
                 COALESCE(pct_base_limpia, 0) as pct_base_limpia,
                 COALESCE(pct_retorno_cubierto, 0) as pct_retorno_cubierto,

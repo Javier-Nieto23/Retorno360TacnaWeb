@@ -364,7 +364,6 @@ export default function DashboardCalidad() {
                                                 <th>Planta</th>
                                                 <th>Mes / Año</th>
                                                 <th>Total N/P</th>
-                                                <th>Altas N/P</th>
                                                 <th>Vigente BOM</th>
                                                 <th>% Base Limpia</th>
                                                 <th>% Retorno Cubierto</th>
@@ -377,7 +376,6 @@ export default function DashboardCalidad() {
                                                     <td>{row.planta || 'N/A'}</td>
                                                     <td>{row.mes} {row.anio}</td>
                                                     <td>{(Number(row.total_np) || 0).toLocaleString()}</td>
-                                                    <td>{(Number(row.altas_np) || 0).toLocaleString()}</td>
                                                     <td>{(Number(row.vigente_bom) || 0).toLocaleString()}</td>
                                                     <td>
                                                         <span className="status-badge success">
