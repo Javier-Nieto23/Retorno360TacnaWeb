@@ -263,6 +263,29 @@
 }
 
 /* Filtro de etiquetas Razón Social */
+.inventory-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.inventory-search-input {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.92rem;
+    color: #0f172a;
+    outline: none;
+}
+
+.inventory-search-input:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
 .tag-filter-container {
     display: flex;
     align-items: center;
@@ -335,3 +358,4 @@
     background: #e2e8f0;
     color: #0f172a;
 }
+

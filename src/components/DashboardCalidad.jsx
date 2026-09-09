@@ -59,6 +59,7 @@ export default function DashboardCalidad() {
     // Estados para filtro por etiquetas
     const [selectedCompanies, setSelectedCompanies] = useState([]);
     const [companyInput, setCompanyInput] = useState('');
+    const [inventorySearch, setInventorySearch] = useState('');
 
     const userIsCluster = useMemo(() => isClusterUser(user), [user]);
 
@@ -125,6 +126,18 @@ export default function DashboardCalidad() {
             )
         );
     }, [cumplimientoData, selectedCompanies]);
+
+    const filteredInventoryData = useMemo(() => {
+        if (!inventorySearch.trim()) return inventoryData;
+
+        const query = inventorySearch.trim().toLowerCase();
+
+        return inventoryData.filter((row) => {
+            const razonSocial = (row.razon_social || '').toLowerCase();
+            const planta = (row.planta || '').toLowerCase();
+            return razonSocial.includes(query) || planta.includes(query);
+        });
+    }, [inventoryData, inventorySearch]);
 
     const cumplimientoTotals = useMemo(() => {
         return filteredCumplimiento.reduce((acc, row) => {
@@ -352,9 +365,30 @@ export default function DashboardCalidad() {
                         {/* PESTAÑA INVENTARIOS */}
                         {activeTab === 'inventarios' && (
                             <div className="data-card">
-                                <div className="card-header">
-                                    <span>CONTROL DE INVENTARIOS Y NÚMEROS DE PARTE (SISTEMA SEER)</span>
-                                    <span className="badge-count">{inventoryData.length} Registros</span>
+                                <div className="card-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+                                    <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span>CONTROL DE INVENTARIOS Y NÚMEROS DE PARTE (SISTEMA SEER)</span>
+                                        <span className="badge-count">{filteredInventoryData.length} Registros</span>
+                                    </div>
+
+                                    <div className="inventory-search-bar">
+                                        <input
+                                            type="text"
+                                            className="inventory-search-input"
+                                            placeholder="Buscar por planta o razón social..."
+                                            value={inventorySearch}
+                                            onChange={(e) => setInventorySearch(e.target.value)}
+                                        />
+                                        {inventorySearch && (
+                                            <button
+                                                type="button"
+                                                className="btn-clear-tags"
+                                                onClick={() => setInventorySearch('')}
+                                            >
+                                                Limpiar
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="table-responsive">
                                     <table className="data-table">
@@ -370,7 +404,7 @@ export default function DashboardCalidad() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {inventoryData.map((row) => (
+                                            {filteredInventoryData.map((row) => (
                                                 <tr key={row.id}>
                                                     <td style={{ fontWeight: 600 }}>{row.razon_social || 'N/A'}</td>
                                                     <td>{row.planta || 'N/A'}</td>
