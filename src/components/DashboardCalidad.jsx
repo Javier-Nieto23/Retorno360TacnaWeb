@@ -127,6 +127,20 @@ export default function DashboardCalidad() {
         );
     }, [cumplimientoData, selectedCompanies]);
 
+    const monthNumberFromValue = (value) => {
+        if (value === null || value === undefined || value === '') return 0;
+
+        const normalized = String(value).trim().toLowerCase();
+        const monthMap = {
+            enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
+            julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12
+        };
+
+        if (monthMap[normalized]) return monthMap[normalized];
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+    };
+
     const filteredInventoryData = useMemo(() => {
         if (!inventorySearch.trim()) return inventoryData;
 
@@ -138,6 +152,20 @@ export default function DashboardCalidad() {
             return razonSocial.includes(query) || planta.includes(query);
         });
     }, [inventoryData, inventorySearch]);
+
+    const sortedInventoryData = useMemo(() => {
+        return [...filteredInventoryData].sort((a, b) => {
+            const anioDiff = Number(b.anio || 0) - Number(a.anio || 0);
+            if (anioDiff !== 0) return anioDiff;
+
+            const mesDiff = monthNumberFromValue(b.mes) - monthNumberFromValue(a.mes);
+            if (mesDiff !== 0) return mesDiff;
+
+            const razonA = String(a.razon_social || '').toLowerCase();
+            const razonB = String(b.razon_social || '').toLowerCase();
+            return razonA.localeCompare(razonB);
+        });
+    }, [filteredInventoryData]);
 
     const cumplimientoTotals = useMemo(() => {
         return filteredCumplimiento.reduce((acc, row) => {
@@ -404,7 +432,7 @@ export default function DashboardCalidad() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {filteredInventoryData.map((row) => (
+                                            {sortedInventoryData.map((row) => (
                                                 <tr key={row.id}>
                                                     <td style={{ fontWeight: 600 }}>{row.razon_social || 'N/A'}</td>
                                                     <td>{row.planta || 'N/A'}</td>
