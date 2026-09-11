@@ -86,7 +86,7 @@ router.get('/cumplimiento', authMiddleware, requireCluster, async (req, res) => 
 				COALESCE(ahorro_iva, 0) AS ahorro_iva,
 				fecha_calculo
 			FROM public.cumplimiento
-			ORDER BY periodo DESC NULLS LAST, id DESC;
+			ORDER BY periodo ASC NULLS LAST, id ASC;
 		`;
 
 		let rows = [];
