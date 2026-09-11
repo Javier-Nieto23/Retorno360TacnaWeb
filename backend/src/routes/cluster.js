@@ -69,7 +69,7 @@ router.get('/cumplimiento', authMiddleware, requireCluster, async (req, res) => 
 				ahorro_iva,
 				fecha_calculo
 			FROM public.retorno_porcentaje
-			ORDER BY periodo DESC NULLS LAST, id DESC;
+			ORDER BY periodo ASC NULLS LAST, id ASC;
 		`;
 
 		const fallbackQuery = `
