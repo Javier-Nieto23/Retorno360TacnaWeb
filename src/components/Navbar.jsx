@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
 import './Navbar.css';
-import { isAdminUser, isClientUser, isClusterUser } from '../utils/roles';
+import { isAdminUser, isClientUser, isClusterUser, isImpUser } from '../utils/roles';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -9,7 +9,8 @@ export default function Navbar() {
     const isAdmin = isAdminUser(user);
     const isClient = isClientUser(user);
     const isCluster = isClusterUser(user);
-    const dashboardPath = isAdmin ? '/admin' : '/dashboard';
+    const isImp = isImpUser(user);
+    const dashboardPath = isAdmin ? '/admin' : isImp ? '/dashboard' : '/dashboard';
 
     const handleLogout = () => {
         logout();
@@ -23,25 +24,25 @@ export default function Navbar() {
             </div>
 
             <div className="navbar-links">
-                {!isCluster && (
-                    <NavLink to={dashboardPath} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                        Dashboard
-                    </NavLink>
+                {isImp && (
+                    <>
+                        <NavLink to={dashboardPath} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Dashboard
+                        </NavLink>
+                        <NavLink to="/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Historial
+                        </NavLink>
+                    </>
                 )}
                 {isClient && (
-                    <NavLink to="/archivos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                        Archivos
-                    </NavLink>
-                )}
-                {isClient && (
-                    <NavLink to="/solicitud-parte" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                        Solicitud de parte
-                    </NavLink>
-                )}
-                {!isCluster && (
-                    <NavLink to="/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                        Historial
-                    </NavLink>
+                    <>
+                        <NavLink to="/archivos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Archivos
+                        </NavLink>
+                        <NavLink to="/solicitud-parte" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Solicitud de parte
+                        </NavLink>
+                    </>
                 )}
                 {isAdmin && (
                     <NavLink to="/configuracion" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>

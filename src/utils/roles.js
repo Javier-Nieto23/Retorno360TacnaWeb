@@ -24,8 +24,9 @@ export function isClusterUser(user) {
 export function getLandingPath(user) {
     if (isAdminUser(user)) return '/admin';
     if (isInventariosUser(user)) return '/inventarios';
-    if (isImpUser(user)) return '/imp';
+    if (isImpUser(user)) return '/dashboard';
+    if (isClientUser(user)) return '/archivos';
     if (isClusterUser(user)) return '/dashboard-calidad';
-    return '/dashboard';
+    return '/login';
 }
 

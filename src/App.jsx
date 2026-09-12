@@ -10,18 +10,20 @@ import ConfiguracionUsuarios from './components/ConfiguracionUsuarios';
 import './App.css';
 import ArchivosCliente from './components/ArchivosCliente';
 import SolicitudParte from './components/SolicitudParte';
-import { getLandingPath, isAdminUser, isClientUser, isClusterUser } from './utils/roles';
+import ImpDashboard from './components/ImpDashboard';
+import { getLandingPath, isAdminUser, isClientUser, isClusterUser, isImpUser } from './utils/roles';
 
 function DashboardRoute() {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando...</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (isAdminUser(user)) return <Navigate to="/admin" replace />;
+  if (!isImpUser(user)) return <Navigate to={getLandingPath(user)} replace />;
 
   return (
     <>
       <Navbar />
-      <main className="app-main"><Dashboard /></main>
+      <main className="app-main"><ImpDashboard /></main>
     </>
   );
 }
@@ -53,6 +55,20 @@ function ClientRoute({ children }) {
   if (loading) return <div className="app-loading">Cargando...</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (!isClientUser(user)) return <Navigate to={getLandingPath(user)} replace />;
+
+  return (
+    <>
+      <Navbar />
+      <main className="app-main">{children}</main>
+    </>
+  );
+}
+
+function ImpRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="app-loading">Cargando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isImpUser(user)) return <Navigate to={getLandingPath(user)} replace />;
 
   return (
     <>
@@ -99,7 +115,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<DashboardRoute />} />
       <Route path="/archivos" element={<ClientRoute><ArchivosCliente /></ClientRoute>} />
       <Route path="/solicitud-parte" element={<ClientRoute><SolicitudParte /></ClientRoute>} />
-      <Route path="/historial" element={<ProtectedRoute><Historial /></ProtectedRoute>} />
+      <Route path="/historial" element={<ImpRoute><Historial /></ImpRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
       {/*rutas para cluster protegidas correctamente*/}
