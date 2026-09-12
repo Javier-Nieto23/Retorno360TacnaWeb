@@ -1,187 +1,42 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { adminService, fileService, rgceService } from '../services/api';
+import { useEffect, useMemo, useState } from 'react';
+import { fileService, rgceService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { detectRazonSocialId } from '../utils/razonSocial';
 import './Historial.css';
-
-const MESES_NOMBRES = [
-    '', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-];
-
-function formatBytes(bytes) {
-    if (!bytes) return '—';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function formatDate(iso) {
-    return new Date(iso).toLocaleString('es-PE', {
-        day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
-    });
-}
 
 export default function Historial() {
     const { user } = useAuth();
-    const roleName = String(user?.rol_nombre || '').toLowerCase();
-    const isAdmin = roleName === 'admin' || user?.is_admin;
-    const isImp = roleName === 'imp' || roleName === 'importacion' || roleName === 'import';
-    const isInventarios = roleName === 'inventarios';
-    const isCliente = roleName === 'cliente' || roleName === 'clientes';
-    const canDeleteDirectly = isAdmin;
-    const canFilterByCatalog = isImp || isAdmin;
-
-    const [resumen, setResumen] = useState([]);
     const [archivos, setArchivos] = useState([]);
-    const [catalogo, setCatalogo] = useState({ razones_sociales: [], empresas: [] });
-    const [filtroAnio, setFiltroAnio] = useState('');
-    const [filtroMes, setFiltroMes] = useState('');
-    const [filtroRazonSocial, setFiltroRazonSocial] = useState('');
-    const [filtroEmpresa, setFiltroEmpresa] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const [filtroTextoRazonSocial, setFiltroTextoRazonSocial] = useState('');
     const [filtroTextoEmpresa, setFiltroTextoEmpresa] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [deleting, setDeleting] = useState(null);
-    const [downloading, setDownloading] = useState(null);
-    const [requestingDelete, setRequestingDelete] = useState(null);
-    const [reportingObservation, setReportingObservation] = useState(null);
-    const [error, setError] = useState('');
+    const [preview, setPreview] = useState({ open: false, documento: null, observacion: '' });
+    const [empresaSeleccionadaPorRazon, setEmpresaSeleccionadaPorRazon] = useState({});
 
-    const [deleteRequestModal, setDeleteRequestModal] = useState({
-        open: false,
-        id: null,
-        nombre: '',
-        razonSocialId: '—',
-        motivo: '',
-    });
-    const [deleteConfirmModal, setDeleteConfirmModal] = useState({
-        open: false,
-        id: null,
-        nombre: '',
-    });
-    const [deleteRequestFeedbackModal, setDeleteRequestFeedbackModal] = useState({
-        open: false,
-        success: true,
-        title: '',
-        message: '',
-        nombre: '',
-    });
-    const [observacionModal, setObservacionModal] = useState({
-        open: false,
-        id: null,
-        nombre: '',
-        empresaNombre: '—',
-        descripcion: '',
-    });
-    const [observacionFeedbackModal, setObservacionFeedbackModal] = useState({
-        open: false,
-        title: '',
-        message: '',
-        nombre: '',
-    });
-
-    const cargarCatalogoFiltros = useCallback(async () => {
-        try {
-            if (isAdmin) {
-                const { data } = await adminService.catalogo();
-                setCatalogo({
-                    razones_sociales: data.razones_sociales || [],
-                    empresas: data.empresas || [],
-                });
-                return;
-            }
-
-            if (isInventarios) {
-                const razonesRes = await fileService.razonesSocialesDisponibles();
-                const razones = razonesRes.data?.razones_sociales || [];
-                const empresasRes = await fileService.empresasDisponibles(
-                    filtroRazonSocial ? { razon_social_id: filtroRazonSocial } : undefined
-                );
-                const empresas = empresasRes.data?.empresas || [];
-                setCatalogo({ razones_sociales: razones, empresas });
-            }
-        } catch {
-            // Silencioso
-        }
-    }, [filtroRazonSocial, isAdmin, isInventarios]);
-
-    const cargarArchivos = useCallback(async () => {
+    const cargarArchivos = async () => {
         setLoading(true);
         setError('');
+
         try {
-            const params = {};
-            if (filtroAnio) params.anio_evaluacion = filtroAnio;
-            if (filtroMes) params.mes_evaluacion = filtroMes;
-
-            if (canFilterByCatalog) {
-                if (filtroRazonSocial) params.razon_social_id = filtroRazonSocial;
-                if (filtroEmpresa) params.empresa_id = filtroEmpresa;
-            } else if (user?.razon_social_id) {
-                params.razon_social_id = user.razon_social_id;
-            }
-
-            const { data } = await rgceService.documentos(params);
-            const documentos = data.documentos || [];
-            setArchivos(documentos);
-
-            const resumenMap = new Map();
-            documentos.forEach((documento) => {
-                const anio = Number(documento.anio_evaluacion || 0);
-                const mes = Number(documento.mes_evaluacion || 0);
-                if (!anio || !mes) return;
-                const key = `${anio}-${mes}`;
-                const current = resumenMap.get(key) || { anio, mes, total_archivos: 0 };
-                current.total_archivos += 1;
-                resumenMap.set(key, current);
-            });
-            setResumen([...resumenMap.values()].sort((a, b) => b.anio - a.anio || b.mes - a.mes));
+            const { data } = await rgceService.documentos();
+            setArchivos(data.documentos || []);
         } catch (err) {
             setError(err.response?.data?.error || 'Error al cargar el historial RGCE.');
             setArchivos([]);
-            setResumen([]);
         } finally {
             setLoading(false);
         }
-    }, [canFilterByCatalog, filtroAnio, filtroEmpresa, filtroMes, filtroRazonSocial, user?.razon_social_id]);
-
-    useEffect(() => { cargarCatalogoFiltros(); }, [cargarCatalogoFiltros]);
-    useEffect(() => { cargarArchivos(); }, [cargarArchivos]);
+    };
 
     useEffect(() => {
-        if (!canFilterByCatalog || filtroRazonSocial) return;
-        setFiltroEmpresa('');
-    }, [canFilterByCatalog, filtroRazonSocial]);
-
-    const aniosDisponibles = [...new Set(resumen.map((r) => r.anio))].sort((a, b) => b - a);
-    const mesesDisponibles = filtroAnio
-        ? resumen.filter((r) => String(r.anio) === String(filtroAnio)).map((r) => r.mes).sort((a, b) => a - b)
-        : [];
-
-    const empresasDisponibles = canFilterByCatalog
-        ? (isAdmin
-            ? (filtroRazonSocial
-                ? catalogo.empresas.filter((e) => String(e.razon_social_id) === String(filtroRazonSocial))
-                : catalogo.empresas)
-            : catalogo.empresas)
-        : [];
-
-    const getRazonSocialNombre = (archivo) => {
-        if (archivo?.razon_social_nombre) return archivo.razon_social_nombre;
-
-        const razonSocialId = detectRazonSocialId(archivo, filtroRazonSocial, user);
-        if (razonSocialId === '—') return '—';
-
-        const razonSocial = (catalogo.razones_sociales || []).find((item) => String(item.id) === String(razonSocialId));
-        return razonSocial?.nombre || '—';
-    };
+        if (user) cargarArchivos();
+    }, [user]);
 
     const archivosFiltrados = useMemo(() => {
         const textoRazon = filtroTextoRazonSocial.trim().toLowerCase();
         const textoEmpresa = filtroTextoEmpresa.trim().toLowerCase();
 
-        return archivos.filter((archivo) => {
+        return (archivos || []).filter((archivo) => {
             const razonNombre = String(archivo.razon_social_nombre || archivo.razon_social_carpeta || '').toLowerCase();
             const empresaNombre = String(archivo.empresa_nombre || archivo.empresa_carpeta || '').toLowerCase();
 
@@ -191,483 +46,247 @@ export default function Historial() {
         });
     }, [archivos, filtroTextoEmpresa, filtroTextoRazonSocial]);
 
-    const razonSocialIdDetectado = detectRazonSocialId(filtroRazonSocial, user);
-    const motivoValidoSolicitud = deleteRequestModal.motivo.trim().length > 0;
+    const grupos = useMemo(() => {
+        const map = new Map();
 
-    const cerrarModalSolicitud = () => setDeleteRequestModal({ open: false, id: null, nombre: '', razonSocialId: '—', motivo: '' });
-    const cerrarModalEliminar = () => setDeleteConfirmModal({ open: false, id: null, nombre: '' });
-    const cerrarModalSolicitudExitosa = () => setDeleteRequestFeedbackModal({ open: false, success: true, title: '', message: '', nombre: '' });
-    const cerrarModalObservacion = () => setObservacionModal({ open: false, id: null, nombre: '', empresaNombre: '—', descripcion: '' });
-    const cerrarModalObservacionFeedback = () => setObservacionFeedbackModal({ open: false, title: '', message: '', nombre: '' });
+        archivosFiltrados.forEach((archivo) => {
+            const razonKey = String(archivo.razon_social_id || archivo.razon_social_nombre || 'sin-razon');
+            const razonNombre = archivo.razon_social_nombre || archivo.razon_social_carpeta || 'Sin razón social';
+            const empresaKey = String(archivo.empresa_id || archivo.empresa_nombre || 'sin-empresa');
+            const empresaNombre = archivo.empresa_nombre || archivo.empresa_carpeta || 'Sin empresa';
 
-    const handleEliminar = (archivo) => {
-        if (canDeleteDirectly) {
-            setDeleteConfirmModal({ open: true, id: archivo.id, nombre: archivo.nombre_archivo });
-            return;
-        }
+            if (!map.has(razonKey)) {
+                map.set(razonKey, {
+                    id: razonKey,
+                    nombre: razonNombre,
+                    empresas: new Map(),
+                });
+            }
 
-        setDeleteRequestModal({
+            const razonGrupo = map.get(razonKey);
+            if (!razonGrupo.empresas.has(empresaKey)) {
+                razonGrupo.empresas.set(empresaKey, {
+                    id: empresaKey,
+                    nombre: empresaNombre,
+                    archivos: [],
+                });
+            }
+
+            razonGrupo.empresas.get(empresaKey).archivos.push(archivo);
+        });
+
+        return Array.from(map.values())
+            .map((razon) => ({
+                ...razon,
+                empresas: Array.from(razon.empresas.values()).sort((a, b) => a.nombre.localeCompare(b.nombre)),
+            }))
+            .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    }, [archivosFiltrados]);
+
+    const abrirPreview = (documento) => {
+        setPreview({
             open: true,
-            id: archivo.id,
-            nombre: archivo.nombre_archivo,
-            razonSocialId: detectRazonSocialId(archivo, filtroRazonSocial, user),
-            motivo: '',
+            documento,
+            observacion: documento.observaciones || '',
         });
     };
 
-    const handleEliminarDirecto = (archivo) => {
-        setDeleteConfirmModal({ open: true, id: archivo.id, nombre: archivo.nombre_archivo });
+    const cerrarPreview = () => {
+        setPreview({ open: false, documento: null, observacion: '' });
     };
 
-    const handleReportarObservacion = (archivo) => {
-        if (!isAdmin) return;
-        setObservacionModal({
-            open: true,
-            id: archivo.id,
-            nombre: archivo.nombre_archivo,
-            empresaNombre: archivo.empresa_nombre || '—',
-            descripcion: '',
-        });
+    const handleDescargar = async (archivo) => {
+        if (!archivo.storage_url) return;
+        window.open(archivo.storage_url, '_blank', 'noopener,noreferrer');
     };
 
-    const handleConfirmarEliminacionDirecta = async () => {
-        if (!deleteConfirmModal.id) return;
+    const handleEliminar = async (archivo) => {
+        if (!window.confirm(`¿Deseas eliminar el archivo "${archivo.nombre_archivo}"?`)) return;
 
-        setDeleting(deleteConfirmModal.id);
         try {
-            await fileService.eliminar(deleteConfirmModal.id);
-            setArchivos((prev) => prev.filter((item) => item.id !== deleteConfirmModal.id));
-            cerrarModalEliminar();
+            await fileService.eliminar(archivo.id);
+            setArchivos((prev) => prev.filter((item) => item.id !== archivo.id));
         } catch (err) {
-            alert(err.response?.data?.error || 'Error al eliminar el archivo.');
-        } finally {
-            setDeleting(null);
+            alert(err.response?.data?.error || 'No se pudo eliminar el archivo.');
         }
     };
 
-    const handleCerrarRevision = async (archivo) => {
+    const handleMarcarRevisado = async () => {
+        if (!preview.documento) return;
+
+        const observacion = preview.observacion.trim();
+
         try {
-            const { data } = await rgceService.documentos();
-            const currentDoc = (data?.documentos || []).find((item) => item.id === archivo.id) || archivo;
-            const nextEstado = String(currentDoc?.estado || '').toLowerCase() === 'cerrado' ? 'cerrado' : 'cerrado';
-            await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${archivo.id}`, {
+            await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${preview.documento.id}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                     'x-user-id': String(user?.id || ''),
                     'x-session-token': String(localStorage.getItem('session_token') || ''),
                 },
-                body: JSON.stringify({ estado: nextEstado, observaciones: 'Revisión cerrada desde historial de IMP.' }),
+                body: JSON.stringify({
+                    estado: 'revisado',
+                    observaciones: observacion || 'Archivo revisado desde historial RGCE.',
+                }),
             });
-            setArchivos((prev) => prev.map((item) => item.id === archivo.id ? { ...item, estado: 'cerrado', observaciones: 'Revisión cerrada desde historial de IMP.' } : item));
-            setObservacionFeedbackModal({
-                open: true,
-                title: 'Revisión cerrada',
-                message: 'El documento quedó marcado como cerrado y listo para revisión final.',
-                nombre: archivo.nombre_archivo || '',
-            });
+
+            setArchivos((prev) => prev.map((item) => item.id === preview.documento.id
+                ? { ...item, estado: 'revisado', observaciones: observacion || 'Archivo revisado desde historial RGCE.' }
+                : item));
+            cerrarPreview();
         } catch (err) {
-            alert(err.response?.data?.error || 'No se pudo cerrar la revisión.');
+            alert(err.response?.data?.error || 'No se pudo actualizar el estado del archivo.');
         }
     };
 
-    const handleDescargar = async (archivo) => {
-        setDownloading(archivo.id);
-        try {
-            const downloadUrl = String(archivo.storage_url || '').trim();
-
-            if (!downloadUrl) {
-                alert('No se pudo obtener la URL de descarga del bucket RGCE.');
-                return;
-            }
-
-            window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-        } catch (err) {
-            alert(err.response?.data?.error || 'No se pudo descargar el archivo.');
-        } finally {
-            setDownloading(null);
-        }
-    };
-
-    const handleConfirmarSolicitudEliminacion = async () => {
-        if (!deleteRequestModal.id) return;
-
-        const motivoLimpio = deleteRequestModal.motivo.trim();
-        if (!motivoLimpio) {
-            setDeleteRequestFeedbackModal({
-                open: true,
-                success: false,
-                title: 'No se pudo enviar la solicitud',
-                message: 'Debes indicar el motivo de la solicitud de eliminación.',
-                nombre: deleteRequestModal.nombre || '',
-            });
-            return;
-        }
-
-        setRequestingDelete(deleteRequestModal.id);
-        try {
-            await fileService.solicitarEliminacion(deleteRequestModal.id, motivoLimpio);
-            setArchivos((prev) => prev.map((item) => (
-                item.id === deleteRequestModal.id
-                    ? { ...item, delete_request_status: 'pendiente', delete_requested_at: new Date().toISOString() }
-                    : item
-            )));
-            cerrarModalSolicitud();
-            setDeleteRequestFeedbackModal({
-                open: true,
-                success: true,
-                title: 'Solicitud enviada',
-                message: 'Un administrador debe aprobar o rechazar la eliminación.',
-                nombre: deleteRequestModal.nombre || 'archivo seleccionado',
-            });
-        } catch (err) {
-            setDeleteRequestFeedbackModal({
-                open: true,
-                success: false,
-                title: 'No se pudo enviar la solicitud',
-                message: err.response?.data?.error || 'No se pudo enviar la solicitud de eliminación.',
-                nombre: deleteRequestModal.nombre || '',
-            });
-        } finally {
-            setRequestingDelete(null);
-        }
-    };
-
-    const handleConfirmarObservacion = async () => {
-        if (!observacionModal.id) return;
-
-        const descripcionLimpia = observacionModal.descripcion.trim();
-        if (!descripcionLimpia) {
-            alert('Debes ingresar una observación.');
-            return;
-        }
-
-        setReportingObservation(observacionModal.id);
-        try {
-            await fileService.crearObservacion(observacionModal.id, descripcionLimpia);
-            cerrarModalObservacion();
-            setObservacionFeedbackModal({
-                open: true,
-                title: 'Observación enviada',
-                message: 'La observación se registró correctamente para este archivo.',
-                nombre: observacionModal.nombre || '',
-            });
-        } catch (err) {
-            alert(err.response?.data?.error || 'No se pudo registrar la observación.');
-        } finally {
-            setReportingObservation(null);
-        }
-    };
-
-    const handleAnioChange = (e) => {
-        setFiltroAnio(e.target.value);
-        setFiltroMes('');
+    const getPreviewType = (url = '') => {
+        const lower = String(url).toLowerCase();
+        if (lower.endsWith('.pdf')) return 'pdf';
+        if (['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => lower.endsWith(ext))) return 'image';
+        return 'unsupported';
     };
 
     return (
         <div className="historial-page">
             <div className="historial-header">
                 <h1>Historial RGCE</h1>
-                <p className="historial-subtitle">Todos los archivos y documentos del bucket RGCE organizados por período</p>
-                <p className="historial-subtitle">
-                    {isImp || isAdmin
-                        ? `Vista exclusiva de IMP · razón social y empresa filtrables · ID detectado: ${razonSocialIdDetectado}`
-                        : `Razón social ID: ${user?.razon_social_id || '—'} · Carpeta base: ${user?.r2_folder || '—'}`}
-                </p>
+                <p className="historial-subtitle">Archivos cargados en el bucket RGCE, organizados por razón social y empresa.</p>
             </div>
 
-            <div className="historial-history-head">
-                <h2>Historial de documentos RGCE</h2>
-                <p>Consulta todos los archivos cargados en el bucket de RGCE, filtrados por período, razón social y empresa.</p>
+            <div className="historial-filters">
+                <div className="historial-filter-group">
+                    <label>Razón social</label>
+                    <input
+                        type="text"
+                        placeholder="Buscar razón social"
+                        value={filtroTextoRazonSocial}
+                        onChange={(e) => setFiltroTextoRazonSocial(e.target.value)}
+                    />
+                </div>
+                <div className="historial-filter-group">
+                    <label>Empresa</label>
+                    <input
+                        type="text"
+                        placeholder="Buscar empresa"
+                        value={filtroTextoEmpresa}
+                        onChange={(e) => setFiltroTextoEmpresa(e.target.value)}
+                    />
+                </div>
             </div>
 
             {error && <div className="historial-error">{error}</div>}
 
-            <div className="filters-bar">
-                {canFilterByCatalog && (
-                    <>
-                        <div className="filter-group">
-                            <label>Razón social</label>
-                            <select value={filtroRazonSocial} onChange={(e) => setFiltroRazonSocial(e.target.value)}>
-                                <option value="">Todas las razones sociales</option>
-                                {catalogo.razones_sociales.map((rs) => (
-                                    <option key={rs.id} value={rs.id}>{rs.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="filter-group">
-                            <label>Empresa</label>
-                            <select value={filtroEmpresa} onChange={(e) => setFiltroEmpresa(e.target.value)}>
-                                <option value="">Todas las empresas</option>
-                                {empresasDisponibles.map((emp) => (
-                                    <option key={emp.id} value={emp.id}>{emp.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </>
-                )}
-
-                <div className="filter-group">
-                    <label>Razón social</label>
-                    <input
-                        type="text"
-                        value={filtroTextoRazonSocial}
-                        onChange={(e) => setFiltroTextoRazonSocial(e.target.value)}
-                        placeholder="Buscar razón social"
-                    />
+            {loading ? (
+                <div className="historial-empty">
+                    <p>Cargando historial...</p>
                 </div>
-
-                <div className="filter-group">
-                    <label>Empresa</label>
-                    <input
-                        type="text"
-                        value={filtroTextoEmpresa}
-                        onChange={(e) => setFiltroTextoEmpresa(e.target.value)}
-                        placeholder="Buscar empresa"
-                    />
+            ) : grupos.length === 0 ? (
+                <div className="historial-empty">
+                    <span>📭</span>
+                    <p>No hay archivos para mostrar.</p>
                 </div>
+            ) : (
+                <div className="historial-groups">
+                    {grupos.map((razon) => {
+                        const empresaSeleccionada = empresaSeleccionadaPorRazon[razon.id] || razon.empresas[0]?.id || '';
+                        const documentosEmpresa = razon.empresas.find((empresa) => empresa.id === empresaSeleccionada)?.archivos || [];
 
-                <div className="filter-group">
-                    <label>Año</label>
-                    <select value={filtroAnio} onChange={handleAnioChange}>
-                        <option value="">Todos los años</option>
-                        {aniosDisponibles.map((anio) => (
-                            <option key={anio} value={anio}>{anio}</option>
-                        ))}
-                    </select>
-                </div>
+                        return (
+                            <div key={razon.id} className="historial-razon-group">
+                                <div className="historial-razon-header">
+                                    <h2>{razon.nombre}</h2>
+                                    <span>{razon.empresas.reduce((total, empresa) => total + empresa.archivos.length, 0)} archivos</span>
+                                </div>
 
-                <div className="filter-group">
-                    <label>Mes</label>
-                    <select value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} disabled={!filtroAnio}>
-                        <option value="">Todos los meses</option>
-                        {mesesDisponibles.map((mes) => (
-                            <option key={mes} value={mes}>{MESES_NOMBRES[mes]}</option>
-                        ))}
-                    </select>
-                </div>
+                                <div className="historial-company-selector">
+                                    <label>Empresa</label>
+                                    <select
+                                        value={empresaSeleccionada}
+                                        onChange={(e) => setEmpresaSeleccionadaPorRazon((prev) => ({ ...prev, [razon.id]: e.target.value }))}
+                                    >
+                                        {razon.empresas.map((empresa) => (
+                                            <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                                        ))}
+                                    </select>
+                                </div>
 
-                {(filtroAnio || filtroMes || filtroRazonSocial || filtroEmpresa || filtroTextoRazonSocial || filtroTextoEmpresa) && (
-                    <button
-                        className="btn-clear-filter"
-                        type="button"
-                        onClick={() => {
-                            setFiltroAnio('');
-                            setFiltroMes('');
-                            setFiltroRazonSocial('');
-                            setFiltroEmpresa('');
-                            setFiltroTextoRazonSocial('');
-                            setFiltroTextoEmpresa('');
-                        }}
-                    >
-                        Limpiar filtros
-                    </button>
-                )}
-            </div>
+                                <div className="historial-doc-list">
+                                    {documentosEmpresa.length === 0 ? (
+                                        <div className="historial-empty small">
+                                            <p>No hay archivos para esta empresa.</p>
+                                        </div>
+                                    ) : (
+                                        documentosEmpresa.map((archivo) => (
+                                            <div key={archivo.id} className="historial-doc-item">
+                                                <div className="historial-doc-main">
+                                                    <div className="historial-doc-icon">📄</div>
+                                                    <div className="historial-doc-meta">
+                                                        <strong>{archivo.nombre_archivo}</strong>
+                                                        <span>Empresa: {archivo.empresa_nombre || '—'}</span>
+                                                        <span>Subido por: {archivo.usuario_id || '—'}</span>
+                                                        <span>Estado: {archivo.estado || 'entregado'}</span>
+                                                    </div>
+                                                </div>
 
-            <div className="historial-table-wrapper">
-                {loading ? (
-                    <div className="historial-loading">Cargando archivos...</div>
-                ) : archivosFiltrados.length === 0 ? (
-                    <div className="historial-empty">
-                        <span>📭</span>
-                        <p>No hay archivos para este período o búsqueda.</p>
-                    </div>
-                ) : (
-                    <table className="historial-table">
-                        <thead>
-                            <tr>
-                                <th>Archivo</th>
-                                <th>Razón social</th>
-                                <th>Empresa</th>
-                                <th>Período</th>
-                                <th>Tamaño</th>
-                                <th>Subido por</th>
-                                <th>Carpeta RS</th>
-                                <th>Fecha de subida</th>
-                                <th>Estado eliminación</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {archivosFiltrados.map((archivo) => (
-                                <tr key={archivo.id}>
-                                    <td className="col-filename">
-                                        <span className="file-icon-sm">📄</span>
-                                        <span className="filename-text" title={archivo.nombre_archivo}>{archivo.nombre_archivo}</span>
-                                    </td>
-                                    <td className="col-user">{getRazonSocialNombre(archivo)}</td>
-                                    <td className="col-user">{archivo.empresa_nombre || '—'}</td>
-                                    <td className="col-period">
-                                        <span className="period-pill">{MESES_NOMBRES[archivo.mes_evaluacion || 1]} {archivo.anio_evaluacion || archivo.anio || ''}</span>
-                                    </td>
-                                    <td className="col-size">{formatBytes(archivo.tamano)}</td>
-                                    <td className="col-user">{archivo.usuario_alias || '—'}</td>
-                                    <td className="col-user">{archivo.razon_social_folder || user?.r2_folder || '—'}</td>
-                                    <td className="col-date">{formatDate(archivo.created_at || archivo.uploaded_at)}</td>
-                                    <td className="col-user">{String(archivo.estado || 'entregado')}</td>
-                                    <td className="col-actions">
-                                        {archivo.storage_url && (
-                                            <button
-                                                className="btn-action btn-download"
-                                                onClick={() => handleDescargar(archivo)}
-                                                disabled={downloading === archivo.id}
-                                                title="Descargar"
-                                                type="button"
-                                            >
-                                                {downloading === archivo.id ? '...' : (
-                                                    <img src="/download_78516.png" alt="Descargar" className="btn-download-icon" />
-                                                )}
-                                            </button>
-                                        )}
-
-                                        {isAdmin && (
-                                            <button
-                                                className="btn-action btn-observacion"
-                                                onClick={() => handleReportarObservacion(archivo)}
-                                                disabled={reportingObservation === archivo.id}
-                                                title="Registrar observación"
-                                                type="button"
-                                            >
-                                                {reportingObservation === archivo.id ? '...' : (
-                                                    <img src="/emblemimportant_103451.png" alt="Registrar observación" className="btn-delete-icon" />
-                                                )}
-                                            </button>
-                                        )}
-
-                                        <button
-                                            className="btn-action btn-observacion"
-                                            onClick={() => handleCerrarRevision(archivo)}
-                                            title="Cerrar revisión"
-                                            type="button"
-                                        >
-                                            <img src="/checkmark.png" alt="Cerrar revisión" className="btn-delete-icon" />
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
-
-            <p className="historial-count">
-                {!loading && `${archivosFiltrados.length} archivo${archivosFiltrados.length !== 1 ? 's' : ''} encontrado${archivosFiltrados.length !== 1 ? 's' : ''}`}
-            </p>
-
-            {deleteRequestModal.open && !canDeleteDirectly && (
-                <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-request-title">
-                    <div className="historial-modal">
-                        <h3 id="delete-request-title">Solicitar eliminación de archivo</h3>
-                        <p>Archivo: <strong>{deleteRequestModal.nombre}</strong></p>
-                        <p>ID Razón Social: <strong>{deleteRequestModal.razonSocialId}</strong></p>
-                        <label htmlFor="delete-request-motivo">Motivo de la solicitud</label>
-                        <textarea
-                            id="delete-request-motivo"
-                            value={deleteRequestModal.motivo}
-                            onChange={(e) => setDeleteRequestModal((prev) => ({ ...prev, motivo: e.target.value }))}
-                            placeholder="Ejemplo: El archivo fue cargado con información incorrecta."
-                            rows={4}
-                            required
-                            maxLength={500}
-                            disabled={requestingDelete === deleteRequestModal.id}
-                        />
-                        <div className="historial-modal-actions">
-                            <button type="button" className="historial-btn-secondary" onClick={cerrarModalSolicitud} disabled={requestingDelete === deleteRequestModal.id}>
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                className="historial-btn-primary"
-                                onClick={handleConfirmarSolicitudEliminacion}
-                                disabled={requestingDelete === deleteRequestModal.id || !motivoValidoSolicitud}
-                            >
-                                {requestingDelete === deleteRequestModal.id ? 'Solicitando...' : 'Solicitar'}
-                            </button>
-                        </div>
-                    </div>
+                                                <div className="historial-doc-actions">
+                                                    <button type="button" onClick={() => handleDescargar(archivo)}>
+                                                        Descargar
+                                                    </button>
+                                                    <button type="button" className="secondary" onClick={() => abrirPreview(archivo)}>
+                                                        Observar
+                                                    </button>
+                                                    <button type="button" className="danger" onClick={() => handleEliminar(archivo)}>
+                                                        Eliminar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
-            {deleteConfirmModal.open && canDeleteDirectly && (
-                <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
-                    <div className="historial-modal">
-                        <h3 id="delete-confirm-title">Confirmar eliminación</h3>
-                        <p>Estás por eliminar el archivo <strong>{deleteConfirmModal.nombre}</strong>.</p>
-                        <p>Esta acción no se puede deshacer.</p>
-                        <div className="historial-modal-actions">
-                            <button type="button" className="historial-btn-secondary" onClick={cerrarModalEliminar} disabled={deleting === deleteConfirmModal.id}>
-                                Cancelar
-                            </button>
-                            <button type="button" className="historial-btn-primary" onClick={handleConfirmarEliminacionDirecta} disabled={deleting === deleteConfirmModal.id}>
-                                {deleting === deleteConfirmModal.id ? 'Eliminando...' : 'Eliminar archivo'}
-                            </button>
+            {preview.open && preview.documento && (
+                <div className="historial-preview-backdrop" onClick={cerrarPreview}>
+                    <div className="historial-preview-modal" onClick={(event) => event.stopPropagation()}>
+                        <div className="historial-preview-header">
+                            <div>
+                                <h3>{preview.documento.nombre_archivo}</h3>
+                                <p>{preview.documento.razon_social_nombre || 'Razón social'} · {preview.documento.empresa_nombre || 'Empresa'}</p>
+                            </div>
+                            <button type="button" className="preview-close" onClick={cerrarPreview}>✕</button>
                         </div>
-                    </div>
-                </div>
-            )}
 
-            {deleteRequestFeedbackModal.open && (
-                <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="delete-success-title">
-                    <div className="historial-modal historial-modal-success">
-                        <div className={`historial-feedback-icon ${deleteRequestFeedbackModal.success ? 'success' : 'error'}`} aria-hidden="true">
-                            {deleteRequestFeedbackModal.success ? '⏳' : '⚠'}
+                        <div className="historial-preview-body">
+                            {preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'pdf' ? (
+                                <iframe
+                                    src={preview.documento.storage_url}
+                                    title={preview.documento.nombre_archivo}
+                                    className="historial-preview-frame"
+                                />
+                            ) : preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'image' ? (
+                                <img src={preview.documento.storage_url} alt={preview.documento.nombre_archivo} className="historial-preview-image" />
+                            ) : (
+                                <div className="historial-preview-placeholder">
+                                    <p>Vista previa no disponible para este tipo de archivo.</p>
+                                    <a href={preview.documento.storage_url} target="_blank" rel="noreferrer">Abrir archivo original</a>
+                                </div>
+                            )}
                         </div>
-                        <h3 id="delete-success-title">{deleteRequestFeedbackModal.title}</h3>
-                        {!!deleteRequestFeedbackModal.nombre && <p>Archivo: <strong>{deleteRequestFeedbackModal.nombre}</strong></p>}
-                        <p>{deleteRequestFeedbackModal.message}</p>
-                        <div className="historial-modal-actions">
-                            <button type="button" className="historial-btn-primary" onClick={cerrarModalSolicitudExitosa}>
-                                Entendido
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
-            {observacionFeedbackModal.open && isAdmin && (
-                <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="observation-feedback-title">
-                    <div className="historial-modal historial-modal-success">
-                        <div className="historial-feedback-icon success" aria-hidden="true">⏳</div>
-                        <h3 id="observation-feedback-title">{observacionFeedbackModal.title}</h3>
-                        {!!observacionFeedbackModal.nombre && <p>Archivo: <strong>{observacionFeedbackModal.nombre}</strong></p>}
-                        <p>{observacionFeedbackModal.message}</p>
-                        <div className="historial-modal-actions">
-                            <button type="button" className="historial-btn-primary" onClick={cerrarModalObservacionFeedback}>
-                                Entendido
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {observacionModal.open && isAdmin && (
-                <div className="historial-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="observation-modal-title">
-                    <div className="historial-modal">
-                        <h3 id="observation-modal-title">Registrar observación</h3>
-                        <p>Archivo: <strong>{observacionModal.nombre}</strong></p>
-                        <p>Empresa: <strong>{observacionModal.empresaNombre}</strong></p>
-                        <label htmlFor="observacion-descripcion">Descripción</label>
-                        <textarea
-                            id="observacion-descripcion"
-                            value={observacionModal.descripcion}
-                            onChange={(e) => setObservacionModal((prev) => ({ ...prev, descripcion: e.target.value }))}
-                            placeholder="Describe qué irregularidad se encontró en este archivo."
-                            rows={4}
-                            maxLength={500}
-                            disabled={reportingObservation === observacionModal.id}
-                        />
-                        <div className="historial-modal-actions">
-                            <button type="button" className="historial-btn-secondary" onClick={cerrarModalObservacion} disabled={reportingObservation === observacionModal.id}>
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                className="historial-btn-primary"
-                                onClick={handleConfirmarObservacion}
-                                disabled={reportingObservation === observacionModal.id || !observacionModal.descripcion.trim()}
-                            >
-                                {reportingObservation === observacionModal.id ? 'Guardando...' : 'Registrar observación'}
+                        <div className="historial-preview-actions">
+                            <label>Observación</label>
+                            <textarea
+                                value={preview.observacion}
+                                rows={4}
+                                placeholder="Escribe una observación para este archivo..."
+                                onChange={(e) => setPreview((prev) => ({ ...prev, observacion: e.target.value }))}
+                            />
+                            <button type="button" className="historial-btn-primary" onClick={handleMarcarRevisado}>
+                                Marcar como revisado
                             </button>
                         </div>
                     </div>

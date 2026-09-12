@@ -597,6 +597,329 @@
     cursor: not-allowed;
 }
 
+.historial-page {
+    max-width: calc(100vw - 32px);
+    margin: 0 auto;
+    padding: 1.25rem 0.75rem 2rem;
+}
+
+.historial-header {
+    margin-bottom: 1rem;
+}
+
+.historial-header h1 {
+    margin: 0 0 0.4rem;
+    color: #111827;
+    font-size: 1.7rem;
+}
+
+.historial-subtitle {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.9rem;
+}
+
+.historial-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+}
+
+.historial-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 220px;
+    flex: 1;
+}
+
+.historial-filter-group label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #4b5563;
+}
+
+.historial-filter-group input {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0.7rem 0.8rem;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+.historial-groups {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.historial-razon-group {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+    padding: 1rem;
+}
+
+.historial-razon-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.historial-razon-header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: #111827;
+}
+
+.historial-razon-header span {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-radius: 999px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.historial-company-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-width: 320px;
+    margin-bottom: 1rem;
+}
+
+.historial-company-selector label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.historial-company-selector select {
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    color: #111827;
+    padding: 0.7rem 0.8rem;
+    font-size: 0.9rem;
+}
+
+.historial-doc-list {
+    display: grid;
+    gap: 0.8rem;
+}
+
+.historial-doc-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    flex-wrap: wrap;
+}
+
+.historial-doc-main {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.historial-doc-icon {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #dbeafe;
+    font-size: 1.2rem;
+}
+
+.historial-doc-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.historial-doc-meta strong {
+    color: #111827;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.historial-doc-meta span {
+    color: #52525b;
+    font-size: 0.82rem;
+}
+
+.historial-doc-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+.historial-doc-actions button {
+    border: 1px solid #d1d5db;
+    background: white;
+    color: #111827;
+    border-radius: 8px;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.historial-doc-actions button.secondary {
+    background: #f3f4f6;
+}
+
+.historial-doc-actions button.danger {
+    border-color: #fecaca;
+    color: #b91c1c;
+    background: #fff1f2;
+}
+
+.historial-empty.small {
+    min-height: auto;
+    padding: 1rem 0;
+}
+
+.historial-preview-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 1rem;
+}
+
+.historial-preview-modal {
+    width: min(1100px, 92vw);
+    max-height: 90vh;
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 25px 50px rgba(15, 23, 42, 0.25);
+}
+
+.historial-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1rem 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.historial-preview-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #111827;
+}
+
+.historial-preview-header p {
+    margin: 0.2rem 0 0;
+    color: #6b7280;
+    font-size: 0.82rem;
+}
+
+.preview-close {
+    border: none;
+    background: #f3f4f6;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.historial-preview-body {
+    padding: 1rem;
+    background: #f9fafb;
+    min-height: 420px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.historial-preview-frame,
+.historial-preview-image {
+    width: 100%;
+    height: 520px;
+    border: none;
+    border-radius: 12px;
+    background: white;
+}
+
+.historial-preview-image {
+    object-fit: contain;
+}
+
+.historial-preview-placeholder {
+    text-align: center;
+    color: #4b5563;
+}
+
+.historial-preview-actions {
+    padding: 1rem;
+    display: grid;
+    gap: 0.7rem;
+}
+
+.historial-preview-actions label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.historial-preview-actions textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 100px;
+    padding: 0.8rem;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.historial-btn-primary {
+    justify-self: flex-end;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #0f3460, #2563eb);
+    color: white;
+    padding: 0.7rem 1rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
 @media (max-width: 700px) {
     .historial-page {
         padding: 1.25rem 1rem;
