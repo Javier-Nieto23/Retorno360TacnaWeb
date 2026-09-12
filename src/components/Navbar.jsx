@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
 import './Navbar.css';
-import { isAdminUser, isClientUser, isClusterUser, isImpUser } from '../utils/roles';
+import { isAdminUser, isClientUser, isClusterUser, isImpUser, isInventariosUser } from '../utils/roles';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -10,7 +10,8 @@ export default function Navbar() {
     const isClient = isClientUser(user);
     const isCluster = isClusterUser(user);
     const isImp = isImpUser(user);
-    const dashboardPath = isAdmin ? '/admin' : isImp ? '/dashboard' : '/dashboard';
+    const isInventarios = isInventariosUser(user);
+    const dashboardPath = isImp ? '/dashboard' : isInventarios ? '/inventarios' : '/dashboard';
 
     const handleLogout = () => {
         logout();
@@ -33,6 +34,11 @@ export default function Navbar() {
                             Historial
                         </NavLink>
                     </>
+                )}
+                {isInventarios && (
+                    <NavLink to="/inventarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                        Dashboard
+                    </NavLink>
                 )}
                 {isClient && (
                     <>

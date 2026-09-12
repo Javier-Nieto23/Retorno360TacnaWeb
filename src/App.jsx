@@ -11,7 +11,8 @@ import './App.css';
 import ArchivosCliente from './components/ArchivosCliente';
 import SolicitudParte from './components/SolicitudParte';
 import ImpDashboard from './components/ImpDashboard';
-import { getLandingPath, isAdminUser, isClientUser, isClusterUser, isImpUser } from './utils/roles';
+import InventariosDashboard from './components/InventariosDashboard';
+import { getLandingPath, isAdminUser, isClientUser, isClusterUser, isImpUser, isInventariosUser } from './utils/roles';
 
 function DashboardRoute() {
   const { user, loading } = useAuth();
@@ -83,8 +84,21 @@ function AdminRoute({ children }) {
   if (loading) return <div className="app-loading">Cargando...</div>;
   if (!user) return <Navigate to="/login" replace />;
 
-  const isAdmin = isAdminUser(user);
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  if (!isAdminUser(user)) return <Navigate to={getLandingPath(user)} replace />;
+
+  return (
+    <>
+      <Navbar />
+      <main className="app-main">{children}</main>
+    </>
+  );
+}
+
+function InventariosRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="app-loading">Cargando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isInventariosUser(user)) return <Navigate to={getLandingPath(user)} replace />;
 
   return (
     <>
@@ -117,13 +131,14 @@ function AppRoutes() {
       <Route path="/solicitud-parte" element={<ClientRoute><SolicitudParte /></ClientRoute>} />
       <Route path="/historial" element={<ImpRoute><Historial /></ImpRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+      <Route path="/inventarios" element={<InventariosRoute><InventariosDashboard /></InventariosRoute>} />
 
       {/*rutas para cluster protegidas correctamente*/}
       <Route path="/dashboard-calidad" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
       <Route path="/dashboard-calidad/graficas" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
 
       <Route path="/configuracion" element={<AdminRoute><ConfiguracionUsuarios /></AdminRoute>} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to={getLandingPath(JSON.parse(localStorage.getItem('user') || 'null')) || '/login'} replace />} />
     </Routes>
   );
 }

@@ -133,7 +133,7 @@ export default function ImpDashboard() {
         file: null,
         tipo_archivo: '',
         estado: 'entregado',
-        porcentaje_completado: 100,
+        porcentaje_completado: 0,
         observaciones: 'Subido y entregado',
     });
 
@@ -152,9 +152,9 @@ export default function ImpDashboard() {
             ...item,
             file: selectedFile,
             tipo_archivo: item.tipo_archivo || '',
-            estado: item.estado || 'entregado',
-            porcentaje_completado: Number(item.porcentaje_completado) || 100,
-            observaciones: item.observaciones || 'Subido y entregado',
+            estado: 'entregado',
+            porcentaje_completado: 0,
+            observaciones: 'Subido y entregado',
         } : item));
         setSuccess('');
         setError('');
@@ -193,8 +193,8 @@ export default function ImpDashboard() {
             const documentosPayload = fileRows.map((item) => ({
                 tipo_archivo: item.tipo_archivo || 'Documento',
                 estado: 'entregado',
-                porcentaje_completado: 100,
-                observaciones: item.observaciones || 'Subido y entregado',
+                porcentaje_completado: 0,
+                observaciones: 'Subido y entregado',
                 mes_evaluacion: Number(filters.mes_evaluacion),
                 anio_evaluacion: Number(filters.anio_evaluacion),
             }));
@@ -396,12 +396,8 @@ export default function ImpDashboard() {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="inventarios-rgce-file-select">
-                                    <span className="inventarios-rgce-status-fixed">Estado: Entregado</span>
-                                </div>
-                                <div className="inventarios-rgce-file-number">
-                                    <span className="inventarios-rgce-status-fixed">100%</span>
-                                </div>
+                                <div className="inventarios-rgce-file-select" aria-hidden="true" />
+                                <div className="inventarios-rgce-file-number" aria-hidden="true" />
                             </div>
                         ))}
                     </div>
@@ -467,7 +463,7 @@ export default function ImpDashboard() {
                                         <td>{doc.empresa_nombre || doc.empresa_carpeta}</td>
                                         <td>{doc.mes_evaluacion}/{doc.anio_evaluacion}</td>
                                         <td>{doc.estado}</td>
-                                        <td>100%</td>
+                                        <td>0%</td>
                                         <td>{doc.observaciones || '—'}</td>
                                         <td>
                                             <span className="inventarios-rgce-status-fixed">Fijo</span>
