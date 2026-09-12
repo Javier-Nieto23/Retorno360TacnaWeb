@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS public.observaciones
     CONSTRAINT observaciones_pkey PRIMARY KEY (id)
 );
 
+
+
 CREATE TABLE IF NOT EXISTS public.documentos_rgce
 (
     id serial NOT NULL,
