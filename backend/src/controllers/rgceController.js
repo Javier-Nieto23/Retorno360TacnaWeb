@@ -461,8 +461,10 @@ async function updateDocumento(req, res) {
         }
 
         if (typeof estado !== 'undefined') {
+            const normalizedEstado = String(estado).trim().toLowerCase();
+            const validStatus = ['entregado', 'pendiente', 'en_revision', 'observado', 'aprobado', 'cerrado'];
             updates.push(`estado = $${values.length + 1}`);
-            values.push(String(estado).trim());
+            values.push(validStatus.includes(normalizedEstado) ? normalizedEstado : 'entregado');
         }
 
         if (typeof porcentaje_completado !== 'undefined') {

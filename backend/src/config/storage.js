@@ -1,6 +1,9 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
+const bucketName = String(process.env.R2_BUCKET_NAME || 'rgce').trim();
+const publicUrlBase = String(process.env.R2_PUBLIC_URL || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${bucketName}`).replace(/\/+$/, '');
+
 const r2Client = new S3Client({
     region: 'auto',
     endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -37,7 +40,7 @@ function wrapR2Error(operation, error) {
  */
 async function uploadFile(buffer, storageKey, mimeType) {
     const command = new PutObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME,
+        Bucket: bucketName,
         Key: storageKey,
         Body: buffer,
         ContentType: mimeType,
@@ -47,9 +50,8 @@ async function uploadFile(buffer, storageKey, mimeType) {
     } catch (error) {
         throw wrapR2Error('la subida de objetos', error);
     }
-    const normalizedPublicUrl = String(process.env.R2_PUBLIC_URL || '').replace(/\/+$/, '');
     const normalizedStorageKey = String(storageKey || '').replace(/^\/+/, '');
-    const storageUrl = `${normalizedPublicUrl}/${normalizedStorageKey}`;
+    const storageUrl = `${publicUrlBase}/${normalizedStorageKey}`;
     return { storageKey, storageUrl };
 }
 
@@ -72,7 +74,7 @@ async function getDownloadUrl({ storageKey, storageUrl, filename }) {
     }
 
     const command = new GetObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME,
+        Bucket: bucketName,
         Key: key,
         ResponseContentDisposition: `attachment; filename="${String(filename || 'archivo').replace(/"/g, '')}"`,
     });
@@ -97,7 +99,7 @@ async function deleteFile(storageKey) {
     }
 
     const command = new DeleteObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME,
+        Bucket: bucketName,
         Key: storageKey,
     });
     try {
@@ -114,7 +116,7 @@ async function deleteFile(storageKey) {
 async function checkCloudflareConnection() {
     try {
         const command = new HeadBucketCommand({
-            Bucket: process.env.R2_BUCKET_NAME,
+            Bucket: bucketName,
         });
         await r2Client.send(command);
 
@@ -148,7 +150,7 @@ async function getFileBuffer(storageKey) {
         throw error;
     }
     const command = new GetObjectCommand({
-        Bucket: process.env.R2_BUCKET_NAME,
+        Bucket: bucketName,
         Key: key,
     });
     try {

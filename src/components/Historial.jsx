@@ -245,6 +245,32 @@ export default function Historial() {
         }
     };
 
+    const handleCerrarRevision = async (archivo) => {
+        try {
+            const { data } = await rgceService.documentos();
+            const currentDoc = (data?.documentos || []).find((item) => item.id === archivo.id) || archivo;
+            const nextEstado = String(currentDoc?.estado || '').toLowerCase() === 'cerrado' ? 'cerrado' : 'cerrado';
+            await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${archivo.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(localStorage.getItem('session_token') || ''),
+                },
+                body: JSON.stringify({ estado: nextEstado, observaciones: 'Revisión cerrada desde historial de IMP.' }),
+            });
+            setArchivos((prev) => prev.map((item) => item.id === archivo.id ? { ...item, estado: 'cerrado', observaciones: 'Revisión cerrada desde historial de IMP.' } : item));
+            setObservacionFeedbackModal({
+                open: true,
+                title: 'Revisión cerrada',
+                message: 'El documento quedó marcado como cerrado y listo para revisión final.',
+                nombre: archivo.nombre_archivo || '',
+            });
+        } catch (err) {
+            alert(err.response?.data?.error || 'No se pudo cerrar la revisión.');
+        }
+    };
+
     const handleDescargar = async (archivo) => {
         setDownloading(archivo.id);
         try {
@@ -473,18 +499,13 @@ export default function Historial() {
                                     <td className="col-user">{getRazonSocialNombre(archivo)}</td>
                                     <td className="col-user">{archivo.empresa_nombre || '—'}</td>
                                     <td className="col-period">
-                                        <span className="period-pill">{MESES_NOMBRES[archivo.mes]} {archivo.anio}</span>
+                                        <span className="period-pill">{MESES_NOMBRES[archivo.mes_evaluacion || 1]} {archivo.anio_evaluacion || archivo.anio || ''}</span>
                                     </td>
                                     <td className="col-size">{formatBytes(archivo.tamano)}</td>
                                     <td className="col-user">{archivo.usuario_alias || '—'}</td>
                                     <td className="col-user">{archivo.razon_social_folder || user?.r2_folder || '—'}</td>
-                                    <td className="col-date">{formatDate(archivo.uploaded_at)}</td>
-                                    <td className="col-user">
-                                        {archivo.delete_request_status === 'pendiente' && 'Pendiente de aprobación'}
-                                        {archivo.delete_request_status === 'rechazado' && 'Rechazada por admin'}
-                                        {archivo.delete_request_status === 'aprobado' && 'Aprobada'}
-                                        {!archivo.delete_request_status && 'Sin solicitud'}
-                                    </td>
+                                    <td className="col-date">{formatDate(archivo.created_at || archivo.uploaded_at)}</td>
+                                    <td className="col-user">{String(archivo.estado || 'entregado')}</td>
                                     <td className="col-actions">
                                         {archivo.storage_url && (
                                             <button
@@ -496,32 +517,6 @@ export default function Historial() {
                                             >
                                                 {downloading === archivo.id ? '...' : (
                                                     <img src="/download_78516.png" alt="Descargar" className="btn-download-icon" />
-                                                )}
-                                            </button>
-                                        )}
-
-                                        <button
-                                            className="btn-action btn-delete"
-                                            onClick={() => handleEliminar(archivo)}
-                                            disabled={deleting === archivo.id || requestingDelete === archivo.id || archivo.delete_request_status === 'pendiente'}
-                                            title={canDeleteDirectly ? 'Eliminar directamente' : 'Solicitar eliminación'}
-                                            type="button"
-                                        >
-                                            {deleting === archivo.id || requestingDelete === archivo.id ? '...' : (
-                                                <img src="/file_78434.png" alt="Eliminar o solicitar eliminación" className="btn-delete-icon" />
-                                            )}
-                                        </button>
-
-                                        {canDeleteDirectly && (
-                                            <button
-                                                className="btn-action btn-delete-direct"
-                                                onClick={() => handleEliminarDirecto(archivo)}
-                                                disabled={deleting === archivo.id}
-                                                title="Eliminar directamente"
-                                                type="button"
-                                            >
-                                                {deleting === archivo.id ? '...' : (
-                                                    <img src="/cubo-de-la-basura.png" alt="Eliminar directamente" className="btn-delete-icon" />
                                                 )}
                                             </button>
                                         )}
@@ -539,6 +534,15 @@ export default function Historial() {
                                                 )}
                                             </button>
                                         )}
+
+                                        <button
+                                            className="btn-action btn-observacion"
+                                            onClick={() => handleCerrarRevision(archivo)}
+                                            title="Cerrar revisión"
+                                            type="button"
+                                        >
+                                            <img src="/checkmark.png" alt="Cerrar revisión" className="btn-delete-icon" />
+                                        </button>
                                     </td>
                                 </tr>
                             ))}

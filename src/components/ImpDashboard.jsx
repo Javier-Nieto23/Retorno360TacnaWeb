@@ -37,7 +37,6 @@ export default function ImpDashboard() {
     const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: new Date().getMonth() + 1, anio_evaluacion: new Date().getFullYear() });
     const [uploadForm, setUploadForm] = useState({ razon_social_id: '', empresa_id: '' });
     const [draftFiles, setDraftFiles] = useState([]);
-    const [selectedFiles, setSelectedFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -129,11 +128,6 @@ export default function ImpDashboard() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
-    const avanceGlobal = useMemo(() => {
-        const base = Number(summary.porcentaje_promedio) || 0;
-        return Number(base).toFixed(1);
-    }, [summary.porcentaje_promedio]);
-
     const createEmptyDraftFile = () => ({
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         file: null,
@@ -162,33 +156,12 @@ export default function ImpDashboard() {
             porcentaje_completado: Number(item.porcentaje_completado) || 100,
             observaciones: item.observaciones || 'Subido y entregado',
         } : item));
-        setSelectedFiles((prev) => {
-            const next = [...prev];
-            const currentIndex = next.findIndex((item) => item.id === prev[index]?.id || item.id === draftFiles[index]?.id);
-            if (currentIndex >= 0) {
-                next[currentIndex] = {
-                    ...next[currentIndex],
-                    file: selectedFile,
-                    id: draftFiles[index]?.id || next[currentIndex]?.id,
-                };
-                return next;
-            }
-            return [...prev, {
-                id: draftFiles[index]?.id || `${selectedFile.name}-${selectedFile.size}-${selectedFile.lastModified}`,
-                file: selectedFile,
-                tipo_archivo: '',
-                estado: 'entregado',
-                porcentaje_completado: 100,
-                observaciones: 'Subido y entregado',
-            }];
-        });
         setSuccess('');
         setError('');
     };
 
     const handleDraftChange = (index, field, value) => {
         setDraftFiles((prev) => prev.map((item, idx) => idx === index ? { ...item, [field]: value } : item));
-        setSelectedFiles((prev) => prev.map((item, idx) => idx === index ? { ...item, [field]: value } : item));
     };
 
     const handleUpload = async () => {
@@ -241,7 +214,6 @@ export default function ImpDashboard() {
             if (!response.ok || !data?.success) throw new Error(data?.message || 'Error al subir archivos');
 
             setSuccess(`${data.documentos?.length || 0} archivo(s) guardados correctamente.`);
-            setSelectedFiles([]);
             setDraftFiles([createEmptyDraftFile()]);
             setUploadForm((prev) => ({ ...prev, empresa_id: '' }));
             await cargarDashboard();
@@ -322,7 +294,6 @@ export default function ImpDashboard() {
                         <h2>Control de cumplimiento</h2>
                         <p>Mes a evaluar</p>
                     </div>
-                    <span className="inventarios-chart-badge">{avanceGlobal}% avance</span>
                 </div>
 
                 <div className="inventarios-filters" style={{ marginTop: '16px' }}>
@@ -426,16 +397,10 @@ export default function ImpDashboard() {
                                     </select>
                                 </div>
                                 <div className="inventarios-rgce-file-select">
-                                    <select value={item.estado} onChange={(e) => handleDraftChange(index, 'estado', e.target.value)}>
-                                        <option value="entregado">Entregado</option>
-                                        <option value="pendiente">Pendiente</option>
-                                        <option value="en_revision">En revisión</option>
-                                        <option value="observado">Observado</option>
-                                        <option value="aprobado">Aprobado</option>
-                                    </select>
+                                    <span className="inventarios-rgce-status-fixed">Estado: Entregado</span>
                                 </div>
                                 <div className="inventarios-rgce-file-number">
-                                    <input type="number" min="0" max="100" value={item.porcentaje_completado} onChange={(e) => handleDraftChange(index, 'porcentaje_completado', e.target.value)} placeholder="0" />
+                                    <span className="inventarios-rgce-status-fixed">100%</span>
                                 </div>
                             </div>
                         ))}
@@ -502,16 +467,10 @@ export default function ImpDashboard() {
                                         <td>{doc.empresa_nombre || doc.empresa_carpeta}</td>
                                         <td>{doc.mes_evaluacion}/{doc.anio_evaluacion}</td>
                                         <td>{doc.estado}</td>
-                                        <td>{doc.porcentaje_completado}%</td>
+                                        <td>100%</td>
                                         <td>{doc.observaciones || '—'}</td>
                                         <td>
-                                            <select value={doc.estado} onChange={(e) => handleStateChange(doc.id, e.target.value)}>
-                                                <option value="entregado">Entregado</option>
-                                                <option value="pendiente">Pendiente</option>
-                                                <option value="en_revision">En revisión</option>
-                                                <option value="observado">Observado</option>
-                                                <option value="aprobado">Aprobado</option>
-                                            </select>
+                                            <span className="inventarios-rgce-status-fixed">Fijo</span>
                                         </td>
                                     </tr>
                                 )) : (
