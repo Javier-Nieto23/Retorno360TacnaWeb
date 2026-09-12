@@ -394,7 +394,7 @@ async function uploadDocuments(req, res) {
             const baseFolder = `${String(razonSocial.r2_folder || razonSocial.nombre || 'razon_social').replace(/\/+$/, '')}/${String(empresa.carpeta || empresa.nombre || 'empresa').replace(/\/+$/, '')}/rgce/${anioEvaluacion}/${String(mesEvaluacion).padStart(2, '0')}`;
             const storageKey = `${baseFolder}/${nombreAlmacenado}`;
 
-            const uploadResult = await uploadFile(file.buffer, storageKey, file.mimetype || 'application/octet-stream');
+            const uploadResult = await uploadFile(file.buffer, storageKey, file.mimetype || 'application/octet-stream', { context: 'rgce' });
 
             const insertResult = await pool.query(`
                 INSERT INTO public.documentos_rgce (
