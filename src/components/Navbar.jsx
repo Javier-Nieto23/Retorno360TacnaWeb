@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
 import './Navbar.css';
-import { isAdminUser, isClientUser, isInventariosUser, isClusterUser } from '../utils/roles';
+import { isAdminUser, isClientUser, isInventariosUser, isClusterUser, isImpUser } from '../utils/roles';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -10,7 +10,8 @@ export default function Navbar() {
     const isInventarios = isInventariosUser(user);
     const isClient = isClientUser(user);
     const isCluster = isClusterUser(user);
-    const dashboardPath = isAdmin ? '/admin' : isInventarios ? '/inventarios' : '/dashboard';
+    const isImp = isImpUser(user);
+    const dashboardPath = isAdmin ? '/admin' : isInventarios ? '/inventarios' : isImp ? '/imp' : '/dashboard';
 
     const handleLogout = () => {
         logout();
@@ -32,6 +33,11 @@ export default function Navbar() {
                 {isInventarios && (
                     <NavLink to="/contabilidad" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                         Contabilidad
+                    </NavLink>
+                )}
+                {isImp && (
+                    <NavLink to="/imp" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                        RGCE / IMP
                     </NavLink>
                 )}
                 {isClient && (

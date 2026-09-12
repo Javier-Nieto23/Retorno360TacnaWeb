@@ -78,6 +78,41 @@ CREATE TABLE IF NOT EXISTS public.observaciones
     CONSTRAINT observaciones_pkey PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS public.documentos_rgce
+(
+    id serial NOT NULL,
+    razon_social_id integer,
+    empresa_id integer,
+    razon_social_carpeta character varying(500) COLLATE pg_catalog."default" NOT NULL,
+    empresa_carpeta character varying(500) COLLATE pg_catalog."default" NOT NULL,
+    tipo_archivo character varying(120) COLLATE pg_catalog."default" NOT NULL,
+    nombre_archivo character varying(500) COLLATE pg_catalog."default" NOT NULL,
+    nombre_almacenado character varying(500) COLLATE pg_catalog."default" NOT NULL,
+    storage_key character varying(1000) COLLATE pg_catalog."default" NOT NULL,
+    storage_url text COLLATE pg_catalog."default",
+    estado character varying(30) COLLATE pg_catalog."default" NOT NULL DEFAULT 'pendiente'::character varying,
+    porcentaje_completado integer NOT NULL DEFAULT 0,
+    observaciones text COLLATE pg_catalog."default",
+    mes_evaluacion integer NOT NULL,
+    anio_evaluacion integer NOT NULL,
+    usuario_id integer,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT documentos_rgce_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_documentos_rgce_razon_social
+    ON public.documentos_rgce (razon_social_id);
+
+CREATE INDEX IF NOT EXISTS idx_documentos_rgce_empresa
+    ON public.documentos_rgce (empresa_id);
+
+CREATE INDEX IF NOT EXISTS idx_documentos_rgce_mes_anio
+    ON public.documentos_rgce (anio_evaluacion, mes_evaluacion);
+
+CREATE INDEX IF NOT EXISTS idx_documentos_rgce_estado
+    ON public.documentos_rgce (estado);
+
 CREATE TABLE IF NOT EXISTS public.razon_social
 (
     id serial NOT NULL,

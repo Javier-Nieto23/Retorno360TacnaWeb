@@ -10,6 +10,7 @@ const authRoutes = require('./src/routes/auth');
 const fileRoutes = require('./src/routes/files');
 const adminRoutes = require('./src/routes/admin');
 const clusterRoutes = require('./src/routes/cluster');
+const rgceRoutes = require('./src/routes/rgce');
 
 const razonsocialRoutes = require('./src/routes/razonsocial');
 
@@ -86,6 +87,7 @@ app.use('/api/files', fileRoutes);
 app.use('/api/contabilidad', require('./src/routes/contabilidad'));
 app.use('/api/admin', adminRoutes);
 app.use('/api/cluster', clusterRoutes);
+app.use('/api/rgce', rgceRoutes);
 
 app.use('/api/razonsocial', razonsocialRoutes);
 
