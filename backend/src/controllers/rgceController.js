@@ -11,6 +11,58 @@ const DOCUMENT_TYPES = [
     'Verificación de domicilio',
 ];
 
+async function ensureDocumentCatalogTables() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS public.razon_social_documentos (
+            id SERIAL PRIMARY KEY,
+            id_razon INTEGER NOT NULL UNIQUE,
+            nombre_razon_social VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+        );
+    `);
+
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS public.empresas_documentos (
+            id SERIAL PRIMARY KEY,
+            id_empresa INTEGER NOT NULL UNIQUE,
+            nombre_empresa VARCHAR(255) NOT NULL,
+            id_razon INTEGER NOT NULL,
+            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+        );
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_empresas_documentos_id_razon
+        ON public.empresas_documentos (id_razon);
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_razon_social_documentos_nombre
+        ON public.razon_social_documentos (nombre_razon_social);
+    `);
+}
+
+async function syncDocumentCatalogFromMainCatalog() {
+    await ensureDocumentCatalogTables();
+
+    await pool.query(`
+        INSERT INTO public.razon_social_documentos (id_razon, nombre_razon_social)
+        SELECT rs.id, rs.nombre
+        FROM public.razon_social rs
+        ON CONFLICT (id_razon) DO UPDATE
+        SET nombre_razon_social = EXCLUDED.nombre_razon_social;
+    `);
+
+    await pool.query(`
+        INSERT INTO public.empresas_documentos (id_empresa, nombre_empresa, id_razon)
+        SELECT e.id, e.nombre, e.razon_social_id
+        FROM public.empresa e
+        ON CONFLICT (id_empresa) DO UPDATE
+        SET nombre_empresa = EXCLUDED.nombre_empresa,
+            id_razon = EXCLUDED.id_razon;
+    `);
+}
+
 async function ensureRgceTable() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS public.documentos_rgce (
@@ -447,11 +499,35 @@ async function updateDocumento(req, res) {
 }
 
 async function getCatalogo(req, res) {
-    res.json({
-        success: true,
-        tipos: DOCUMENT_TYPES,
-        estados: ['pendiente', 'en_revision', 'observado', 'aprobado'],
-    });
+    try {
+        await syncDocumentCatalogFromMainCatalog();
+
+        const razonesResult = await pool.query(`
+            SELECT id_razon AS id, nombre_razon_social AS nombre
+            FROM public.razon_social_documentos
+            ORDER BY nombre_razon_social ASC
+        `);
+
+        const empresasResult = await pool.query(`
+            SELECT id_empresa AS id, nombre_empresa AS nombre, id_razon
+            FROM public.empresas_documentos
+            ORDER BY nombre_empresa ASC
+        `);
+
+        res.json({
+            success: true,
+            tipos: DOCUMENT_TYPES,
+            estados: ['pendiente', 'en_revision', 'observado', 'aprobado'],
+            razones_sociales: razonesResult.rows,
+            empresas: empresasResult.rows,
+        });
+    } catch (error) {
+        console.error('Error al obtener catálogo RGCE:', error);
+        res.status(500).json({
+            success: false,
+            message: 'No se pudo cargar el catálogo de razones sociales y empresas.',
+        });
+    }
 }
 
 module.exports = {

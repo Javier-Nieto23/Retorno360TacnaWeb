@@ -23,7 +23,7 @@ export default function ImpDashboard() {
     const { user } = useAuth();
     const [razonesSociales, setRazonesSociales] = useState([]);
     const [empresasDisponibles, setEmpresasDisponibles] = useState([]);
-    const [catalogo, setCatalogo] = useState({ tipos: DOCUMENT_TYPES, estados: [] });
+    const [catalogo, setCatalogo] = useState({ tipos: DOCUMENT_TYPES, estados: [], razones_sociales: [], empresas: [] });
     const [documentos, setDocumentos] = useState([]);
     const [summary, setSummary] = useState({
         total_documentos: 0,
@@ -57,39 +57,32 @@ export default function ImpDashboard() {
                 });
                 const data = await response.json();
                 if (data?.success) {
-                    setCatalogo({ tipos: data.tipos || DOCUMENT_TYPES, estados: data.estados || [] });
+                    const razones = data.razones_sociales || [];
+                    const empresas = data.empresas || [];
+                    setCatalogo({
+                        tipos: data.tipos || DOCUMENT_TYPES,
+                        estados: data.estados || [],
+                        razones_sociales: razones,
+                        empresas,
+                    });
+                    setRazonesSociales(razones);
+                    setEmpresasDisponibles(
+                        filters.razon_social_id
+                            ? empresas.filter((empresa) => String(empresa.id_razon) === String(filters.razon_social_id))
+                            : empresas
+                    );
+                    return;
                 }
             } catch {
-                setCatalogo({ tipos: DOCUMENT_TYPES, estados: [] });
+                // ignorar y mantener valores por defecto
             }
-        }
 
-        async function cargarRazonesSociales() {
-            try {
-                const { data } = await fileService.razonesSocialesDisponibles();
-                setRazonesSociales(data.razones_sociales || []);
-            } catch {
-                setRazonesSociales([]);
-            }
+            setCatalogo({ tipos: DOCUMENT_TYPES, estados: [], razones_sociales: [], empresas: [] });
+            setRazonesSociales([]);
+            setEmpresasDisponibles([]);
         }
 
         cargarCatalogo();
-        cargarRazonesSociales();
-    }, [user]);
-
-    useEffect(() => {
-        if (!user || !filters.razon_social_id) return;
-
-        async function cargarEmpresas() {
-            try {
-                const { data } = await fileService.empresasDisponibles({ razon_social_id: filters.razon_social_id });
-                setEmpresasDisponibles(data.empresas || []);
-            } catch {
-                setEmpresasDisponibles([]);
-            }
-        }
-
-        cargarEmpresas();
     }, [user, filters.razon_social_id]);
 
     const cargarDashboard = async (nextFilters = filters) => {

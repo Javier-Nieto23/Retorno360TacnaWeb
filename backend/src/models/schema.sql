@@ -122,6 +122,31 @@ CREATE TABLE IF NOT EXISTS public.razon_social
     CONSTRAINT razon_social_pkey PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS public.razon_social_documentos
+(
+    id serial NOT NULL,
+    id_razon integer NOT NULL UNIQUE,
+    nombre_razon_social character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    created_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT razon_social_documentos_pkey PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS public.empresas_documentos
+(
+    id serial NOT NULL,
+    id_empresa integer NOT NULL UNIQUE,
+    nombre_empresa character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    id_razon integer NOT NULL,
+    created_at timestamp without time zone DEFAULT now(),
+    CONSTRAINT empresas_documentos_pkey PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_empresas_documentos_id_razon
+    ON public.empresas_documentos (id_razon);
+
+CREATE INDEX IF NOT EXISTS idx_razon_social_documentos_nombre
+    ON public.razon_social_documentos (nombre_razon_social);
+
 CREATE TABLE IF NOT EXISTS public.roles
 (
     id integer NOT NULL,
