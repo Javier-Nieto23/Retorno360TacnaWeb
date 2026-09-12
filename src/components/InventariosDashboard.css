@@ -113,25 +113,66 @@
 
 .inventarios-contabilidad-form {
     display: grid;
-    grid-template-columns: 1fr 180px auto;
-    gap: 0.85rem;
-    align-items: end;
-    margin-bottom: 0.8rem;
+    gap: 1rem;
 }
 
-.inventarios-contabilidad-form input {
+.inventarios-contabilidad-form input,
+.inventarios-contabilidad-form select {
     border: 1px solid #d1d5db;
     border-radius: 8px;
-    padding: 0.6rem 0.7rem;
+    padding: 0.65rem 0.75rem;
     font-size: 0.9rem;
     background: #ffffff;
     color: #111827;
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.inventarios-contabilidad-form input:focus {
+.inventarios-contabilidad-form input:focus,
+.inventarios-contabilidad-form select:focus {
     outline: none;
     border-color: #2563eb;
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.inventarios-rgce-file-list {
+    display: grid;
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.inventarios-rgce-file-row {
+    display: grid;
+    grid-template-columns: minmax(180px, 1.5fr) minmax(180px, 1.2fr) minmax(150px, 1fr) 90px;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.inventarios-rgce-file-input,
+.inventarios-rgce-file-select,
+.inventarios-rgce-file-number {
+    display: flex;
+    align-items: center;
+}
+
+.inventarios-rgce-file-input input {
+    width: 100%;
+}
+
+.inventarios-rgce-file-input small {
+    display: block;
+    margin-top: 0.35rem;
+    color: #374151;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.inventarios-rgce-actions-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
 }
 
 .inventarios-contabilidad-actions {

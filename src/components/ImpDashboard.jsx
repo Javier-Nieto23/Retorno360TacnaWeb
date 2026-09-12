@@ -378,8 +378,8 @@ export default function ImpDashboard() {
             <section className="inventarios-upload-card" style={{ marginTop: '24px' }}>
                 <h2>Subir documentación RGCE</h2>
                 <div className="inventarios-contabilidad-form">
-                    <div className="company-row">
-                        <div className="form-field">
+                    <div className="inventarios-filters" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: '1rem' }}>
+                        <div className="inventarios-filter-group">
                             <label>Razón social*</label>
                             <select
                                 value={uploadForm.razon_social_id}
@@ -392,7 +392,7 @@ export default function ImpDashboard() {
                             </select>
                         </div>
 
-                        <div className="form-field">
+                        <div className="inventarios-filter-group">
                             <label>Empresa*</label>
                             <select
                                 value={uploadForm.empresa_id}
@@ -406,41 +406,41 @@ export default function ImpDashboard() {
                         </div>
                     </div>
 
-                    <div style={{ marginTop: '16px' }}>
-                        {draftFiles.length === 0 && (
-                            <button type="button" className="inventarios-btn inventarios-btn-secondary" onClick={addFileRow}>
-                                Agregar archivo
-                            </button>
-                        )}
+                    <div className="inventarios-rgce-file-list">
                         {draftFiles.map((item, index) => (
-                            <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1.2fr', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
-                                <div>
+                            <div key={item.id} className="inventarios-rgce-file-row">
+                                <div className="inventarios-rgce-file-input">
                                     <input
                                         type="file"
                                         accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg,.webp"
                                         onChange={(event) => handleFileSelect(event, index)}
-                                        style={{ width: '100%' }}
                                     />
-                                    {item.file && <small style={{ display: 'block', marginTop: '6px' }}>{item.file.name}</small>}
+                                    {item.file && <small>{item.file.name}</small>}
                                 </div>
-                                <select value={item.tipo_archivo} onChange={(e) => handleDraftChange(index, 'tipo_archivo', e.target.value)}>
-                                    <option value="">Tipo de archivo</option>
-                                    {catalogo.tipos.map((tipo) => (
-                                        <option key={tipo} value={tipo}>{tipo}</option>
-                                    ))}
-                                </select>
-                                <select value={item.estado} onChange={(e) => handleDraftChange(index, 'estado', e.target.value)}>
-                                    <option value="pendiente">Pendiente</option>
-                                    <option value="en_revision">En revisión</option>
-                                    <option value="observado">Observado</option>
-                                    <option value="aprobado">Aprobado</option>
-                                </select>
-                                <input type="number" min="0" max="100" value={item.porcentaje_completado} onChange={(e) => handleDraftChange(index, 'porcentaje_completado', e.target.value)} placeholder="%" />
+                                <div className="inventarios-rgce-file-select">
+                                    <select value={item.tipo_archivo} onChange={(e) => handleDraftChange(index, 'tipo_archivo', e.target.value)}>
+                                        <option value="">Tipo de archivo</option>
+                                        {catalogo.tipos.map((tipo) => (
+                                            <option key={tipo} value={tipo}>{tipo}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="inventarios-rgce-file-select">
+                                    <select value={item.estado} onChange={(e) => handleDraftChange(index, 'estado', e.target.value)}>
+                                        <option value="pendiente">Pendiente</option>
+                                        <option value="en_revision">En revisión</option>
+                                        <option value="observado">Observado</option>
+                                        <option value="aprobado">Aprobado</option>
+                                    </select>
+                                </div>
+                                <div className="inventarios-rgce-file-number">
+                                    <input type="number" min="0" max="100" value={item.porcentaje_completado} onChange={(e) => handleDraftChange(index, 'porcentaje_completado', e.target.value)} placeholder="0" />
+                                </div>
                             </div>
                         ))}
                     </div>
 
-                    <div style={{ marginTop: '12px' }}>
+                    <div className="inventarios-rgce-actions-row">
                         <button type="button" className="inventarios-btn inventarios-btn-secondary" onClick={addFileRow}>
                             Agregar otra fila
                         </button>
