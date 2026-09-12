@@ -12,6 +12,15 @@ const MESES = [
 
 const anioActual = new Date().getFullYear();
 const ANIOS = Array.from({ length: 5 }, (_, i) => anioActual - i);
+const FILE_TYPES = [
+    'Inventario mensual',
+    'Inventario anual',
+    'Factura SEER',
+    'Pedimento pagado',
+    'CFDI / Remisión',
+    'Verificación de domicilio',
+    'Otro Excel',
+];
 
 export default function FileUpload({ onUploadSuccess }) {
     const inputRef = useRef(null);
@@ -28,12 +37,13 @@ export default function FileUpload({ onUploadSuccess }) {
     const [empresas, setEmpresas] = useState([]);
     const [razonSocialId, setRazonSocialId] = useState(String(user?.razon_social_id || ''));
     const [empresaId, setEmpresaId] = useState('');
+    const [tipoArchivo, setTipoArchivo] = useState('');
     const [loadingRazonesSociales, setLoadingRazonesSociales] = useState(false);
     const [loadingEmpresas, setLoadingEmpresas] = useState(false);
 
-    const roleName = String(user?.rol_nombre || '').toLowerCase();
-    const isAdminRole = roleName === 'admin';
-    const isInventariosRole = roleName === 'inventarios';
+    const roleName = String(user?.rol_nombre || '').toLowerCase().trim();
+    const isAdminRole = roleName === 'admin' || roleName.includes('admin') || Boolean(user?.is_admin);
+    const isInventariosRole = roleName === 'inventarios' || roleName.includes('inventario');
     const requiresCompanySelection = isInventariosRole || isAdminRole;
     const razonSocialSeleccionada = razonesSociales.find((rs) => String(rs.id) === String(razonSocialId));
     const empresaSeleccionada = empresas.find((e) => String(e.id) === String(empresaId));
@@ -135,6 +145,7 @@ export default function FileUpload({ onUploadSuccess }) {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!file) { setResult({ success: false, message: 'Seleccione un archivo.' }); return; }
+        if (!tipoArchivo) { setResult({ success: false, message: 'Seleccione el tipo de archivo que va a cargar.' }); return; }
         if (requiresCompanySelection && (!razonSocialId || !empresaId)) {
             setResult({ success: false, message: 'Seleccione una razón social y una empresa antes de subir el archivo.' });
             return;
@@ -151,6 +162,7 @@ export default function FileUpload({ onUploadSuccess }) {
             formData.append('archivo', file);
             formData.append('anio', anio);
             formData.append('mes', mes);
+            formData.append('tipo_archivo', tipoArchivo);
             if (requiresCompanySelection) {
                 formData.append('razon_social_id', razonSocialId);
                 formData.append('empresa_id', empresaId);
@@ -158,6 +170,7 @@ export default function FileUpload({ onUploadSuccess }) {
             await fileService.upload(formData);
             setResult({ success: true, message: `"${file.name}" subido correctamente.` });
             setFile(null);
+            setTipoArchivo('');
             if (inputRef.current) inputRef.current.value = '';
             onUploadSuccess?.();
         } catch (err) {
@@ -228,6 +241,26 @@ export default function FileUpload({ onUploadSuccess }) {
                     </div>
                 </div>
             )}
+
+            <div className="type-row">
+                <div className="form-field">
+                    <label>Tipo de archivo*</label>
+                    <select
+                        value={tipoArchivo}
+                        onChange={(e) => {
+                            setTipoArchivo(e.target.value);
+                            setResult(null);
+                        }}
+                        disabled={uploading}
+                        required
+                    >
+                        <option value="">Seleccione tipo de archivo</option>
+                        {FILE_TYPES.map((tipo) => (
+                            <option key={tipo} value={tipo}>{tipo}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
 
             {/* Zona drag & drop */}
             <div

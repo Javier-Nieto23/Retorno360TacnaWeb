@@ -11,13 +11,17 @@ let observacionesTableReady = false;
 let observacionesTableInitPromise = null;
 let observacionMensajesTableReady = false;
 let observacionMensajesTableInitPromise = null;
+let historialTipoArchivoColumnReady = false;
+let historialTipoArchivoColumnInitPromise = null;
 
 function isAdminUser(req) {
-    return String(req.user?.rol_nombre || '').toLowerCase() === 'admin';
+    const roleName = String(req.user?.rol_nombre || '').toLowerCase().trim();
+    return roleName === 'admin' || roleName.includes('admin') || Boolean(req.user?.is_admin);
 }
 
 function isInventariosUser(req) {
-    return String(req.user?.rol_nombre || '').toLowerCase() === 'inventarios';
+    const roleName = String(req.user?.rol_nombre || '').toLowerCase().trim();
+    return roleName === 'inventarios' || roleName.includes('inventario');
 }
 
 function canAttendDeleteRequests(req) {
@@ -388,6 +392,35 @@ function canAccessArchivoScope(req, razonSocialId, empresaId) {
     return userEmpresaId === Number(empresaId);
 }
 
+async function ensureHistorialTipoArchivoColumn() {
+    if (historialTipoArchivoColumnReady) return;
+    if (historialTipoArchivoColumnInitPromise) {
+        await historialTipoArchivoColumnInitPromise;
+        return;
+    }
+
+    historialTipoArchivoColumnInitPromise = (async () => {
+        await pool.query(
+            `ALTER TABLE archivos_historial
+             ADD COLUMN IF NOT EXISTS tipo_archivo VARCHAR(120)`
+        );
+
+        await pool.query(
+            `UPDATE archivos_historial
+             SET tipo_archivo = 'Excel'
+             WHERE tipo_archivo IS NULL OR TRIM(tipo_archivo) = ''`
+        );
+
+        historialTipoArchivoColumnReady = true;
+    })();
+
+    try {
+        await historialTipoArchivoColumnInitPromise;
+    } finally {
+        historialTipoArchivoColumnInitPromise = null;
+    }
+}
+
 async function ensureHistorialEmpresaColumn() {
     if (historialEmpresaColumnReady) return;
     if (historialEmpresaColumnInitPromise) {
@@ -446,6 +479,25 @@ async function ensureHistorialEmpresaColumn() {
     } finally {
         historialEmpresaColumnInitPromise = null;
     }
+}
+
+function normalizeArchivoTipo(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return 'Excel';
+
+    const map = {
+        'inventario mensual': 'Inventario mensual',
+        'inventario anual': 'Inventario anual',
+        'factura seer': 'Factura SEER',
+        'pedimento pagado': 'Pedimento pagado',
+        'cfdi / remision': 'CFDI / Remisión',
+        'cfdi / remisión': 'CFDI / Remisión',
+        'verificacion de domicilio': 'Verificación de domicilio',
+        'verificación de domicilio': 'Verificación de domicilio',
+        'otro excel': 'Otro Excel',
+    };
+
+    return map[raw.toLowerCase()] || raw;
 }
 
 function toStorageSegment(value) {
@@ -647,10 +699,12 @@ async function upload(req, res) {
     }
 
 
-    const { anio, mes, empresa_id, razon_social_id } = req.body;
+    const { anio, mes, empresa_id, razon_social_id, tipo_archivo } = req.body;
     if (!anio || !mes) {
         return res.status(400).json({ error: 'El año y mes son requeridos.' });
     }
+
+    const tipoArchivo = normalizeArchivoTipo(tipo_archivo);
 
     const empresaIdNum = empresa_id ? Number(empresa_id) : null;
     if (empresa_id && Number.isNaN(empresaIdNum)) {
@@ -674,6 +728,7 @@ async function upload(req, res) {
 
     try {
         await ensureHistorialEmpresaColumn();
+        await ensureHistorialTipoArchivoColumn();
         await ensureDeleteRequestsTable();
 
         const empresaContextResult = empresaIdNum
@@ -760,8 +815,8 @@ async function upload(req, res) {
         // Guardar registro en base de datos
         const result = await pool.query(
             `INSERT INTO archivos_historial
-                 (razon_social_id, usuario_id, empresa_id, nombre_archivo, nombre_almacenado, storage_key, storage_url, anio, mes, tamano)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                 (razon_social_id, usuario_id, empresa_id, nombre_archivo, nombre_almacenado, storage_key, storage_url, anio, mes, tamano, tipo_archivo)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
             [
                 razonSocialIdFinal,
@@ -774,6 +829,7 @@ async function upload(req, res) {
                 anioNum,
                 mesNum,
                 req.file.size,
+                tipoArchivo,
             ]
         );
 
