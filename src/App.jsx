@@ -135,6 +135,8 @@ function AppRoutes() {
 
       {/*rutas para cluster protegidas correctamente*/}
       <Route path="/dashboard-calidad" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
+      <Route path="/dashboard-calidad/inventarios" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
+      <Route path="/dashboard-calidad/cumplimiento" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
       <Route path="/dashboard-calidad/graficas" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
 
       <Route path="/configuracion" element={<AdminRoute><ConfiguracionUsuarios /></AdminRoute>} />

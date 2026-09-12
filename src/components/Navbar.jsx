@@ -60,6 +60,12 @@ export default function Navbar() {
                         <NavLink to="/dashboard-calidad" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Dashboard
                         </NavLink>
+                        <NavLink to="/dashboard-calidad/inventarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Inventarios
+                        </NavLink>
+                        <NavLink to="/dashboard-calidad/cumplimiento" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Cumplimiento
+                        </NavLink>
                         <NavLink to="/dashboard-calidad/graficas" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Gráficas
                         </NavLink>
