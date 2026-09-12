@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { adminService, fileService } from '../services/api';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { adminService, fileService, rgceService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { detectRazonSocialId } from '../utils/razonSocial';
 import './Historial.css';
@@ -27,10 +27,11 @@ export default function Historial() {
     const { user } = useAuth();
     const roleName = String(user?.rol_nombre || '').toLowerCase();
     const isAdmin = roleName === 'admin' || user?.is_admin;
+    const isImp = roleName === 'imp' || roleName === 'importacion' || roleName === 'import';
     const isInventarios = roleName === 'inventarios';
     const isCliente = roleName === 'cliente' || roleName === 'clientes';
-    const canDeleteDirectly = isAdmin || isInventarios;
-    const canFilterByCatalog = isAdmin || isInventarios;
+    const canDeleteDirectly = isAdmin;
+    const canFilterByCatalog = isImp || isAdmin;
 
     const [resumen, setResumen] = useState([]);
     const [archivos, setArchivos] = useState([]);
@@ -39,6 +40,8 @@ export default function Historial() {
     const [filtroMes, setFiltroMes] = useState('');
     const [filtroRazonSocial, setFiltroRazonSocial] = useState('');
     const [filtroEmpresa, setFiltroEmpresa] = useState('');
+    const [filtroTextoRazonSocial, setFiltroTextoRazonSocial] = useState('');
+    const [filtroTextoEmpresa, setFiltroTextoEmpresa] = useState('');
     const [loading, setLoading] = useState(false);
     const [deleting, setDeleting] = useState(null);
     const [downloading, setDownloading] = useState(null);
@@ -104,30 +107,13 @@ export default function Historial() {
         }
     }, [filtroRazonSocial, isAdmin, isInventarios]);
 
-    const cargarResumen = useCallback(async () => {
-        try {
-            const params = {};
-            if (canFilterByCatalog) {
-                if (filtroRazonSocial) params.razon_social_id = filtroRazonSocial;
-                if (filtroEmpresa) params.empresa_id = filtroEmpresa;
-            } else if (user?.razon_social_id) {
-                params.razon_social_id = user.razon_social_id;
-            }
-
-            const { data } = await fileService.resumenHistorial(params);
-            setResumen(data.resumen || []);
-        } catch {
-            setResumen([]);
-        }
-    }, [canFilterByCatalog, filtroEmpresa, filtroRazonSocial, user?.razon_social_id]);
-
     const cargarArchivos = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
             const params = {};
-            if (filtroAnio) params.anio = filtroAnio;
-            if (filtroMes) params.mes = filtroMes;
+            if (filtroAnio) params.anio_evaluacion = filtroAnio;
+            if (filtroMes) params.mes_evaluacion = filtroMes;
 
             if (canFilterByCatalog) {
                 if (filtroRazonSocial) params.razon_social_id = filtroRazonSocial;
@@ -136,18 +122,31 @@ export default function Historial() {
                 params.razon_social_id = user.razon_social_id;
             }
 
-            const { data } = await fileService.historial(params);
-            setArchivos(data.archivos || []);
+            const { data } = await rgceService.documentos(params);
+            const documentos = data.documentos || [];
+            setArchivos(documentos);
+
+            const resumenMap = new Map();
+            documentos.forEach((documento) => {
+                const anio = Number(documento.anio_evaluacion || 0);
+                const mes = Number(documento.mes_evaluacion || 0);
+                if (!anio || !mes) return;
+                const key = `${anio}-${mes}`;
+                const current = resumenMap.get(key) || { anio, mes, total_archivos: 0 };
+                current.total_archivos += 1;
+                resumenMap.set(key, current);
+            });
+            setResumen([...resumenMap.values()].sort((a, b) => b.anio - a.anio || b.mes - a.mes));
         } catch (err) {
-            setError(err.response?.data?.error || 'Error al cargar el historial.');
+            setError(err.response?.data?.error || 'Error al cargar el historial RGCE.');
             setArchivos([]);
+            setResumen([]);
         } finally {
             setLoading(false);
         }
     }, [canFilterByCatalog, filtroAnio, filtroEmpresa, filtroMes, filtroRazonSocial, user?.razon_social_id]);
 
     useEffect(() => { cargarCatalogoFiltros(); }, [cargarCatalogoFiltros]);
-    useEffect(() => { cargarResumen(); }, [cargarResumen]);
     useEffect(() => { cargarArchivos(); }, [cargarArchivos]);
 
     useEffect(() => {
@@ -177,6 +176,20 @@ export default function Historial() {
         const razonSocial = (catalogo.razones_sociales || []).find((item) => String(item.id) === String(razonSocialId));
         return razonSocial?.nombre || '—';
     };
+
+    const archivosFiltrados = useMemo(() => {
+        const textoRazon = filtroTextoRazonSocial.trim().toLowerCase();
+        const textoEmpresa = filtroTextoEmpresa.trim().toLowerCase();
+
+        return archivos.filter((archivo) => {
+            const razonNombre = String(archivo.razon_social_nombre || archivo.razon_social_carpeta || '').toLowerCase();
+            const empresaNombre = String(archivo.empresa_nombre || archivo.empresa_carpeta || '').toLowerCase();
+
+            const coincideRazon = !textoRazon || razonNombre.includes(textoRazon);
+            const coincideEmpresa = !textoEmpresa || empresaNombre.includes(textoEmpresa);
+            return coincideRazon && coincideEmpresa;
+        });
+    }, [archivos, filtroTextoEmpresa, filtroTextoRazonSocial]);
 
     const razonSocialIdDetectado = detectRazonSocialId(filtroRazonSocial, user);
     const motivoValidoSolicitud = deleteRequestModal.motivo.trim().length > 0;
@@ -224,7 +237,6 @@ export default function Historial() {
         try {
             await fileService.eliminar(deleteConfirmModal.id);
             setArchivos((prev) => prev.filter((item) => item.id !== deleteConfirmModal.id));
-            cargarResumen();
             cerrarModalEliminar();
         } catch (err) {
             alert(err.response?.data?.error || 'Error al eliminar el archivo.');
@@ -236,11 +248,10 @@ export default function Historial() {
     const handleDescargar = async (archivo) => {
         setDownloading(archivo.id);
         try {
-            const { data } = await fileService.obtenerUrlDescarga(archivo.id);
-            const downloadUrl = String(data?.download_url || '').trim();
+            const downloadUrl = String(archivo.storage_url || '').trim();
 
             if (!downloadUrl) {
-                alert('No se pudo obtener la URL de descarga.');
+                alert('No se pudo obtener la URL de descarga del bucket RGCE.');
                 return;
             }
 
@@ -330,20 +341,18 @@ export default function Historial() {
     return (
         <div className="historial-page">
             <div className="historial-header">
-                <h1>Historial de archivos</h1>
-                <p className="historial-subtitle">Todos los archivos Excel organizados por período</p>
+                <h1>Historial RGCE</h1>
+                <p className="historial-subtitle">Todos los archivos y documentos del bucket RGCE organizados por período</p>
                 <p className="historial-subtitle">
-                    {isAdmin
-                        ? `Vista global de administrador por razón social y empresa · ID detectado: ${razonSocialIdDetectado}`
-                        : isInventarios
-                            ? `Vista de inventarios filtrable por razón social y empresa · ID detectado: ${razonSocialIdDetectado}`
-                            : `Razón social ID: ${user?.razon_social_id || '—'} · Carpeta base: ${user?.r2_folder || '—'}`}
+                    {isImp || isAdmin
+                        ? `Vista exclusiva de IMP · razón social y empresa filtrables · ID detectado: ${razonSocialIdDetectado}`
+                        : `Razón social ID: ${user?.razon_social_id || '—'} · Carpeta base: ${user?.r2_folder || '—'}`}
                 </p>
             </div>
 
             <div className="historial-history-head">
-                <h2>Historial de archivos de la empresa</h2>
-                <p>Consulta todos los archivos cargados, filtrados por período y razón social.</p>
+                <h2>Historial de documentos RGCE</h2>
+                <p>Consulta todos los archivos cargados en el bucket de RGCE, filtrados por período, razón social y empresa.</p>
             </div>
 
             {error && <div className="historial-error">{error}</div>}
@@ -373,6 +382,26 @@ export default function Historial() {
                 )}
 
                 <div className="filter-group">
+                    <label>Razón social</label>
+                    <input
+                        type="text"
+                        value={filtroTextoRazonSocial}
+                        onChange={(e) => setFiltroTextoRazonSocial(e.target.value)}
+                        placeholder="Buscar razón social"
+                    />
+                </div>
+
+                <div className="filter-group">
+                    <label>Empresa</label>
+                    <input
+                        type="text"
+                        value={filtroTextoEmpresa}
+                        onChange={(e) => setFiltroTextoEmpresa(e.target.value)}
+                        placeholder="Buscar empresa"
+                    />
+                </div>
+
+                <div className="filter-group">
                     <label>Año</label>
                     <select value={filtroAnio} onChange={handleAnioChange}>
                         <option value="">Todos los años</option>
@@ -392,7 +421,7 @@ export default function Historial() {
                     </select>
                 </div>
 
-                {(filtroAnio || filtroMes || filtroRazonSocial || filtroEmpresa) && (
+                {(filtroAnio || filtroMes || filtroRazonSocial || filtroEmpresa || filtroTextoRazonSocial || filtroTextoEmpresa) && (
                     <button
                         className="btn-clear-filter"
                         type="button"
@@ -401,6 +430,8 @@ export default function Historial() {
                             setFiltroMes('');
                             setFiltroRazonSocial('');
                             setFiltroEmpresa('');
+                            setFiltroTextoRazonSocial('');
+                            setFiltroTextoEmpresa('');
                         }}
                     >
                         Limpiar filtros
@@ -411,10 +442,10 @@ export default function Historial() {
             <div className="historial-table-wrapper">
                 {loading ? (
                     <div className="historial-loading">Cargando archivos...</div>
-                ) : archivos.length === 0 ? (
+                ) : archivosFiltrados.length === 0 ? (
                     <div className="historial-empty">
                         <span>📭</span>
-                        <p>No hay archivos para este período.</p>
+                        <p>No hay archivos para este período o búsqueda.</p>
                     </div>
                 ) : (
                     <table className="historial-table">
@@ -433,7 +464,7 @@ export default function Historial() {
                             </tr>
                         </thead>
                         <tbody>
-                            {archivos.map((archivo) => (
+                            {archivosFiltrados.map((archivo) => (
                                 <tr key={archivo.id}>
                                     <td className="col-filename">
                                         <span className="file-icon-sm">📄</span>
@@ -517,7 +548,7 @@ export default function Historial() {
             </div>
 
             <p className="historial-count">
-                {!loading && `${archivos.length} archivo${archivos.length !== 1 ? 's' : ''} encontrado${archivos.length !== 1 ? 's' : ''}`}
+                {!loading && `${archivosFiltrados.length} archivo${archivosFiltrados.length !== 1 ? 's' : ''} encontrado${archivosFiltrados.length !== 1 ? 's' : ''}`}
             </p>
 
             {deleteRequestModal.open && !canDeleteDirectly && (

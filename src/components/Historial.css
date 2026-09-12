@@ -227,7 +227,8 @@
     letter-spacing: 0.04em;
 }
 
-.filter-group select {
+.filter-group select,
+.filter-group input {
     padding: 0.55rem 0.875rem;
     border: 1.5px solid #d1d5db;
     border-radius: 7px;
@@ -240,7 +241,13 @@
     transition: border-color 0.2s;
 }
 
-.filter-group select:focus {
+.filter-group input {
+    cursor: text;
+    min-width: 180px;
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
     border-color: #0f3460;
 }
 

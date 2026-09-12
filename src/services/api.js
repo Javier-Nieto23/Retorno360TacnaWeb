@@ -113,6 +113,13 @@ export const fileService = {
     resolverSolicitudEliminacion: (requestId, decision) => api.patch(`/files/delete-requests/${requestId}`, { decision }),
 };
 
+// RGCE
+export const rgceService = {
+    catalogo: (params) => api.get('/rgce/catalogo', { params }),
+    dashboard: (params) => api.get('/rgce/dashboard', { params }),
+    documentos: (params) => api.get('/rgce/documentos', { params }),
+};
+
 // Razón Social
 export const razonSocialService = {
     listar: () => api.get('/razonsocial'),
