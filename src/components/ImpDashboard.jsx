@@ -138,9 +138,9 @@ export default function ImpDashboard() {
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         file: null,
         tipo_archivo: '',
-        estado: 'pendiente',
-        porcentaje_completado: 0,
-        observaciones: '',
+        estado: 'entregado',
+        porcentaje_completado: 100,
+        observaciones: 'Subido y entregado',
     });
 
     const addFileRow = () => {
@@ -158,9 +158,9 @@ export default function ImpDashboard() {
             ...item,
             file: selectedFile,
             tipo_archivo: item.tipo_archivo || '',
-            estado: item.estado || 'pendiente',
-            porcentaje_completado: Number(item.porcentaje_completado) || 0,
-            observaciones: item.observaciones || '',
+            estado: item.estado || 'entregado',
+            porcentaje_completado: Number(item.porcentaje_completado) || 100,
+            observaciones: item.observaciones || 'Subido y entregado',
         } : item));
         setSelectedFiles((prev) => {
             const next = [...prev];
@@ -177,9 +177,9 @@ export default function ImpDashboard() {
                 id: draftFiles[index]?.id || `${selectedFile.name}-${selectedFile.size}-${selectedFile.lastModified}`,
                 file: selectedFile,
                 tipo_archivo: '',
-                estado: 'pendiente',
-                porcentaje_completado: 0,
-                observaciones: '',
+                estado: 'entregado',
+                porcentaje_completado: 100,
+                observaciones: 'Subido y entregado',
             }];
         });
         setSuccess('');
@@ -219,9 +219,9 @@ export default function ImpDashboard() {
 
             const documentosPayload = fileRows.map((item) => ({
                 tipo_archivo: item.tipo_archivo || 'Documento',
-                estado: item.estado || 'pendiente',
-                porcentaje_completado: Number(item.porcentaje_completado) || 0,
-                observaciones: item.observaciones || '',
+                estado: 'entregado',
+                porcentaje_completado: 100,
+                observaciones: item.observaciones || 'Subido y entregado',
                 mes_evaluacion: Number(filters.mes_evaluacion),
                 anio_evaluacion: Number(filters.anio_evaluacion),
             }));
@@ -427,6 +427,7 @@ export default function ImpDashboard() {
                                 </div>
                                 <div className="inventarios-rgce-file-select">
                                     <select value={item.estado} onChange={(e) => handleDraftChange(index, 'estado', e.target.value)}>
+                                        <option value="entregado">Entregado</option>
                                         <option value="pendiente">Pendiente</option>
                                         <option value="en_revision">En revisión</option>
                                         <option value="observado">Observado</option>
@@ -488,7 +489,15 @@ export default function ImpDashboard() {
                                 {documentos.length > 0 ? documentos.map((doc) => (
                                     <tr key={doc.id}>
                                         <td>{doc.tipo_archivo}</td>
-                                        <td>{doc.nombre_archivo}</td>
+                                        <td>
+                                            {doc.storage_url ? (
+                                                <a href={doc.storage_url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                                    {doc.nombre_archivo}
+                                                </a>
+                                            ) : (
+                                                doc.nombre_archivo
+                                            )}
+                                        </td>
                                         <td>{doc.razon_social_nombre || doc.razon_social_carpeta}</td>
                                         <td>{doc.empresa_nombre || doc.empresa_carpeta}</td>
                                         <td>{doc.mes_evaluacion}/{doc.anio_evaluacion}</td>
@@ -497,6 +506,7 @@ export default function ImpDashboard() {
                                         <td>{doc.observaciones || '—'}</td>
                                         <td>
                                             <select value={doc.estado} onChange={(e) => handleStateChange(doc.id, e.target.value)}>
+                                                <option value="entregado">Entregado</option>
                                                 <option value="pendiente">Pendiente</option>
                                                 <option value="en_revision">En revisión</option>
                                                 <option value="observado">Observado</option>

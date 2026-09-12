@@ -110,7 +110,7 @@ async function ensureRgceTable() {
 
     await pool.query(`
         UPDATE public.documentos_rgce
-        SET estado = 'pendiente'
+        SET estado = 'entregado'
         WHERE estado IS NULL OR TRIM(estado) = '';
     `);
 
@@ -238,6 +238,7 @@ async function getDashboard(req, res) {
             SELECT
                 COUNT(*)::int AS total_documentos,
                 COUNT(*) FILTER (WHERE estado = 'aprobado')::int AS aprobados,
+                COUNT(*) FILTER (WHERE estado = 'entregado')::int AS entregados,
                 COUNT(*) FILTER (WHERE estado = 'pendiente')::int AS pendientes,
                 COUNT(*) FILTER (WHERE estado = 'en_revision')::int AS en_revision,
                 COUNT(*) FILTER (WHERE estado = 'observado')::int AS observados,
@@ -276,6 +277,7 @@ async function getDashboard(req, res) {
         const summary = resumenResult.rows[0] || {
             total_documentos: 0,
             aprobados: 0,
+            entregados: 0,
             pendientes: 0,
             en_revision: 0,
             observados: 0,
@@ -426,9 +428,9 @@ async function uploadDocuments(req, res) {
                 nombreAlmacenado,
                 storageKey,
                 uploadResult.storageUrl,
-                String(fileMeta.estado || 'pendiente').toLowerCase(),
-                Number(fileMeta.porcentaje_completado || 0),
-                fileMeta.observaciones || '',
+                'entregado',
+                100,
+                fileMeta.observaciones || 'Subido y entregado',
                 mesEvaluacion,
                 anioEvaluacion,
                 req.user?.id,
@@ -517,7 +519,7 @@ async function getCatalogo(req, res) {
         res.json({
             success: true,
             tipos: DOCUMENT_TYPES,
-            estados: ['pendiente', 'en_revision', 'observado', 'aprobado'],
+            estados: ['entregado', 'pendiente', 'en_revision', 'observado', 'aprobado'],
             razones_sociales: razonesResult.rows,
             empresas: empresasResult.rows,
         });
