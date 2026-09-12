@@ -18,6 +18,7 @@ const DOCUMENT_TYPES = [
     'Verificación de domicilio',
 ];
 
+
 export default function ImpDashboard() {
     const { user } = useAuth();
     const [razonesSociales, setRazonesSociales] = useState([]);
