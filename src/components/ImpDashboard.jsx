@@ -35,11 +35,17 @@ export default function ImpDashboard() {
     });
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: new Date().getMonth() + 1, anio_evaluacion: new Date().getFullYear() });
+    const [uploadForm, setUploadForm] = useState({ razon_social_id: '', empresa_id: '' });
     const [draftFiles, setDraftFiles] = useState([]);
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+
+    const uploadEmpresas = useMemo(() => {
+        if (!uploadForm.razon_social_id) return catalogo.empresas || [];
+        return (catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(uploadForm.razon_social_id));
+    }, [catalogo.empresas, uploadForm.razon_social_id]);
 
     useEffect(() => {
         if (!user) return;
@@ -128,18 +134,54 @@ export default function ImpDashboard() {
         return Number(base).toFixed(1);
     }, [summary.porcentaje_promedio]);
 
-    const handleFileSelect = (event) => {
+    const createEmptyDraftFile = () => ({
+        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        file: null,
+        tipo_archivo: '',
+        estado: 'pendiente',
+        porcentaje_completado: 0,
+        observaciones: '',
+    });
+
+    const addFileRow = () => {
+        setDraftFiles((prev) => [...prev, createEmptyDraftFile()]);
+        setSuccess('');
+        setError('');
+    };
+
+    const handleFileSelect = (event, index) => {
         const files = Array.from(event.target.files || []);
-        const mapped = files.map((file) => ({
-            id: `${file.name}-${file.size}-${file.lastModified}`,
-            file,
-            tipo_archivo: '',
-            estado: 'pendiente',
-            porcentaje_completado: 0,
-            observaciones: '',
-        }));
-        setDraftFiles(mapped);
-        setSelectedFiles(mapped);
+        const selectedFile = files[0];
+        if (!selectedFile) return;
+
+        setDraftFiles((prev) => prev.map((item, idx) => idx === index ? {
+            ...item,
+            file: selectedFile,
+            tipo_archivo: item.tipo_archivo || '',
+            estado: item.estado || 'pendiente',
+            porcentaje_completado: Number(item.porcentaje_completado) || 0,
+            observaciones: item.observaciones || '',
+        } : item));
+        setSelectedFiles((prev) => {
+            const next = [...prev];
+            const currentIndex = next.findIndex((item) => item.id === prev[index]?.id || item.id === draftFiles[index]?.id);
+            if (currentIndex >= 0) {
+                next[currentIndex] = {
+                    ...next[currentIndex],
+                    file: selectedFile,
+                    id: draftFiles[index]?.id || next[currentIndex]?.id,
+                };
+                return next;
+            }
+            return [...prev, {
+                id: draftFiles[index]?.id || `${selectedFile.name}-${selectedFile.size}-${selectedFile.lastModified}`,
+                file: selectedFile,
+                tipo_archivo: '',
+                estado: 'pendiente',
+                porcentaje_completado: 0,
+                observaciones: '',
+            }];
+        });
         setSuccess('');
         setError('');
     };
@@ -150,11 +192,12 @@ export default function ImpDashboard() {
     };
 
     const handleUpload = async () => {
-        if (!selectedFiles.length) {
+        const fileRows = draftFiles.filter((item) => item.file);
+        if (fileRows.length === 0) {
             setError('Debe seleccionar al menos un archivo para subir.');
             return;
         }
-        if (!filters.razon_social_id || !filters.empresa_id) {
+        if (!uploadForm.razon_social_id || !uploadForm.empresa_id) {
             setError('Debe seleccionar razón social y empresa antes de subir archivos.');
             return;
         }
@@ -165,16 +208,16 @@ export default function ImpDashboard() {
             setSuccess('');
 
             const formData = new FormData();
-            formData.append('razon_social_id', filters.razon_social_id);
-            formData.append('empresa_id', filters.empresa_id);
+            formData.append('razon_social_id', uploadForm.razon_social_id);
+            formData.append('empresa_id', uploadForm.empresa_id);
             formData.append('mes_evaluacion', filters.mes_evaluacion);
             formData.append('anio_evaluacion', filters.anio_evaluacion);
 
-            selectedFiles.forEach((item) => {
+            fileRows.forEach((item) => {
                 formData.append('archivos', item.file);
             });
 
-            const documentosPayload = selectedFiles.map((item) => ({
+            const documentosPayload = fileRows.map((item) => ({
                 tipo_archivo: item.tipo_archivo || 'Documento',
                 estado: item.estado || 'pendiente',
                 porcentaje_completado: Number(item.porcentaje_completado) || 0,
@@ -199,9 +242,8 @@ export default function ImpDashboard() {
 
             setSuccess(`${data.documentos?.length || 0} archivo(s) guardados correctamente.`);
             setSelectedFiles([]);
-            setDraftFiles([]);
-            const input = document.getElementById('imp-upload-input');
-            if (input) input.value = '';
+            setDraftFiles([createEmptyDraftFile()]);
+            setUploadForm((prev) => ({ ...prev, empresa_id: '' }));
             await cargarDashboard();
         } catch (err) {
             setError(err.message || 'No se pudo subir la documentación.');
@@ -339,7 +381,10 @@ export default function ImpDashboard() {
                     <div className="company-row">
                         <div className="form-field">
                             <label>Razón social*</label>
-                            <select value={filters.razon_social_id} onChange={(e) => setFilters((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}>
+                            <select
+                                value={uploadForm.razon_social_id}
+                                onChange={(e) => setUploadForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}
+                            >
                                 <option value="">Seleccione razón social</option>
                                 {razonesSociales.map((rs) => (
                                     <option key={rs.id} value={rs.id}>{rs.nombre}</option>
@@ -349,45 +394,63 @@ export default function ImpDashboard() {
 
                         <div className="form-field">
                             <label>Empresa*</label>
-                            <select value={filters.empresa_id} onChange={(e) => setFilters((prev) => ({ ...prev, empresa_id: e.target.value }))}>
+                            <select
+                                value={uploadForm.empresa_id}
+                                onChange={(e) => setUploadForm((prev) => ({ ...prev, empresa_id: e.target.value }))}
+                            >
                                 <option value="">Seleccione empresa</option>
-                                {empresasDisponibles.map((empresa) => (
+                                {uploadEmpresas.map((empresa) => (
                                     <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
                                 ))}
                             </select>
                         </div>
                     </div>
 
-                    <input id="imp-upload-input" type="file" multiple accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg,.webp" onChange={handleFileSelect} />
-
-                    {draftFiles.length > 0 && (
-                        <div style={{ marginTop: '16px' }}>
-                            {draftFiles.map((item, index) => (
-                                <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1.2fr', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
-                                    <div><strong>{item.file.name}</strong></div>
-                                    <select value={item.tipo_archivo} onChange={(e) => handleDraftChange(index, 'tipo_archivo', e.target.value)}>
-                                        <option value="">Tipo de archivo</option>
-                                        {catalogo.tipos.map((tipo) => (
-                                            <option key={tipo} value={tipo}>{tipo}</option>
-                                        ))}
-                                    </select>
-                                    <select value={item.estado} onChange={(e) => handleDraftChange(index, 'estado', e.target.value)}>
-                                        <option value="pendiente">Pendiente</option>
-                                        <option value="en_revision">En revisión</option>
-                                        <option value="observado">Observado</option>
-                                        <option value="aprobado">Aprobado</option>
-                                    </select>
-                                    <input type="number" min="0" max="100" value={item.porcentaje_completado} onChange={(e) => handleDraftChange(index, 'porcentaje_completado', e.target.value)} placeholder="%" />
+                    <div style={{ marginTop: '16px' }}>
+                        {draftFiles.length === 0 && (
+                            <button type="button" className="inventarios-btn inventarios-btn-secondary" onClick={addFileRow}>
+                                Agregar archivo
+                            </button>
+                        )}
+                        {draftFiles.map((item, index) => (
+                            <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr 1.2fr', gap: '10px', marginBottom: '10px', alignItems: 'center' }}>
+                                <div>
+                                    <input
+                                        type="file"
+                                        accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                                        onChange={(event) => handleFileSelect(event, index)}
+                                        style={{ width: '100%' }}
+                                    />
+                                    {item.file && <small style={{ display: 'block', marginTop: '6px' }}>{item.file.name}</small>}
                                 </div>
-                            ))}
-                        </div>
-                    )}
+                                <select value={item.tipo_archivo} onChange={(e) => handleDraftChange(index, 'tipo_archivo', e.target.value)}>
+                                    <option value="">Tipo de archivo</option>
+                                    {catalogo.tipos.map((tipo) => (
+                                        <option key={tipo} value={tipo}>{tipo}</option>
+                                    ))}
+                                </select>
+                                <select value={item.estado} onChange={(e) => handleDraftChange(index, 'estado', e.target.value)}>
+                                    <option value="pendiente">Pendiente</option>
+                                    <option value="en_revision">En revisión</option>
+                                    <option value="observado">Observado</option>
+                                    <option value="aprobado">Aprobado</option>
+                                </select>
+                                <input type="number" min="0" max="100" value={item.porcentaje_completado} onChange={(e) => handleDraftChange(index, 'porcentaje_completado', e.target.value)} placeholder="%" />
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={{ marginTop: '12px' }}>
+                        <button type="button" className="inventarios-btn inventarios-btn-secondary" onClick={addFileRow}>
+                            Agregar otra fila
+                        </button>
+                    </div>
 
                     {error && <p className="inventarios-error">{error}</p>}
                     {success && <p className="inventarios-success">{success}</p>}
 
                     <div className="inventarios-contabilidad-actions">
-                        <button className="inventarios-btn inventarios-btn-primary" onClick={handleUpload} disabled={uploading || !draftFiles.length}>
+                        <button className="inventarios-btn inventarios-btn-primary" onClick={handleUpload} disabled={uploading || draftFiles.every((item) => !item.file)}>
                             {uploading ? 'Subiendo...' : 'Guardar documentación'}
                         </button>
                     </div>
