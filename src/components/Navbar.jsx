@@ -1,17 +1,15 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
 import './Navbar.css';
-import { isAdminUser, isClientUser, isInventariosUser, isClusterUser, isImpUser } from '../utils/roles';
+import { isAdminUser, isClientUser, isClusterUser } from '../utils/roles';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const isAdmin = isAdminUser(user);
-    const isInventarios = isInventariosUser(user);
     const isClient = isClientUser(user);
     const isCluster = isClusterUser(user);
-    const isImp = isImpUser(user);
-    const dashboardPath = isAdmin ? '/admin' : isInventarios ? '/inventarios' : isImp ? '/imp' : '/dashboard';
+    const dashboardPath = isAdmin ? '/admin' : '/dashboard';
 
     const handleLogout = () => {
         logout();
@@ -28,16 +26,6 @@ export default function Navbar() {
                 {!isCluster && (
                     <NavLink to={dashboardPath} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                         Dashboard
-                    </NavLink>
-                )}
-                {isInventarios && (
-                    <NavLink to="/contabilidad" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                        Contabilidad
-                    </NavLink>
-                )}
-                {isImp && (
-                    <NavLink to="/imp" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                        RGCE / IMP
                     </NavLink>
                 )}
                 {isClient && (
@@ -62,25 +50,13 @@ export default function Navbar() {
                 )}
                 {isCluster && (
                     <>
-
                         <NavLink to="/dashboard-calidad" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Dashboard
                         </NavLink>
                         <NavLink to="/dashboard-calidad/graficas" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Gráficas
                         </NavLink>
-                        <NavLink to="/dashboard-calidad/inventarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                            Inventarios
-                        </NavLink>
-                        <NavLink to="/dashboard-calidad/cumplimiento" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                            cumplimiento
-                        </NavLink>
                     </>
-                )}
-                {!isCluster && (
-                    <NavLink to="/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                        Cumplimiento
-                    </NavLink>
                 )}
             </div>
 

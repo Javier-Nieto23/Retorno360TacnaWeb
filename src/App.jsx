@@ -10,17 +10,13 @@ import ConfiguracionUsuarios from './components/ConfiguracionUsuarios';
 import './App.css';
 import ArchivosCliente from './components/ArchivosCliente';
 import SolicitudParte from './components/SolicitudParte';
-import InventariosDashboard from './components/InventariosDashboard';
-import ImpDashboard from './components/ImpDashboard';
-import { getLandingPath, isAdminUser, isClientUser, isInventariosUser, isClusterUser, isImpUser } from './utils/roles';
+import { getLandingPath, isAdminUser, isClientUser, isClusterUser } from './utils/roles';
 
 function DashboardRoute() {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando...</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (isAdminUser(user)) return <Navigate to="/admin" replace />;
-  if (isInventariosUser(user)) return <Navigate to="/inventarios" replace />;
-  if (isImpUser(user)) return <Navigate to="/imp" replace />;
 
   return (
     <>
@@ -51,34 +47,6 @@ function PublicRoute({ children }) {
   return children;
 }
 
-function InventariosRoute({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="app-loading">Cargando...</div>;
-  if (!user) return <Navigate to="/login" replace />;
-  if (isAdminUser(user)) return <Navigate to="/admin" replace />;
-  if (!isInventariosUser(user)) return <Navigate to="/dashboard" replace />;
-
-  return (
-    <>
-      <Navbar />
-      <main className="app-main">{children}</main>
-    </>
-  );
-}
-
-function ImpRoute({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="app-loading">Cargando...</div>;
-  if (!user) return <Navigate to="/login" replace />;
-  if (!isImpUser(user)) return <Navigate to={getLandingPath(user)} replace />;
-
-  return (
-    <>
-      <Navbar />
-      <main className="app-main">{children}</main>
-    </>
-  );
-}
 
 function ClientRoute({ children }) {
   const { user, loading } = useAuth();
@@ -131,17 +99,12 @@ function AppRoutes() {
       <Route path="/dashboard" element={<DashboardRoute />} />
       <Route path="/archivos" element={<ClientRoute><ArchivosCliente /></ClientRoute>} />
       <Route path="/solicitud-parte" element={<ClientRoute><SolicitudParte /></ClientRoute>} />
-      <Route path="/inventarios" element={<InventariosRoute><InventariosDashboard /></InventariosRoute>} />
-      <Route path="/contabilidad" element={<InventariosRoute><InventariosDashboard view="contabilidad" /></InventariosRoute>} />
-      <Route path="/imp" element={<ImpRoute><ImpDashboard /></ImpRoute>} />
       <Route path="/historial" element={<ProtectedRoute><Historial /></ProtectedRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
       {/*rutas para cluster protegidas correctamente*/}
       <Route path="/dashboard-calidad" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
       <Route path="/dashboard-calidad/graficas" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
-      <Route path="/dashboard-calidad/inventarios" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
-      <Route path="/dashboard-calidad/cumplimiento" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
 
       <Route path="/configuracion" element={<AdminRoute><ConfiguracionUsuarios /></AdminRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
