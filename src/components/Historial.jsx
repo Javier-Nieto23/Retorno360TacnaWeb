@@ -143,7 +143,20 @@ export default function Historial() {
         const lower = String(url).toLowerCase();
         if (lower.endsWith('.pdf')) return 'pdf';
         if (['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => lower.endsWith(ext))) return 'image';
+        if (lower.includes('pdf') || lower.includes('image')) return lower.includes('pdf') ? 'pdf' : 'image';
         return 'unsupported';
+    };
+
+    const getInlinePreviewUrl = (url = '') => {
+        if (!url) return '';
+
+        try {
+            const parsed = new URL(url, window.location.origin);
+            parsed.searchParams.set('response-content-disposition', 'inline');
+            return parsed.toString();
+        } catch {
+            return url;
+        }
     };
 
     return (
@@ -262,13 +275,23 @@ export default function Historial() {
 
                         <div className="historial-preview-body">
                             {preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'pdf' ? (
-                                <iframe
-                                    src={preview.documento.storage_url}
-                                    title={preview.documento.nombre_archivo}
+                                <object
+                                    data={getInlinePreviewUrl(preview.documento.storage_url)}
+                                    type="application/pdf"
                                     className="historial-preview-frame"
-                                />
+                                >
+                                    <embed
+                                        src={getInlinePreviewUrl(preview.documento.storage_url)}
+                                        type="application/pdf"
+                                        className="historial-preview-frame"
+                                    />
+                                    <div className="historial-preview-placeholder">
+                                        <p>Tu navegador no pudo mostrar la vista previa del PDF.</p>
+                                        <a href={preview.documento.storage_url} target="_blank" rel="noreferrer">Abrir archivo original</a>
+                                    </div>
+                                </object>
                             ) : preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'image' ? (
-                                <img src={preview.documento.storage_url} alt={preview.documento.nombre_archivo} className="historial-preview-image" />
+                                <img src={getInlinePreviewUrl(preview.documento.storage_url)} alt={preview.documento.nombre_archivo} className="historial-preview-image" />
                             ) : (
                                 <div className="historial-preview-placeholder">
                                     <p>Vista previa no disponible para este tipo de archivo.</p>
