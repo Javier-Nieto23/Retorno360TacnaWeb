@@ -36,7 +36,12 @@ export default function ImpDashboard() {
     });
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: new Date().getMonth() + 1, anio_evaluacion: new Date().getFullYear() });
-    const [uploadForm, setUploadForm] = useState({ razon_social_id: '', empresa_id: '' });
+    const [uploadForm, setUploadForm] = useState({
+        razon_social_id: '',
+        empresa_id: '',
+        mes_evaluacion: new Date().getMonth() + 1,
+        anio_evaluacion: new Date().getFullYear(),
+    });
     const [draftFiles, setDraftFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
@@ -237,8 +242,8 @@ export default function ImpDashboard() {
             const formData = new FormData();
             formData.append('razon_social_id', uploadForm.razon_social_id);
             formData.append('empresa_id', uploadForm.empresa_id);
-            formData.append('mes_evaluacion', filters.mes_evaluacion);
-            formData.append('anio_evaluacion', filters.anio_evaluacion);
+            formData.append('mes_evaluacion', String(uploadForm.mes_evaluacion));
+            formData.append('anio_evaluacion', String(uploadForm.anio_evaluacion));
 
             fileRows.forEach((item) => {
                 formData.append('archivos', item.file);
@@ -252,8 +257,8 @@ export default function ImpDashboard() {
                     estado: 'entregado',
                     porcentaje_completado: 0,
                     observaciones: 'Subido y entregado',
-                    mes_evaluacion: Number(filters.mes_evaluacion),
-                    anio_evaluacion: Number(filters.anio_evaluacion),
+                    mes_evaluacion: Number(uploadForm.mes_evaluacion),
+                    anio_evaluacion: Number(uploadForm.anio_evaluacion),
                 };
             });
 
@@ -498,7 +503,7 @@ export default function ImpDashboard() {
             <section className="inventarios-upload-card" style={{ marginTop: '24px' }}>
                 <h2>Subir documentación RGCE</h2>
                 <div className="inventarios-contabilidad-form">
-                    <div className="inventarios-filters" style={{ gridTemplateColumns: '1fr 1fr', marginBottom: '1rem' }}>
+                    <div className="inventarios-filters" style={{ gridTemplateColumns: 'repeat(2, minmax(220px, 1fr))', marginBottom: '1rem' }}>
                         <div className="inventarios-filter-group">
                             <label>Razón social*</label>
                             <select
@@ -521,6 +526,30 @@ export default function ImpDashboard() {
                                 <option value="">Seleccione empresa</option>
                                 {uploadEmpresas.map((empresa) => (
                                     <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="inventarios-filter-group">
+                            <label>Mes del archivo*</label>
+                            <select
+                                value={uploadForm.mes_evaluacion}
+                                onChange={(e) => setUploadForm((prev) => ({ ...prev, mes_evaluacion: Number(e.target.value) }))}
+                            >
+                                {MES_NAMES.map((mes, idx) => (
+                                    <option key={mes} value={idx + 1}>{mes}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="inventarios-filter-group">
+                            <label>Año del archivo*</label>
+                            <select
+                                value={uploadForm.anio_evaluacion}
+                                onChange={(e) => setUploadForm((prev) => ({ ...prev, anio_evaluacion: Number(e.target.value) }))}
+                            >
+                                {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
+                                    <option key={year} value={year}>{year}</option>
                                 ))}
                             </select>
                         </div>
