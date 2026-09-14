@@ -16,6 +16,7 @@ const DOCUMENT_TYPES = [
     'Pedimento Contraparte Pagado',
     'CFDI / Remisión',
     'Verificación de domicilio',
+    'Proceso Productivo',
 ];
 
 

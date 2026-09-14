@@ -9,6 +9,7 @@ const DOCUMENT_TYPES = [
     'Pedimento Contraparte Pagado',
     'CFDI / Remisión',
     'Verificación de domicilio',
+    'Proceso Productivo',
 ];
 
 async function ensureDocumentCatalogTables() {
@@ -178,6 +179,7 @@ function normalizeDocumentType(value) {
         'cfdi / remisión': 'CFDI / Remisión',
         'verificacion de domicilio': 'Verificación de domicilio',
         'verificación de domicilio': 'Verificación de domicilio',
+        'proceso productivo': 'Proceso Productivo',
     };
 
     return map[raw.toLowerCase()] || raw;
