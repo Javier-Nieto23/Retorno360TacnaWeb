@@ -58,9 +58,19 @@ async function syncDocumentCatalogFromMainCatalog() {
         INSERT INTO public.empresas_documentos (id_empresa, nombre_empresa, id_razon)
         SELECT e.id, e.nombre, e.razon_social_id
         FROM public.empresa e
+        WHERE e.razon_social_id IS NOT NULL
         ON CONFLICT (id_empresa) DO UPDATE
         SET nombre_empresa = EXCLUDED.nombre_empresa,
             id_razon = EXCLUDED.id_razon;
+    `);
+
+    await pool.query(`
+        UPDATE public.empresas_documentos ed
+        SET id_razon = e.razon_social_id
+        FROM public.empresa e
+        WHERE ed.id_empresa = e.id
+          AND e.razon_social_id IS NOT NULL
+          AND (ed.id_razon IS NULL OR ed.id_razon <> e.razon_social_id);
     `);
 }
 
