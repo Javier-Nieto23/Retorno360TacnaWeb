@@ -214,12 +214,18 @@ function normalizeDocumentType(value) {
 
 async function getRazonSocialAndEmpresa(razonSocialId, empresaId) {
     const razonSocialResult = await pool.query(
-        `SELECT id, nombre, r2_folder FROM public.razon_social WHERE id = $1`,
+        `SELECT rsd.id_razon AS id, rsd.nombre_razon_social AS nombre, rs.r2_folder
+         FROM public.razon_social_documentos rsd
+         LEFT JOIN public.razon_social rs ON rs.id = rsd.id_razon
+         WHERE rsd.id_razon = $1`,
         [razonSocialId]
     );
 
     const empresaResult = await pool.query(
-        `SELECT id, nombre, razon_social_id, carpeta FROM public.empresa WHERE id = $1`,
+        `SELECT ed.id_empresa AS id, ed.nombre_empresa AS nombre, ed.id_razon, e.razon_social_id, e.carpeta
+         FROM public.empresas_documentos ed
+         LEFT JOIN public.empresa e ON e.id = ed.id_empresa
+         WHERE ed.id_empresa = $1`,
         [empresaId]
     );
 
