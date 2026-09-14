@@ -416,7 +416,7 @@ async function uploadDocuments(req, res) {
 
             const nombreAlmacenado = sanitizeStorageName(nombreArchivo);
             const baseFolder = `${String(razonSocial.r2_folder || razonSocial.nombre || 'razon_social').replace(/\/+$/, '')}/${String(empresa.carpeta || empresa.nombre || 'empresa').replace(/\/+$/, '')}/rgce/${anioEvaluacion}/${String(mesEvaluacion).padStart(2, '0')}`;
-            const storageKey = `${baseFolder}/${nombreAlmacenado}`;
+            const storageKey = `${baseFolder}/${nombreAlmacenado}`.replace(/\/+/g, '/').replace(/^\//, '');
 
             const uploadResult = await uploadFile(file.buffer, storageKey, file.mimetype || 'application/octet-stream', { context: 'rgce' });
 

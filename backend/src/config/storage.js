@@ -72,8 +72,11 @@ async function uploadFile(buffer, storageKey, mimeType, options = {}) {
     } catch (error) {
         throw wrapR2Error('la subida de objetos', error, bucketName);
     }
+
     const normalizedStorageKey = String(storageKey || '').replace(/^\/+/, '');
-    const storageUrl = `${publicUrlBase}/${normalizedStorageKey}`;
+    const normalizedBase = String(publicUrlBase || '').replace(/\/+$/, '');
+    const normalizedKey = normalizedStorageKey.replace(/^rgce\//i, '');
+    const storageUrl = `${normalizedBase}/${normalizedKey}`;
     return { storageKey, storageUrl, bucketName };
 }
 
@@ -88,7 +91,7 @@ async function getDownloadUrl({ storageKey, storageUrl, filename, bucketName: bu
 
     if (!isR2Mode) {
         if (storageUrl) return storageUrl;
-        const key = String(storageKey || '').replace(/^\/+/, '');
+        const key = String(storageKey || '').replace(/^\/+/, '').replace(/^rgce\//i, '');
         return key ? `${bucketConfig.publicUrlBase}/${key}` : null;
     }
 
