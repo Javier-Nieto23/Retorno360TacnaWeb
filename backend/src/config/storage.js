@@ -116,6 +116,7 @@ async function getDownloadUrl({
     const command = new GetObjectCommand({
         Bucket: targetBucket,
         Key: key,
+        ChecksumMode: 'DISABLED',
         ResponseContentDisposition: `${disposition}; filename="${String(filename || 'archivo').replace(/"/g, '')}"`,
     });
 
