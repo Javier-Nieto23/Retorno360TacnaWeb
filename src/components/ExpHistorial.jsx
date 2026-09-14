@@ -2,192 +2,192 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 function getDaysSince(dateValue) {
-  if (!dateValue) return 0;
-  const target = new Date(dateValue);
-  const now = new Date();
-  const diffMs = now.getTime() - target.getTime();
-  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    if (!dateValue) return 0;
+    const target = new Date(dateValue);
+    const now = new Date();
+    const diffMs = now.getTime() - target.getTime();
+    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 }
 
 export default function ExpHistorial() {
-  const { user } = useAuth();
-  const [archivos, setArchivos] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [filtroTextoRazon, setFiltroTextoRazon] = useState('');
-  const [filtroTextoEmpresa, setFiltroTextoEmpresa] = useState('');
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [previewDoc, setPreviewDoc] = useState(null);
+    const { user } = useAuth();
+    const [archivos, setArchivos] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [filtroTextoRazon, setFiltroTextoRazon] = useState('');
+    const [filtroTextoEmpresa, setFiltroTextoEmpresa] = useState('');
+    const [previewUrl, setPreviewUrl] = useState('');
+    const [previewDoc, setPreviewDoc] = useState(null);
 
-  const cargarArchivos = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const token = localStorage.getItem('session_token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/documentos`, {
-        headers: {
-          'x-user-id': String(user?.id || ''),
-          'x-session-token': String(token || ''),
-        },
-      });
-      const data = await response.json();
-      if (!response.ok || !data?.success) throw new Error(data?.message || 'Error al cargar historial EXP');
-      setArchivos(data.documentos || []);
-    } catch (err) {
-      setError(err.message || 'Error al cargar historial EXP');
-      setArchivos([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const cargarArchivos = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/documentos`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'Error al cargar historial EXP');
+            setArchivos(data.documentos || []);
+        } catch (err) {
+            setError(err.message || 'Error al cargar historial EXP');
+            setArchivos([]);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  useEffect(() => {
-    if (user) cargarArchivos();
-  }, [user]);
+    useEffect(() => {
+        if (user) cargarArchivos();
+    }, [user]);
 
-  const archivosFiltrados = useMemo(() => {
-    const razon = filtroTextoRazon.trim().toLowerCase();
-    const empresa = filtroTextoEmpresa.trim().toLowerCase();
+    const archivosFiltrados = useMemo(() => {
+        const razon = filtroTextoRazon.trim().toLowerCase();
+        const empresa = filtroTextoEmpresa.trim().toLowerCase();
 
-    return (archivos || []).filter((archivo) => {
-      const nombreRazon = String(archivo.razon_social_nombre || archivo.razon_social_carpeta || '').toLowerCase();
-      const nombreEmpresa = String(archivo.empresa_nombre || archivo.empresa_carpeta || '').toLowerCase();
-      const coincideRazon = !razon || nombreRazon.includes(razon);
-      const coincideEmpresa = !empresa || nombreEmpresa.includes(empresa);
-      return coincideRazon && coincideEmpresa;
-    });
-  }, [archivos, filtroTextoEmpresa, filtroTextoRazon]);
+        return (archivos || []).filter((archivo) => {
+            const nombreRazon = String(archivo.razon_social_nombre || archivo.razon_social_carpeta || '').toLowerCase();
+            const nombreEmpresa = String(archivo.empresa_nombre || archivo.empresa_carpeta || '').toLowerCase();
+            const coincideRazon = !razon || nombreRazon.includes(razon);
+            const coincideEmpresa = !empresa || nombreEmpresa.includes(empresa);
+            return coincideRazon && coincideEmpresa;
+        });
+    }, [archivos, filtroTextoEmpresa, filtroTextoRazon]);
 
-  const handleClose = async (documento) => {
-    try {
-      const token = localStorage.getItem('session_token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${documento.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': String(user?.id || ''),
-          'x-session-token': String(token || ''),
-        },
-        body: JSON.stringify({ estado: 'terminado', observaciones: documento.observaciones || 'Documento cerrado por EXP.' }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cerrar el documento.');
-      await cargarArchivos();
-    } catch (err) {
-      setError(err.message || 'No se pudo cerrar el documento.');
-    }
-  };
+    const handleClose = async (documento) => {
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${documento.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+                body: JSON.stringify({ estado: 'terminado', observaciones: documento.observaciones || 'Documento cerrado por EXP.' }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cerrar el documento.');
+            await cargarArchivos();
+        } catch (err) {
+            setError(err.message || 'No se pudo cerrar el documento.');
+        }
+    };
 
-  const abrirPreview = (documento) => {
-    setPreviewUrl(documento.storage_url || '');
-    setPreviewDoc(documento);
-  };
+    const abrirPreview = (documento) => {
+        setPreviewUrl(documento.storage_url || '');
+        setPreviewDoc(documento);
+    };
 
-  const cerrarPreview = () => {
-    setPreviewUrl('');
-    setPreviewDoc(null);
-  };
+    const cerrarPreview = () => {
+        setPreviewUrl('');
+        setPreviewDoc(null);
+    };
 
-  const handleDownload = (url) => {
-    if (!url) return;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
+    const handleDownload = (url) => {
+        if (!url) return;
+        window.open(url, '_blank', 'noopener,noreferrer');
+    };
 
-  return (
-    <div className="historial-page">
-      <div className="historial-header">
-        <h1>Historial EXP</h1>
-        <p className="historial-subtitle">Archivos cargados por razón social y empresa con revisión y cierre documental.</p>
-      </div>
+    return (
+        <div className="historial-page">
+            <div className="historial-header">
+                <h1>Historial EXP</h1>
+                <p className="historial-subtitle">Archivos cargados por razón social y empresa con revisión y cierre documental.</p>
+            </div>
 
-      <div className="historial-filters">
-        <div className="historial-filter-group">
-          <label>Razón social</label>
-          <input type="text" value={filtroTextoRazon} onChange={(e) => setFiltroTextoRazon(e.target.value)} placeholder="Buscar razón social" />
-        </div>
-        <div className="historial-filter-group">
-          <label>Empresa</label>
-          <input type="text" value={filtroTextoEmpresa} onChange={(e) => setFiltroTextoEmpresa(e.target.value)} placeholder="Buscar empresa" />
-        </div>
-      </div>
-
-      {error && <div className="historial-error">{error}</div>}
-
-      {loading ? (
-        <div className="historial-empty"><p>Cargando historial...</p></div>
-      ) : archivosFiltrados.length === 0 ? (
-        <div className="historial-empty"><span>📭</span><p>No hay archivos para mostrar.</p></div>
-      ) : (
-        <div className="historial-groups">
-          {archivosFiltrados.map((archivo) => (
-            <div key={archivo.id} className="historial-razon-group">
-              <div className="historial-razon-header">
-                <h2>{archivo.razon_social_nombre || archivo.razon_social_carpeta || 'Sin razón social'}</h2>
-                <span>{archivo.estado === 'terminado' ? 'Terminado' : archivo.estado === 'atencion' ? 'En atención' : archivo.estado || 'Pendiente'}</span>
-              </div>
-
-              <div className="historial-company-selector">
-                <label>Empresa</label>
-                <div className="historial-doc-item" style={{ display: 'block' }}>
-                  <strong>{archivo.empresa_nombre || archivo.empresa_carpeta || 'Sin empresa'}</strong>
+            <div className="historial-filters">
+                <div className="historial-filter-group">
+                    <label>Razón social</label>
+                    <input type="text" value={filtroTextoRazon} onChange={(e) => setFiltroTextoRazon(e.target.value)} placeholder="Buscar razón social" />
                 </div>
-              </div>
-
-              <div className="historial-doc-item">
-                <div className="historial-doc-main">
-                  <div className="historial-doc-icon">📄</div>
-                  <div className="historial-doc-meta">
-                    <strong>{archivo.nombre_archivo}</strong>
-                    <span>Subido por usuario: {archivo.usuario_id || '—'}</span>
-                    <span>Estado: {archivo.estado || 'entregado'}</span>
-                    <span>Días desde carga: {getDaysSince(archivo.created_at)}</span>
-                  </div>
+                <div className="historial-filter-group">
+                    <label>Empresa</label>
+                    <input type="text" value={filtroTextoEmpresa} onChange={(e) => setFiltroTextoEmpresa(e.target.value)} placeholder="Buscar empresa" />
                 </div>
+            </div>
 
-                <div className="historial-doc-actions">
-                  <button type="button" onClick={() => handleDownload(archivo.storage_url)}>Descargar</button>
-                  <button type="button" className="secondary" onClick={() => abrirPreview(archivo)}>Observar</button>
-                  <button type="button" className="secondary" onClick={() => handleClose(archivo)}>Cerrar</button>
+            {error && <div className="historial-error">{error}</div>}
+
+            {loading ? (
+                <div className="historial-empty"><p>Cargando historial...</p></div>
+            ) : archivosFiltrados.length === 0 ? (
+                <div className="historial-empty"><span>📭</span><p>No hay archivos para mostrar.</p></div>
+            ) : (
+                <div className="historial-groups">
+                    {archivosFiltrados.map((archivo) => (
+                        <div key={archivo.id} className="historial-razon-group">
+                            <div className="historial-razon-header">
+                                <h2>{archivo.razon_social_nombre || archivo.razon_social_carpeta || 'Sin razón social'}</h2>
+                                <span>{archivo.estado === 'terminado' ? 'Terminado' : archivo.estado === 'atencion' ? 'En atención' : archivo.estado || 'Pendiente'}</span>
+                            </div>
+
+                            <div className="historial-company-selector">
+                                <label>Empresa</label>
+                                <div className="historial-doc-item" style={{ display: 'block' }}>
+                                    <strong>{archivo.empresa_nombre || archivo.empresa_carpeta || 'Sin empresa'}</strong>
+                                </div>
+                            </div>
+
+                            <div className="historial-doc-item">
+                                <div className="historial-doc-main">
+                                    <div className="historial-doc-icon">📄</div>
+                                    <div className="historial-doc-meta">
+                                        <strong>{archivo.nombre_archivo}</strong>
+                                        <span>Subido por usuario: {archivo.usuario_id || '—'}</span>
+                                        <span>Estado: {archivo.estado || 'entregado'}</span>
+                                        <span>Días desde carga: {getDaysSince(archivo.created_at)}</span>
+                                    </div>
+                                </div>
+
+                                <div className="historial-doc-actions">
+                                    <button type="button" onClick={() => handleDownload(archivo.storage_url)}>Descargar</button>
+                                    <button type="button" className="secondary" onClick={() => abrirPreview(archivo)}>Observar</button>
+                                    <button type="button" className="secondary" onClick={() => handleClose(archivo)}>Cerrar</button>
+                                </div>
+                            </div>
+
+                            <div className="historial-preview-actions" style={{ padding: '0 0 0.5rem' }}>
+                                <label>Observaciones</label>
+                                <textarea value={archivo.observaciones || 'Sin observaciones'} readOnly rows={3} />
+                            </div>
+                        </div>
+                    ))}
                 </div>
-              </div>
+            )}
 
-              <div className="historial-preview-actions" style={{ padding: '0 0 0.5rem' }}>
-                <label>Observaciones</label>
-                <textarea value={archivo.observaciones || 'Sin observaciones'} readOnly rows={3} />
-              </div>
-            </div>
-          ))}
+            {previewUrl && previewDoc && (
+                <div className="historial-preview-backdrop" onClick={cerrarPreview}>
+                    <div className="historial-preview-modal" onClick={(event) => event.stopPropagation()}>
+                        <div className="historial-preview-header">
+                            <div>
+                                <h3>{previewDoc.nombre_archivo}</h3>
+                                <p>{previewDoc.razon_social_nombre || 'Razón social'} · {previewDoc.empresa_nombre || 'Empresa'}</p>
+                            </div>
+                            <button type="button" className="preview-close" onClick={cerrarPreview}>✕</button>
+                        </div>
+
+                        <div className="historial-preview-body">
+                            {String(previewUrl).toLowerCase().endsWith('.pdf') ? (
+                                <object data={previewUrl} type="application/pdf" className="historial-preview-frame">
+                                    <embed src={previewUrl} type="application/pdf" className="historial-preview-frame" />
+                                </object>
+                            ) : (
+                                <img src={previewUrl} alt={previewDoc.nombre_archivo} className="historial-preview-image" />
+                            )}
+                        </div>
+
+                        <div className="historial-preview-actions">
+                            <label>Observaciones</label>
+                            <textarea value={previewDoc.observaciones || 'Sin observaciones'} readOnly rows={4} />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-      )}
-
-      {previewUrl && previewDoc && (
-        <div className="historial-preview-backdrop" onClick={cerrarPreview}>
-          <div className="historial-preview-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="historial-preview-header">
-              <div>
-                <h3>{previewDoc.nombre_archivo}</h3>
-                <p>{previewDoc.razon_social_nombre || 'Razón social'} · {previewDoc.empresa_nombre || 'Empresa'}</p>
-              </div>
-              <button type="button" className="preview-close" onClick={cerrarPreview}>✕</button>
-            </div>
-
-            <div className="historial-preview-body">
-              {String(previewUrl).toLowerCase().endsWith('.pdf') ? (
-                <object data={previewUrl} type="application/pdf" className="historial-preview-frame">
-                  <embed src={previewUrl} type="application/pdf" className="historial-preview-frame" />
-                </object>
-              ) : (
-                <img src={previewUrl} alt={previewDoc.nombre_archivo} className="historial-preview-image" />
-              )}
-            </div>
-
-            <div className="historial-preview-actions">
-              <label>Observaciones</label>
-              <textarea value={previewDoc.observaciones || 'Sin observaciones'} readOnly rows={4} />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+    );
 }
