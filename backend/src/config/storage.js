@@ -81,11 +81,15 @@ async function uploadFile(buffer, storageKey, mimeType, options = {}) {
  * Obtiene URL de descarga segura para un objeto.
  * En R2 devuelve URL firmada; en local devuelve la URL almacenada.
  */
-async function getDownloadUrl({ storageKey, storageUrl, filename, bucketName: bucketNameOverride }) {
+async function getDownloadUrl({ storageKey, storageUrl, filename, bucketName: bucketNameOverride, context = 'default' }) {
     const isR2Mode = String(process.env.STORAGE_MODE || '').toLowerCase() === 'r2';
+    const resolvedContext = String(context || 'default').toLowerCase();
+    const bucketConfig = resolvedContext === 'rgce' ? rgceBucketConfig : defaultBucketConfig;
 
     if (!isR2Mode) {
-        return storageUrl;
+        if (storageUrl) return storageUrl;
+        const key = String(storageKey || '').replace(/^\/+/, '');
+        return key ? `${bucketConfig.publicUrlBase}/${key}` : null;
     }
 
     const key = String(storageKey || '').trim();
@@ -95,7 +99,7 @@ async function getDownloadUrl({ storageKey, storageUrl, filename, bucketName: bu
         throw error;
     }
 
-    const targetBucket = bucketNameOverride || defaultBucketConfig.bucketName;
+    const targetBucket = bucketNameOverride || bucketConfig.bucketName;
     const command = new GetObjectCommand({
         Bucket: targetBucket,
         Key: key,
