@@ -224,7 +224,10 @@ function normalizeDocumentType(value) {
 
 async function getRazonSocialAndEmpresa(razonSocialId, empresaId) {
     const razonSocialResult = await pool.query(
-        `SELECT rsd.id_razon AS id, rsd.nombre_razon_social AS nombre, rs.r2_folder
+        `SELECT rsd.id_razon AS id,
+                rsd.nombre_razon_social AS nombre,
+                rs.r2_folder,
+                rsd.id_razon AS razon_social_id
          FROM public.razon_social_documentos rsd
          LEFT JOIN public.razon_social rs ON rs.id = rsd.id_razon
          WHERE rsd.id_razon = $1`,
@@ -232,7 +235,11 @@ async function getRazonSocialAndEmpresa(razonSocialId, empresaId) {
     );
 
     const empresaResult = await pool.query(
-        `SELECT ed.id_empresa AS id, ed.nombre_empresa AS nombre, ed.id_razon, e.razon_social_id, e.carpeta
+        `SELECT ed.id_empresa AS id,
+                ed.nombre_empresa AS nombre,
+                ed.id_razon AS razon_social_id,
+                ed.id_razon,
+                e.carpeta
          FROM public.empresas_documentos ed
          LEFT JOIN public.empresa e ON e.id = ed.id_empresa
          WHERE ed.id_empresa = $1`,
@@ -438,11 +445,13 @@ async function uploadDocuments(req, res) {
             return res.status(404).json({ success: false, message: `Razón social o empresa no válidas. razon_social_id=${razonSocialId}, empresa_id=${empresaId}` });
         }
 
-        if (Number(empresa.razon_social_id) !== razonSocialId) {
+        const empresaRazonSocialId = Number(empresa.id_razon ?? empresa.razon_social_id ?? 0);
+
+        if (empresaRazonSocialId !== razonSocialId) {
             console.warn('[RGCE UPLOAD] La empresa no pertenece a la razón social seleccionada.', {
                 razonSocialId,
                 empresaId,
-                empresaRazonSocialId: empresa.razon_social_id,
+                empresaRazonSocialId,
                 empresaNombre: empresa.nombre,
             });
             return res.status(400).json({
