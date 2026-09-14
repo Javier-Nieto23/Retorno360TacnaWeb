@@ -43,6 +43,56 @@ export default function ImpDashboard() {
     const [success, setSuccess] = useState('');
     const [preview, setPreview] = useState({ open: false, documento: null, metadata: null });
 
+    const cumplimientoPorRazonSocial = useMemo(() => {
+        const map = new Map();
+
+        (documentos || []).forEach((doc) => {
+            const razonKey = String(doc.razon_social_id || doc.razon_social_nombre || 'sin-razon');
+            const razonNombre = doc.razon_social_nombre || doc.razon_social_carpeta || 'Sin razón social';
+
+            if (!map.has(razonKey)) {
+                map.set(razonKey, { nombre: razonNombre, total: 0, cantidadTipos: 0 });
+            }
+
+            const current = map.get(razonKey);
+            current.total += Number(doc.porcentaje_completado || 0);
+            current.cantidadTipos += 1;
+        });
+
+        return Array.from(map.entries())
+            .map(([key, value]) => ({
+                key,
+                nombre: value.nombre,
+                porcentaje: Math.min(100, Number(((value.total / Math.max(1, DOCUMENT_TYPES.length)) * 100).toFixed(1))),
+            }))
+            .sort((a, b) => b.porcentaje - a.porcentaje);
+    }, [documentos]);
+
+    const cumplimientoPorEmpresa = useMemo(() => {
+        const map = new Map();
+
+        (documentos || []).forEach((doc) => {
+            const empresaKey = String(doc.empresa_id || doc.empresa_nombre || 'sin-empresa');
+            const empresaNombre = doc.empresa_nombre || doc.empresa_carpeta || 'Sin empresa';
+
+            if (!map.has(empresaKey)) {
+                map.set(empresaKey, { nombre: empresaNombre, total: 0, cantidadTipos: 0 });
+            }
+
+            const current = map.get(empresaKey);
+            current.total += Number(doc.porcentaje_completado || 0);
+            current.cantidadTipos += 1;
+        });
+
+        return Array.from(map.entries())
+            .map(([key, value]) => ({
+                key,
+                nombre: value.nombre,
+                porcentaje: Math.min(100, Number(((value.total / Math.max(1, DOCUMENT_TYPES.length)) * 100).toFixed(1))),
+            }))
+            .sort((a, b) => b.porcentaje - a.porcentaje);
+    }, [documentos]);
+
     const uploadEmpresas = useMemo(() => {
         if (!uploadForm.razon_social_id) return catalogo.empresas || [];
         return (catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(uploadForm.razon_social_id));
@@ -355,6 +405,46 @@ export default function ImpDashboard() {
                     </div>
                 </div>
 
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '16px' }}>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
+                        <h3 style={{ margin: '0 0 12px', fontSize: '1rem' }}>Por razón social</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {cumplimientoPorRazonSocial.length > 0 ? cumplimientoPorRazonSocial.map((item) => (
+                                <div key={item.key}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
+                                        <span>{item.nombre}</span>
+                                        <strong>{item.porcentaje}%</strong>
+                                    </div>
+                                    <div style={{ width: '100%', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden', height: '10px' }}>
+                                        <div style={{ width: `${Math.min(100, item.porcentaje)}%`, background: 'linear-gradient(90deg, #16a34a 0%, #4f46e5 100%)', height: '100%' }} />
+                                    </div>
+                                </div>
+                            )) : (
+                                <p style={{ margin: 0, color: '#64748b' }}>Sin datos para mostrar.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
+                        <h3 style={{ margin: '0 0 12px', fontSize: '1rem' }}>Por empresa</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {cumplimientoPorEmpresa.length > 0 ? cumplimientoPorEmpresa.map((item) => (
+                                <div key={item.key}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.9rem' }}>
+                                        <span>{item.nombre}</span>
+                                        <strong>{item.porcentaje}%</strong>
+                                    </div>
+                                    <div style={{ width: '100%', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden', height: '10px' }}>
+                                        <div style={{ width: `${Math.min(100, item.porcentaje)}%`, background: 'linear-gradient(90deg, #0ea5e9 0%, #22c55e 100%)', height: '100%' }} />
+                                    </div>
+                                </div>
+                            )) : (
+                                <p style={{ margin: 0, color: '#64748b' }}>Sin datos para mostrar.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 <div className="inventarios-filters" style={{ marginTop: '16px' }}>
                     <div className="inventarios-filter-group">
                         <label>Razón social</label>
@@ -486,79 +576,6 @@ export default function ImpDashboard() {
                 </div>
             </section>
 
-            <section className="inventarios-requests-card" style={{ marginTop: '24px' }}>
-                <div className="inventarios-requests-header">
-                    <div>
-                        <h2>Documentos cargados</h2>
-                        <p>Mes a evaluar: {MES_NAMES[Number(filters.mes_evaluacion || new Date().getMonth() + 1) - 1]} {filters.anio_evaluacion || new Date().getFullYear()}</p>
-                    </div>
-                    <span className="inventarios-requests-badge">{documentos.length} registros</span>
-                </div>
-
-                <div className="inventarios-requests-table-wrap">
-                    {loading ? (
-                        <p>Cargando...</p>
-                    ) : (
-                        <table className="inventarios-requests-table">
-                            <thead>
-                                <tr>
-                                    <th>Tipo</th>
-                                    <th>Archivo</th>
-                                    <th>Razón social</th>
-                                    <th>Empresa</th>
-                                    <th>Mes</th>
-                                    <th>Estado</th>
-                                    <th>%</th>
-                                    <th>Observación</th>
-                                    <th>Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {documentos.length > 0 ? documentos.map((doc) => (
-                                    <tr key={doc.id}>
-                                        <td>{doc.tipo_archivo}</td>
-                                        <td>
-                                            {doc.storage_url ? (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDownload(doc)}
-                                                        style={{ color: '#2563eb', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                                                    >
-                                                        {doc.nombre_archivo}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handlePreview(doc)}
-                                                        style={{ color: '#0f766e', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                                                    >
-                                                        Ver
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                doc.nombre_archivo
-                                            )}
-                                        </td>
-                                        <td>{doc.razon_social_nombre || doc.razon_social_carpeta}</td>
-                                        <td>{doc.empresa_nombre || doc.empresa_carpeta}</td>
-                                        <td>{doc.mes_evaluacion}/{doc.anio_evaluacion}</td>
-                                        <td>{doc.estado}</td>
-                                        <td>0%</td>
-                                        <td>{doc.observaciones || '—'}</td>
-                                        <td>
-                                            <span className="inventarios-rgce-status-fixed">Fijo</span>
-                                        </td>
-                                    </tr>
-                                )) : (
-                                    <tr>
-                                        <td colSpan="9" style={{ textAlign: 'center', padding: '20px' }}>No hay documentos cargados para este filtro.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    )}
-                </div>
-            </section>
 
             {preview.open && preview.documento && (
                 <div className="historial-preview-backdrop" onClick={cerrarPreview} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
