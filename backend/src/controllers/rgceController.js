@@ -441,6 +441,7 @@ async function uploadDocuments(req, res) {
                 });
             }
 
+            const nombreAlmacenado = sanitizeStorageName(nombreArchivo);
             const storageKey = buildRgceStorageKey({
                 razonSocial,
                 empresa,
