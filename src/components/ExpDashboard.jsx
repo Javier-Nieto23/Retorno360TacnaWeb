@@ -23,6 +23,7 @@ export default function ExpDashboard() {
     const [success, setSuccess] = useState('');
     const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: new Date().getMonth() + 1, anio_evaluacion: new Date().getFullYear() });
     const [catalogo, setCatalogo] = useState({ razones_sociales: [], empresas: [] });
+    const [preview, setPreview] = useState({ open: false, documento: null, observacion: '' });
 
     const cargarCatalogo = async () => {
         try {
@@ -104,7 +105,51 @@ export default function ExpDashboard() {
     };
 
     const handlePreview = (doc) => {
-        window.open(doc.storage_url, '_blank', 'noopener,noreferrer');
+        setPreview({
+            open: true,
+            documento: doc,
+            observacion: String(doc.observaciones || '').trim(),
+        });
+    };
+
+    const cerrarPreview = () => {
+        setPreview({ open: false, documento: null, observacion: '' });
+    };
+
+    const handlePreviewAction = async (estado) => {
+        if (!preview.documento) return;
+
+        const observacion = preview.observacion.trim();
+
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${preview.documento.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+                body: JSON.stringify({
+                    estado,
+                    observaciones: observacion || (estado === 'terminado' ? 'Documento cerrado por EXP.' : 'Documento enviado a atención por EXP.'),
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo actualizar el documento.');
+            setSuccess(estado === 'terminado' ? 'Documento cerrado correctamente.' : 'Documento enviado a atención.');
+            cerrarPreview();
+            await cargarDashboard();
+        } catch (err) {
+            setError(err.message || 'No se pudo actualizar el documento.');
+        }
+    };
+
+    const getPreviewType = (url = '') => {
+        const lower = String(url).toLowerCase();
+        if (lower.endsWith('.pdf')) return 'pdf';
+        if (['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => lower.endsWith(ext))) return 'image';
+        return 'unsupported';
     };
 
     return (
@@ -262,6 +307,54 @@ export default function ExpDashboard() {
                     )}
                 </div>
             </section>
+
+            {preview.open && preview.documento && (
+                <div className="historial-preview-backdrop" onClick={cerrarPreview}>
+                    <div className="historial-preview-modal" onClick={(event) => event.stopPropagation()}>
+                        <div className="historial-preview-header">
+                            <div>
+                                <h3>{preview.documento.nombre_archivo}</h3>
+                                <p>{preview.documento.razon_social_nombre || 'Razón social'} · {preview.documento.empresa_nombre || 'Empresa'}</p>
+                            </div>
+                            <button type="button" className="preview-close" onClick={cerrarPreview}>✕</button>
+                        </div>
+
+                        <div className="historial-preview-body">
+                            {preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'pdf' ? (
+                                <object data={preview.documento.storage_url} type="application/pdf" className="historial-preview-frame">
+                                    <embed src={preview.documento.storage_url} type="application/pdf" className="historial-preview-frame" />
+                                </object>
+                            ) : preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'image' ? (
+                                <img src={preview.documento.storage_url} alt={preview.documento.nombre_archivo} className="historial-preview-image" />
+                            ) : (
+                                <div className="historial-preview-placeholder">
+                                    <p>Vista previa no disponible para este tipo de archivo.</p>
+                                    <a href={preview.documento.storage_url} target="_blank" rel="noreferrer">Abrir archivo original</a>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="historial-preview-actions">
+                            <label>Observaciones</label>
+                            <textarea
+                                value={preview.observacion}
+                                rows={5}
+                                placeholder="Escribe una observación nueva o modifica la actual..."
+                                onChange={(e) => setPreview((prev) => ({ ...prev, observacion: e.target.value }))}
+                            />
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                                <button type="button" className="historial-btn-secondary" onClick={() => handlePreviewAction('atencion')}>
+                                    Enviar a atención
+                                </button>
+                                <button type="button" className="historial-btn-primary" onClick={() => handlePreviewAction('terminado')}>
+                                    Dar por cerrado
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
