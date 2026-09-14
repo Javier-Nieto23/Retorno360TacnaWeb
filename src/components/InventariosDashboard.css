@@ -143,16 +143,21 @@
 
 .inventarios-rgce-file-row {
     display: grid;
-    grid-template-columns: minmax(180px, 1.5fr) minmax(180px, 1.2fr) minmax(150px, 1fr) 90px;
+    grid-template-columns: minmax(180px, 1.5fr) minmax(180px, 1.2fr) minmax(170px, 1.4fr) 90px;
     gap: 0.75rem;
     align-items: center;
 }
 
 .inventarios-rgce-file-input,
 .inventarios-rgce-file-select,
+.inventarios-rgce-file-rename,
 .inventarios-rgce-file-number {
     display: flex;
     align-items: center;
+}
+
+.inventarios-rgce-file-rename input {
+    width: 100%;
 }
 
 .inventarios-rgce-file-input input {

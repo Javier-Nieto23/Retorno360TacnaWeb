@@ -386,10 +386,28 @@ async function uploadDocuments(req, res) {
         for (let index = 0; index < req.files.length; index += 1) {
             const file = req.files[index];
             const fileMeta = metadata[index] || {};
+            const proposedName = String(fileMeta.nombre_archivo || file.originalname || 'Documento').trim();
+            const nombreArchivo = proposedName || file.originalname || 'Documento';
             const tipoArchivo = normalizeDocumentType(fileMeta.tipo_archivo || file.originalname || 'Documento');
             const mesEvaluacion = Number(fileMeta.mes_evaluacion || req.body.mes_evaluacion || new Date().getMonth() + 1);
             const anioEvaluacion = Number(fileMeta.anio_evaluacion || req.body.anio_evaluacion || new Date().getFullYear());
-            const nombreArchivo = file.originalname;
+
+            const existingDocument = await pool.query(`
+                SELECT id
+                FROM public.documentos_rgce
+                WHERE razon_social_id = $1
+                  AND empresa_id = $2
+                  AND LOWER(TRIM(nombre_archivo)) = LOWER(TRIM($3))
+                LIMIT 1;
+            `, [razonSocialId, empresaId, nombreArchivo]);
+
+            if (existingDocument.rows.length > 0) {
+                return res.status(409).json({
+                    success: false,
+                    message: `No se puede subir el archivo porque ya existe en la base de datos: ${nombreArchivo}`,
+                });
+            }
+
             const nombreAlmacenado = sanitizeStorageName(nombreArchivo);
             const baseFolder = `${String(razonSocial.r2_folder || razonSocial.nombre || 'razon_social').replace(/\/+$/, '')}/${String(empresa.carpeta || empresa.nombre || 'empresa').replace(/\/+$/, '')}/rgce/${anioEvaluacion}/${String(mesEvaluacion).padStart(2, '0')}`;
             const storageKey = `${baseFolder}/${nombreAlmacenado}`;

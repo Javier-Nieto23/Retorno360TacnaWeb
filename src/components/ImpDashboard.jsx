@@ -131,6 +131,7 @@ export default function ImpDashboard() {
     const createEmptyDraftFile = () => ({
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         file: null,
+        nuevo_nombre: '',
         tipo_archivo: '',
         estado: 'entregado',
         porcentaje_completado: 0,
@@ -151,6 +152,7 @@ export default function ImpDashboard() {
         setDraftFiles((prev) => prev.map((item, idx) => idx === index ? {
             ...item,
             file: selectedFile,
+            nuevo_nombre: item.nuevo_nombre || selectedFile.name,
             tipo_archivo: item.tipo_archivo || '',
             estado: 'entregado',
             porcentaje_completado: 0,
@@ -190,14 +192,18 @@ export default function ImpDashboard() {
                 formData.append('archivos', item.file);
             });
 
-            const documentosPayload = fileRows.map((item) => ({
-                tipo_archivo: item.tipo_archivo || 'Documento',
-                estado: 'entregado',
-                porcentaje_completado: 0,
-                observaciones: 'Subido y entregado',
-                mes_evaluacion: Number(filters.mes_evaluacion),
-                anio_evaluacion: Number(filters.anio_evaluacion),
-            }));
+            const documentosPayload = fileRows.map((item) => {
+                const nombrePropuesto = String(item.nuevo_nombre || item.file?.name || '').trim();
+                return {
+                    nombre_archivo: nombrePropuesto || item.file?.name || 'Documento',
+                    tipo_archivo: item.tipo_archivo || 'Documento',
+                    estado: 'entregado',
+                    porcentaje_completado: 0,
+                    observaciones: 'Subido y entregado',
+                    mes_evaluacion: Number(filters.mes_evaluacion),
+                    anio_evaluacion: Number(filters.anio_evaluacion),
+                };
+            });
 
             formData.append('documentos', JSON.stringify(documentosPayload));
 
@@ -396,7 +402,15 @@ export default function ImpDashboard() {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="inventarios-rgce-file-select" aria-hidden="true" />
+                                <div className="inventarios-rgce-file-rename">
+                                    <input
+                                        type="text"
+                                        value={item.nuevo_nombre}
+                                        onChange={(e) => handleDraftChange(index, 'nuevo_nombre', e.target.value)}
+                                        placeholder={item.file ? 'Nuevo nombre del archivo' : 'Nombre del archivo'}
+                                        disabled={!item.file}
+                                    />
+                                </div>
                                 <div className="inventarios-rgce-file-number" aria-hidden="true" />
                             </div>
                         ))}
