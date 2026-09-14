@@ -183,9 +183,9 @@ function normalizeStorageFolder(value, fallback = '') {
     return finalValue || fallback;
 }
 
-function buildRgceStorageKey({ razonSocial, empresa, anioEvaluacion, mesEvaluacion, nombreArchivo }) {
-    const razonFolder = normalizeStorageFolder(razonSocial?.r2_folder || razonSocial?.nombre || 'razon_social');
-    const empresaFolder = normalizeStorageFolder(empresa?.carpeta || empresa?.nombre || 'empresa');
+function buildRgceStorageKey({ razonSocialName, empresaName, anioEvaluacion, mesEvaluacion, nombreArchivo }) {
+    const razonFolder = normalizeStorageFolder(razonSocialName || 'razon_social');
+    const empresaFolder = normalizeStorageFolder(empresaName || 'empresa');
     const nombreAlmacenado = sanitizeStorageName(nombreArchivo);
 
     const pathParts = [
@@ -224,25 +224,21 @@ function normalizeDocumentType(value) {
 
 async function getRazonSocialAndEmpresa(razonSocialId, empresaId) {
     const razonSocialResult = await pool.query(
-        `SELECT rs.id,
-                rs.nombre,
-                rs.r2_folder,
-                rsd.id_razon AS catalog_razon_social_id
-         FROM public.razon_social rs
-         LEFT JOIN public.razon_social_documentos rsd ON rsd.id_razon = rs.id
-         WHERE rs.id = $1`,
+        `SELECT id_razon,
+                nombre_razon_social AS nombre,
+                nombre_razon_social AS razon_social_nombre
+         FROM public.razon_social_documentos
+         WHERE id_razon = $1`,
         [razonSocialId]
     );
 
     const empresaResult = await pool.query(
-        `SELECT e.id,
-                e.nombre,
-                e.carpeta,
-                e.razon_social_id AS main_razon_social_id,
-                ed.id_razon AS catalog_razon_social_id
-         FROM public.empresa e
-         LEFT JOIN public.empresas_documentos ed ON ed.id_empresa = e.id
-         WHERE e.id = $1`,
+        `SELECT id_empresa,
+                nombre_empresa AS nombre,
+                id_razon,
+                nombre_empresa AS empresa_nombre
+         FROM public.empresas_documentos
+         WHERE id_empresa = $1`,
         [empresaId]
     );
 
@@ -445,13 +441,12 @@ async function uploadDocuments(req, res) {
             return res.status(404).json({ success: false, message: `Razón social o empresa no válidas. razon_social_id=${razonSocialId}, empresa_id=${empresaId}` });
         }
 
-        const empresaRazonSocialId = Number(empresa.catalog_razon_social_id ?? empresa.main_razon_social_id ?? 0);
-
+        const empresaRazonSocialId = Number(empresa.id_razon ?? 0);
         if (empresaRazonSocialId !== razonSocialId) {
             console.warn('[RGCE UPLOAD] La empresa no pertenece a la razón social seleccionada.', {
                 razonSocialId,
                 empresaId,
-                empresaRazonSocialId,
+                empresaRazonSocialId: empresaRazonSocialId,
                 empresaNombre: empresa.nombre,
             });
             return res.status(400).json({
@@ -460,8 +455,8 @@ async function uploadDocuments(req, res) {
             });
         }
 
-        const razonSocialFolder = normalizeStorageFolder(razonSocial.r2_folder || razonSocial.nombre || 'razon_social');
-        const empresaFolder = normalizeStorageFolder(empresa.carpeta || empresa.nombre || 'empresa');
+        const razonSocialFolder = normalizeStorageFolder(razonSocial.nombre || 'razon_social');
+        const empresaFolder = normalizeStorageFolder(empresa.nombre || 'empresa');
 
         const savedDocuments = [];
 
@@ -492,8 +487,8 @@ async function uploadDocuments(req, res) {
 
             const nombreAlmacenado = sanitizeStorageName(nombreArchivo);
             const storageKey = buildRgceStorageKey({
-                razonSocial,
-                empresa,
+                razonSocialName: razonSocial.nombre,
+                empresaName: empresa.nombre,
                 anioEvaluacion,
                 mesEvaluacion,
                 nombreArchivo,
