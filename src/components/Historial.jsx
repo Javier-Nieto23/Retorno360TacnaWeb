@@ -83,12 +83,25 @@ export default function Historial() {
             .sort((a, b) => a.nombre.localeCompare(b.nombre));
     }, [archivosFiltrados]);
 
-    const abrirPreview = (documento) => {
-        setPreview({
-            open: true,
-            documento,
-            observacion: documento.observaciones || '',
-        });
+    const abrirPreview = async (documento) => {
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${documento.id}/preview`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(localStorage.getItem('session_token') || ''),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cargar la vista previa.');
+
+            setPreview({
+                open: true,
+                documento: { ...documento, storage_url: data.downloadUrl || data.storageUrl || documento.storage_url || '' },
+                observacion: documento.observaciones || '',
+            });
+        } catch (err) {
+            setError(err.message || 'No se pudo cargar la vista previa.');
+        }
     };
 
     const cerrarPreview = () => {
