@@ -125,6 +125,54 @@ export default function ExpDashboard() {
 
     const maxChartValue = (items) => Math.max(1, ...items.map((item) => item.value));
 
+    const cumplimientoPorRazonSocial = useMemo(() => {
+        const map = new Map();
+
+        (documentosFiltrados || []).forEach((doc) => {
+            const razonKey = String(doc.razon_social_id || doc.razon_social_nombre || 'sin-razon');
+            const razonNombre = doc.razon_social_nombre || doc.razon_social_carpeta || 'Sin razón social';
+
+            if (!map.has(razonKey)) {
+                map.set(razonKey, { nombre: razonNombre, total: 0 });
+            }
+
+            const current = map.get(razonKey);
+            current.total += Number(doc.porcentaje_completado || 0);
+        });
+
+        return Array.from(map.entries())
+            .map(([key, value]) => ({
+                key,
+                nombre: value.nombre,
+                porcentaje: Math.min(100, Number(((value.total / Math.max(1, 8)) * 100).toFixed(1))),
+            }))
+            .sort((a, b) => b.porcentaje - a.porcentaje);
+    }, [documentosFiltrados]);
+
+    const cumplimientoPorEmpresa = useMemo(() => {
+        const map = new Map();
+
+        (documentosFiltrados || []).forEach((doc) => {
+            const empresaKey = String(doc.empresa_id || doc.empresa_nombre || 'sin-empresa');
+            const empresaNombre = doc.empresa_nombre || doc.empresa_carpeta || 'Sin empresa';
+
+            if (!map.has(empresaKey)) {
+                map.set(empresaKey, { nombre: empresaNombre, total: 0 });
+            }
+
+            const current = map.get(empresaKey);
+            current.total += Number(doc.porcentaje_completado || 0);
+        });
+
+        return Array.from(map.entries())
+            .map(([key, value]) => ({
+                key,
+                nombre: value.nombre,
+                porcentaje: Math.min(100, Number(((value.total / Math.max(1, 8)) * 100).toFixed(1))),
+            }))
+            .sort((a, b) => b.porcentaje - a.porcentaje);
+    }, [documentosFiltrados]);
+
     const handleEstado = async (documentoId, estado) => {
         try {
             const token = localStorage.getItem('session_token');
@@ -362,33 +410,37 @@ export default function ExpDashboard() {
                     </div>
 
                     <div className="inventarios-chart-card" style={{ padding: '18px' }}>
-                        <h3 style={{ marginBottom: '12px' }}>Tipos de documento</h3>
-                        {tipoChart.map((item) => (
-                            <div key={item.label} style={{ marginBottom: '10px' }}>
+                        <h3 style={{ marginBottom: '12px' }}>Cumplimiento por razón social</h3>
+                        {cumplimientoPorRazonSocial.length > 0 ? cumplimientoPorRazonSocial.map((item) => (
+                            <div key={item.key} style={{ marginBottom: '10px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '13px' }}>
-                                    <span>{item.label}</span>
-                                    <strong>{item.value}</strong>
+                                    <span>{item.nombre}</span>
+                                    <strong>{item.porcentaje}%</strong>
                                 </div>
                                 <div style={{ height: '8px', background: '#edf1f7', borderRadius: '999px', overflow: 'hidden' }}>
-                                    <div style={{ width: `${(item.value / maxChartValue(tipoChart)) * 100}%`, height: '100%', background: '#10b981', borderRadius: '999px' }} />
+                                    <div style={{ width: `${item.porcentaje}%`, height: '100%', background: 'linear-gradient(90deg, #16a34a 0%, #2563eb 100%)', borderRadius: '999px' }} />
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <p style={{ margin: 0, color: '#64748b' }}>Sin datos para mostrar.</p>
+                        )}
                     </div>
 
                     <div className="inventarios-chart-card" style={{ padding: '18px' }}>
-                        <h3 style={{ marginBottom: '12px' }}>Razones sociales</h3>
-                        {razonChart.map((item) => (
-                            <div key={item.label} style={{ marginBottom: '10px' }}>
+                        <h3 style={{ marginBottom: '12px' }}>Cumplimiento por empresa</h3>
+                        {cumplimientoPorEmpresa.length > 0 ? cumplimientoPorEmpresa.map((item) => (
+                            <div key={item.key} style={{ marginBottom: '10px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '13px' }}>
-                                    <span>{item.label}</span>
-                                    <strong>{item.value}</strong>
+                                    <span>{item.nombre}</span>
+                                    <strong>{item.porcentaje}%</strong>
                                 </div>
                                 <div style={{ height: '8px', background: '#edf1f7', borderRadius: '999px', overflow: 'hidden' }}>
-                                    <div style={{ width: `${(item.value / maxChartValue(razonChart)) * 100}%`, height: '100%', background: '#f59e0b', borderRadius: '999px' }} />
+                                    <div style={{ width: `${item.porcentaje}%`, height: '100%', background: 'linear-gradient(90deg, #0ea5e9 0%, #22c55e 100%)', borderRadius: '999px' }} />
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <p style={{ margin: 0, color: '#64748b' }}>Sin datos para mostrar.</p>
+                        )}
                     </div>
                 </div>
 
