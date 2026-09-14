@@ -41,6 +41,7 @@ export default function ImpDashboard() {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [preview, setPreview] = useState({ open: false, documento: null, metadata: null });
 
     const uploadEmpresas = useMemo(() => {
         if (!uploadForm.razon_social_id) return catalogo.empresas || [];
@@ -250,6 +251,57 @@ export default function ImpDashboard() {
         } catch (err) {
             setError(err.message || 'No se pudo actualizar el archivo');
         }
+    };
+
+    const handleDownload = async (doc) => {
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${doc.id}/download-url`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo generar la URL de descarga.');
+            window.open(data.download_url || doc.storage_url, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+            setError(err.message || 'No se pudo descargar el archivo.');
+        }
+    };
+
+    const handlePreview = async (doc) => {
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${doc.id}/preview`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cargar la vista previa.');
+
+            setPreview({
+                open: true,
+                documento: { ...doc, storage_url: data.downloadUrl || data.storageUrl || doc.storage_url || '' },
+                metadata: data,
+            });
+        } catch (err) {
+            setError(err.message || 'No se pudo cargar la vista previa.');
+        }
+    };
+
+    const cerrarPreview = () => {
+        setPreview({ open: false, documento: null, metadata: null });
+    };
+
+    const getPreviewType = (url = '', forcedType = '') => {
+        if (forcedType) return forcedType;
+        const lower = String(url).toLowerCase();
+        if (lower.endsWith('.pdf')) return 'pdf';
+        if (['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => lower.endsWith(ext))) return 'image';
+        return 'unsupported';
     };
 
     return (
@@ -467,13 +519,22 @@ export default function ImpDashboard() {
                                         <td>{doc.tipo_archivo}</td>
                                         <td>
                                             {doc.storage_url ? (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDownload(doc)}
-                                                    style={{ color: '#2563eb', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-                                                >
-                                                    {doc.nombre_archivo}
-                                                </button>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDownload(doc)}
+                                                        style={{ color: '#2563eb', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                                                    >
+                                                        {doc.nombre_archivo}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handlePreview(doc)}
+                                                        style={{ color: '#0f766e', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                                                    >
+                                                        Ver
+                                                    </button>
+                                                </div>
                                             ) : (
                                                 doc.nombre_archivo
                                             )}
@@ -498,6 +559,43 @@ export default function ImpDashboard() {
                     )}
                 </div>
             </section>
+
+            {preview.open && preview.documento && (
+                <div className="historial-preview-backdrop" onClick={cerrarPreview} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div className="historial-preview-modal" onClick={(event) => event.stopPropagation()} style={{ width: 'min(1100px, 90vw)', maxHeight: '85vh', overflow: 'auto', background: '#fff', borderRadius: '16px', padding: '20px', boxShadow: '0 20px 60px rgba(15, 23, 42, 0.25)' }}>
+                        <div className="historial-preview-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                            <div>
+                                <h3 style={{ margin: 0 }}>{preview.documento.nombre_archivo}</h3>
+                                <p style={{ margin: '8px 0 0', color: '#475569' }}>{preview.documento.razon_social_nombre || 'Razón social'} · {preview.documento.empresa_nombre || 'Empresa'}</p>
+                            </div>
+                            <button type="button" className="preview-close" onClick={cerrarPreview} style={{ border: 'none', background: '#f1f5f9', width: '36px', height: '36px', borderRadius: '999px', cursor: 'pointer', fontSize: '1.1rem' }}>✕</button>
+                        </div>
+
+                        <div className="historial-preview-body" style={{ minHeight: '420px', display: 'grid', placeItems: 'center' }}>
+                            {preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'pdf' ? (
+                                <object
+                                    data={preview.documento.storage_url}
+                                    type="application/pdf"
+                                    style={{ width: '100%', minHeight: '640px', border: '1px solid #e2e8f0', borderRadius: '12px' }}
+                                >
+                                    <embed src={preview.documento.storage_url} type="application/pdf" style={{ width: '100%', minHeight: '640px' }} />
+                                    <div style={{ textAlign: 'center', padding: '24px' }}>
+                                        <p>Tu navegador no pudo mostrar la vista previa del PDF.</p>
+                                        <a href={preview.documento.storage_url} target="_blank" rel="noreferrer">Abrir archivo original</a>
+                                    </div>
+                                </object>
+                            ) : preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'image' ? (
+                                <img src={preview.documento.storage_url} alt={preview.documento.nombre_archivo} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+                            ) : (
+                                <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                                    <p>Vista previa no disponible para este tipo de archivo.</p>
+                                    <a href={preview.documento.storage_url || '#'} target="_blank" rel="noreferrer">Abrir archivo original</a>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
