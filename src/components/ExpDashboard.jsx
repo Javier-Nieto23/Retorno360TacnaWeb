@@ -146,9 +146,21 @@ export default function ExpDashboard() {
         }
     };
 
-    const handleDownload = (doc) => {
-        if (!doc.storage_url) return;
-        window.open(doc.storage_url, '_blank', 'noopener,noreferrer');
+    const handleDownload = async (doc) => {
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${doc.id}/download-url`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo generar la URL de descarga.');
+            window.open(data.download_url || doc.storage_url, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+            setError(err.message || 'No se pudo descargar el archivo.');
+        }
     };
 
     const handlePreview = async (doc) => {
@@ -165,7 +177,7 @@ export default function ExpDashboard() {
 
             setPreview({
                 open: true,
-                documento: { ...doc, storage_url: data.storageUrl || doc.storage_url },
+                documento: { ...doc, storage_url: data.downloadUrl || data.storageUrl || doc.storage_url },
                 observacion: String(doc.observaciones || '').trim(),
                 metadata: data,
             });

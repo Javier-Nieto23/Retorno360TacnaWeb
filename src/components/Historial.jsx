@@ -96,8 +96,19 @@ export default function Historial() {
     };
 
     const handleDescargar = async (archivo) => {
-        if (!archivo.storage_url) return;
-        window.open(archivo.storage_url, '_blank', 'noopener,noreferrer');
+        try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${archivo.id}/download-url`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(localStorage.getItem('session_token') || ''),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo generar la URL de descarga.');
+            window.open(data.download_url || archivo.storage_url, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+            setError(err.message || 'No se pudo descargar el archivo.');
+        }
     };
 
     const handleEliminar = async (archivo) => {

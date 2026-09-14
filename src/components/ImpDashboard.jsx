@@ -467,9 +467,13 @@ export default function ImpDashboard() {
                                         <td>{doc.tipo_archivo}</td>
                                         <td>
                                             {doc.storage_url ? (
-                                                <a href={doc.storage_url} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDownload(doc)}
+                                                    style={{ color: '#2563eb', textDecoration: 'underline', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                                                >
                                                     {doc.nombre_archivo}
-                                                </a>
+                                                </button>
                                             ) : (
                                                 doc.nombre_archivo
                                             )}

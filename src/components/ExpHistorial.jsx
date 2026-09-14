@@ -91,8 +91,8 @@ export default function ExpHistorial() {
             const data = await response.json();
             if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cargar la vista previa.');
 
-            setPreviewUrl(data.storageUrl || documento.storage_url || '');
-            setPreviewDoc({ ...documento, storage_url: data.storageUrl || documento.storage_url || '' });
+            setPreviewUrl(data.downloadUrl || data.storageUrl || documento.storage_url || '');
+            setPreviewDoc({ ...documento, storage_url: data.downloadUrl || data.storageUrl || documento.storage_url || '' });
             setPreviewObservacion(String(documento.observaciones || ''));
         } catch (err) {
             setError(err.message || 'No se pudo cargar la vista previa.');
@@ -131,9 +131,21 @@ export default function ExpHistorial() {
         }
     };
 
-    const handleDownload = (url) => {
-        if (!url) return;
-        window.open(url, '_blank', 'noopener,noreferrer');
+    const handleDownload = async (documento) => {
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${documento.id}/download-url`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo generar la URL de descarga.');
+            window.open(data.download_url || documento.storage_url, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+            setError(err.message || 'No se pudo descargar el archivo.');
+        }
     };
 
     const getPreviewType = (url = '') => {
@@ -195,7 +207,7 @@ export default function ExpHistorial() {
                                 </div>
 
                                 <div className="historial-doc-actions">
-                                    <button type="button" onClick={() => handleDownload(archivo.storage_url)}>Descargar</button>
+                                    <button type="button" onClick={() => handleDownload(archivo)}>Descargar</button>
                                     <button type="button" className="secondary" onClick={() => abrirPreview(archivo)}>Observar</button>
                                     <button type="button" className="secondary" onClick={() => handleClose(archivo)}>Cerrar</button>
                                 </div>

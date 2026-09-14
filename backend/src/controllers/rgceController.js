@@ -545,7 +545,7 @@ async function getDocumentoPreview(req, res) {
         return res.json({
             success: true,
             previewType,
-            storageUrl: documento.storage_url,
+            storageUrl: signedUrl,
             downloadUrl: signedUrl,
             contentType: metadata.contentType,
             documento,
@@ -553,6 +553,41 @@ async function getDocumentoPreview(req, res) {
     } catch (error) {
         console.error('Error al obtener preview de documento RGCE:', error);
         res.status(500).json({ success: false, message: 'No se pudo obtener la vista previa del documento.' });
+    }
+}
+
+async function getDocumentoDownloadUrl(req, res) {
+    try {
+        await ensureRgceTable();
+        const documentoId = Number(req.params.id);
+
+        const result = await pool.query(`
+            SELECT id, storage_key, storage_url, nombre_archivo, razon_social_id, empresa_id
+            FROM public.documentos_rgce
+            WHERE id = $1
+        `, [documentoId]);
+
+        if (!result.rows.length) {
+            return res.status(404).json({ success: false, message: 'Documento no encontrado.' });
+        }
+
+        const documento = result.rows[0];
+        const storageKey = String(documento.storage_key || '').trim();
+        if (!storageKey) {
+            return res.status(400).json({ success: false, message: 'El documento no tiene clave de storage válida.' });
+        }
+
+        const downloadUrl = await getDownloadUrl({
+            storageKey,
+            storageUrl: documento.storage_url,
+            filename: documento.nombre_archivo || 'archivo',
+            context: 'rgce',
+        });
+
+        return res.json({ success: true, download_url: downloadUrl });
+    } catch (error) {
+        console.error('Error al generar URL de descarga del documento RGCE:', error);
+        res.status(500).json({ success: false, message: 'No se pudo generar la URL de descarga del documento.' });
     }
 }
 
@@ -653,4 +688,5 @@ module.exports = {
     updateDocumento,
     getCatalogo,
     getDocumentoPreview,
+    getDocumentoDownloadUrl,
 };
