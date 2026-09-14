@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand, GetObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 function resolveBucketConfig(context = 'default') {
@@ -196,4 +196,45 @@ async function getFileBuffer(storageKey, options = {}) {
         throw wrapR2Error(`la lectura de objetos "${key}"`, error, targetBucket);
     }
 }
-module.exports = { uploadFile, deleteFile, checkCloudflareConnection, getDownloadUrl, getFileBuffer, r2Client, resolveBucketConfig };
+
+async function getObjectMetadata(storageKey, options = {}) {
+    const key = String(storageKey || '').trim();
+    if (!key || key.endsWith('/')) {
+        const error = new Error('storage_key invalido para metadata.');
+        error.code = 'INVALID_STORAGE_KEY';
+        throw error;
+    }
+
+    const context = String(options.context || 'default').toLowerCase();
+    const bucketConfig = context === 'rgce' ? rgceBucketConfig : defaultBucketConfig;
+    const targetBucket = options.bucketName || bucketConfig.bucketName;
+    const command = new HeadObjectCommand({
+        Bucket: targetBucket,
+        Key: key,
+    });
+
+    try {
+        const response = await r2Client.send(command);
+        return {
+            key,
+            bucket: targetBucket,
+            contentType: response.ContentType || 'application/octet-stream',
+            contentLength: response.ContentLength || 0,
+            lastModified: response.LastModified || null,
+            etag: response.ETag || null,
+        };
+    } catch (error) {
+        throw wrapR2Error(`la lectura de metadata del objeto "${key}"`, error, targetBucket);
+    }
+}
+
+module.exports = {
+    uploadFile,
+    deleteFile,
+    checkCloudflareConnection,
+    getDownloadUrl,
+    getFileBuffer,
+    getObjectMetadata,
+    r2Client,
+    resolveBucketConfig
+};

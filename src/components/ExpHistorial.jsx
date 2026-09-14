@@ -79,10 +79,24 @@ export default function ExpHistorial() {
         }
     };
 
-    const abrirPreview = (documento) => {
-        setPreviewUrl(documento.storage_url || '');
-        setPreviewDoc(documento);
-        setPreviewObservacion(String(documento.observaciones || ''));
+    const abrirPreview = async (documento) => {
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${documento.id}/preview`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cargar la vista previa.');
+
+            setPreviewUrl(data.storageUrl || documento.storage_url || '');
+            setPreviewDoc({ ...documento, storage_url: data.storageUrl || documento.storage_url || '' });
+            setPreviewObservacion(String(documento.observaciones || ''));
+        } catch (err) {
+            setError(err.message || 'No se pudo cargar la vista previa.');
+        }
     };
 
     const cerrarPreview = () => {
@@ -120,6 +134,13 @@ export default function ExpHistorial() {
     const handleDownload = (url) => {
         if (!url) return;
         window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
+    const getPreviewType = (url = '') => {
+        const lower = String(url).toLowerCase();
+        if (lower.endsWith('.pdf')) return 'pdf';
+        if (['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => lower.endsWith(ext))) return 'image';
+        return 'unsupported';
     };
 
     return (
@@ -201,12 +222,17 @@ export default function ExpHistorial() {
                         </div>
 
                         <div className="historial-preview-body">
-                            {String(previewUrl).toLowerCase().endsWith('.pdf') ? (
+                            {getPreviewType(previewUrl) === 'pdf' ? (
                                 <object data={previewUrl} type="application/pdf" className="historial-preview-frame">
                                     <embed src={previewUrl} type="application/pdf" className="historial-preview-frame" />
                                 </object>
-                            ) : (
+                            ) : getPreviewType(previewUrl) === 'image' ? (
                                 <img src={previewUrl} alt={previewDoc.nombre_archivo} className="historial-preview-image" />
+                            ) : (
+                                <div className="historial-preview-placeholder">
+                                    <p>Vista previa no disponible para este tipo de archivo.</p>
+                                    <a href={previewUrl} target="_blank" rel="noreferrer">Abrir archivo original</a>
+                                </div>
                             )}
                         </div>
 

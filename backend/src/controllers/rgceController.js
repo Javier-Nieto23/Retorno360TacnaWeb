@@ -1,5 +1,5 @@
 const pool = require('../config/database');
-const { uploadFile } = require('../config/storage');
+const { uploadFile, getObjectMetadata, getDownloadUrl } = require('../config/storage');
 
 const DOCUMENT_TYPES = [
     'Opinión Positiva',
@@ -470,6 +470,60 @@ async function uploadDocuments(req, res) {
     }
 }
 
+function determinePreviewType(contentType = '') {
+    const normalized = String(contentType || '').toLowerCase();
+    if (normalized.includes('pdf')) return 'pdf';
+    if (normalized.startsWith('image/')) return 'image';
+    if (normalized.includes('sheet') || normalized.includes('excel') || normalized.includes('csv')) return 'spreadsheet';
+    if (normalized.includes('text/') || normalized.includes('json') || normalized.includes('xml')) return 'text';
+    return 'unsupported';
+}
+
+async function getDocumentoPreview(req, res) {
+    try {
+        await ensureRgceTable();
+        const documentoId = Number(req.params.id);
+        const result = await pool.query(`
+            SELECT d.*, rs.nombre AS razon_social_nombre, e.nombre AS empresa_nombre
+            FROM public.documentos_rgce d
+            LEFT JOIN public.razon_social rs ON rs.id = d.razon_social_id
+            LEFT JOIN public.empresa e ON e.id = d.empresa_id
+            WHERE d.id = $1
+        `, [documentoId]);
+
+        if (!result.rows.length) {
+            return res.status(404).json({ success: false, message: 'Documento no encontrado.' });
+        }
+
+        const documento = result.rows[0];
+        const storageKey = String(documento.storage_key || '').trim();
+        if (!storageKey) {
+            return res.status(400).json({ success: false, message: 'El documento no tiene clave de storage válida.' });
+        }
+
+        const metadata = await getObjectMetadata(storageKey, { context: 'rgce' });
+        const previewType = determinePreviewType(metadata.contentType);
+        const signedUrl = await getDownloadUrl({
+            storageKey,
+            storageUrl: documento.storage_url,
+            filename: documento.nombre_archivo || 'archivo',
+            context: 'rgce',
+        });
+
+        return res.json({
+            success: true,
+            previewType,
+            storageUrl: documento.storage_url,
+            downloadUrl: signedUrl,
+            contentType: metadata.contentType,
+            documento,
+        });
+    } catch (error) {
+        console.error('Error al obtener preview de documento RGCE:', error);
+        res.status(500).json({ success: false, message: 'No se pudo obtener la vista previa del documento.' });
+    }
+}
+
 async function updateDocumento(req, res) {
     try {
         await ensureRgceTable();
@@ -566,4 +620,5 @@ module.exports = {
     uploadDocuments,
     updateDocumento,
     getCatalogo,
+    getDocumentoPreview,
 };

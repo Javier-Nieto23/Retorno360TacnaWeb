@@ -151,16 +151,31 @@ export default function ExpDashboard() {
         window.open(doc.storage_url, '_blank', 'noopener,noreferrer');
     };
 
-    const handlePreview = (doc) => {
-        setPreview({
-            open: true,
-            documento: doc,
-            observacion: String(doc.observaciones || '').trim(),
-        });
+    const handlePreview = async (doc) => {
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${doc.id}/preview`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cargar la vista previa.');
+
+            setPreview({
+                open: true,
+                documento: { ...doc, storage_url: data.storageUrl || doc.storage_url },
+                observacion: String(doc.observaciones || '').trim(),
+                metadata: data,
+            });
+        } catch (err) {
+            setError(err.message || 'No se pudo cargar la vista previa.');
+        }
     };
 
     const cerrarPreview = () => {
-        setPreview({ open: false, documento: null, observacion: '' });
+        setPreview({ open: false, documento: null, observacion: '', metadata: null });
     };
 
     const handlePreviewAction = async (estado) => {
@@ -192,7 +207,8 @@ export default function ExpDashboard() {
         }
     };
 
-    const getPreviewType = (url = '') => {
+    const getPreviewType = (url = '', forcedType = '') => {
+        if (forcedType) return forcedType;
         const lower = String(url).toLowerCase();
         if (lower.endsWith('.pdf')) return 'pdf';
         if (['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => lower.endsWith(ext))) return 'image';
