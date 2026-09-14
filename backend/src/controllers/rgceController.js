@@ -540,6 +540,7 @@ async function getDocumentoPreview(req, res) {
             storageUrl: documento.storage_url,
             filename: documento.nombre_archivo || 'archivo',
             context: 'rgce',
+            contentDisposition: 'inline',
         });
 
         return res.json({

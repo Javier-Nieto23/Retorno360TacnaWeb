@@ -27,6 +27,8 @@ const r2Client = new S3Client({
         accessKeyId: process.env.R2_ACCESS_KEY_ID,
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     },
+    requestChecksumCalculation: 'when_required',
+    responseChecksumValidation: 'when_required',
 });
 
 function wrapR2Error(operation, error, bucketNameOverride) {
@@ -84,7 +86,14 @@ async function uploadFile(buffer, storageKey, mimeType, options = {}) {
  * Obtiene URL de descarga segura para un objeto.
  * En R2 devuelve URL firmada; en local devuelve la URL almacenada.
  */
-async function getDownloadUrl({ storageKey, storageUrl, filename, bucketName: bucketNameOverride, context = 'default' }) {
+async function getDownloadUrl({
+    storageKey,
+    storageUrl,
+    filename,
+    bucketName: bucketNameOverride,
+    context = 'default',
+    contentDisposition = 'attachment',
+}) {
     const isR2Mode = String(process.env.STORAGE_MODE || '').toLowerCase() === 'r2';
     const resolvedContext = String(context || 'default').toLowerCase();
     const bucketConfig = resolvedContext === 'rgce' ? rgceBucketConfig : defaultBucketConfig;
@@ -103,10 +112,11 @@ async function getDownloadUrl({ storageKey, storageUrl, filename, bucketName: bu
     }
 
     const targetBucket = bucketNameOverride || bucketConfig.bucketName;
+    const disposition = String(contentDisposition || 'attachment').toLowerCase() === 'inline' ? 'inline' : 'attachment';
     const command = new GetObjectCommand({
         Bucket: targetBucket,
         Key: key,
-        ResponseContentDisposition: `attachment; filename="${String(filename || 'archivo').replace(/"/g, '')}"`,
+        ResponseContentDisposition: `${disposition}; filename="${String(filename || 'archivo').replace(/"/g, '')}"`,
     });
 
     try {

@@ -171,17 +171,6 @@ export default function Historial() {
         return 'unsupported';
     };
 
-    const getInlinePreviewUrl = (url = '') => {
-        if (!url) return '';
-
-        try {
-            const parsed = new URL(url, window.location.origin);
-            parsed.searchParams.set('response-content-disposition', 'inline');
-            return parsed.toString();
-        } catch {
-            return url;
-        }
-    };
 
     return (
         <div className="historial-page">
@@ -300,12 +289,12 @@ export default function Historial() {
                         <div className="historial-preview-body">
                             {preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'pdf' ? (
                                 <object
-                                    data={getInlinePreviewUrl(preview.documento.storage_url)}
+                                    data={preview.documento.storage_url}
                                     type="application/pdf"
                                     className="historial-preview-frame"
                                 >
                                     <embed
-                                        src={getInlinePreviewUrl(preview.documento.storage_url)}
+                                        src={preview.documento.storage_url}
                                         type="application/pdf"
                                         className="historial-preview-frame"
                                     />
@@ -315,7 +304,7 @@ export default function Historial() {
                                     </div>
                                 </object>
                             ) : preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'image' ? (
-                                <img src={getInlinePreviewUrl(preview.documento.storage_url)} alt={preview.documento.nombre_archivo} className="historial-preview-image" />
+                                <img src={preview.documento.storage_url} alt={preview.documento.nombre_archivo} className="historial-preview-image" />
                             ) : (
                                 <div className="historial-preview-placeholder">
                                     <p>Vista previa no disponible para este tipo de archivo.</p>
