@@ -4,7 +4,7 @@ const storage = multer.memoryStorage();
 
 const uploadRgce = multer({
     storage,
-    limits: { fileSize: 20 * 1024 * 1024 },
+    limits: { fileSize: 100 * 1024 * 1024 },
     fileFilter(req, file, cb) {
         const allowedMimeTypes = [
             'application/pdf',
