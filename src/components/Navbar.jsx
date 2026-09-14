@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
 import './Navbar.css';
-import { isAdminUser, isClientUser, isClusterUser, isImpUser, isInventariosUser } from '../utils/roles';
+import { isAdminUser, isClientUser, isClusterUser, isExpUser, isImpUser, isInventariosUser } from '../utils/roles';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -10,8 +10,9 @@ export default function Navbar() {
     const isClient = isClientUser(user);
     const isCluster = isClusterUser(user);
     const isImp = isImpUser(user);
+    const isExp = isExpUser(user);
     const isInventarios = isInventariosUser(user);
-    const dashboardPath = isImp ? '/dashboard' : isInventarios ? '/inventarios' : '/dashboard';
+    const dashboardPath = isImp ? '/dashboard' : isInventarios ? '/inventarios' : isExp ? '/exp-dashboard' : '/dashboard';
 
     const handleLogout = () => {
         logout();
@@ -39,6 +40,16 @@ export default function Navbar() {
                     <NavLink to="/inventarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                         Dashboard
                     </NavLink>
+                )}
+                {isExp && (
+                    <>
+                        <NavLink to="/exp-dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Dashboard
+                        </NavLink>
+                        <NavLink to="/exp-historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Historial
+                        </NavLink>
+                    </>
                 )}
                 {isClient && (
                     <>

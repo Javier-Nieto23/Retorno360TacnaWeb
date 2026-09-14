@@ -244,6 +244,8 @@ async function getDashboard(req, res) {
                 COUNT(*) FILTER (WHERE estado = 'pendiente')::int AS pendientes,
                 COUNT(*) FILTER (WHERE estado = 'en_revision')::int AS en_revision,
                 COUNT(*) FILTER (WHERE estado = 'observado')::int AS observados,
+                COUNT(*) FILTER (WHERE estado = 'atencion')::int AS atencion,
+                COUNT(*) FILTER (WHERE estado = 'terminado')::int AS terminados,
                 AVG(COALESCE(porcentaje_completado, 0))::numeric(10,2) AS porcentaje_promedio
             FROM public.documentos_rgce d
             ${whereClause}
@@ -283,6 +285,8 @@ async function getDashboard(req, res) {
             pendientes: 0,
             en_revision: 0,
             observados: 0,
+            atencion: 0,
+            terminados: 0,
             porcentaje_promedio: 0,
         };
 
@@ -482,7 +486,7 @@ async function updateDocumento(req, res) {
 
         if (typeof estado !== 'undefined') {
             const normalizedEstado = String(estado).trim().toLowerCase();
-            const validStatus = ['entregado', 'pendiente', 'en_revision', 'observado', 'aprobado', 'cerrado'];
+            const validStatus = ['entregado', 'pendiente', 'en_revision', 'observado', 'aprobado', 'cerrado', 'atencion', 'terminado'];
             updates.push(`estado = $${values.length + 1}`);
             values.push(validStatus.includes(normalizedEstado) ? normalizedEstado : 'entregado');
         }
