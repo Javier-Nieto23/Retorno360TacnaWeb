@@ -163,6 +163,33 @@ function sanitizeStorageName(fileName) {
         .trim();
 }
 
+function normalizeStorageFolder(value, fallback = '') {
+    const cleaned = String(value ?? '')
+        .trim()
+        .replace(/\\/g, '/')
+        .replace(/\/+/g, '/');
+
+    const finalValue = cleaned.replace(/^\/+|\/+$/g, '');
+    return finalValue || fallback;
+}
+
+function buildRgceStorageKey({ razonSocial, empresa, anioEvaluacion, mesEvaluacion, nombreArchivo }) {
+    const razonFolder = normalizeStorageFolder(razonSocial?.r2_folder || razonSocial?.nombre || 'razon_social');
+    const empresaFolder = normalizeStorageFolder(empresa?.carpeta || empresa?.nombre || 'empresa');
+    const nombreAlmacenado = sanitizeStorageName(nombreArchivo);
+
+    const pathParts = [
+        razonFolder,
+        empresaFolder,
+        'rgce',
+        String(anioEvaluacion),
+        String(mesEvaluacion).padStart(2, '0'),
+        nombreAlmacenado,
+    ].filter(Boolean);
+
+    return pathParts.join('/').replace(/\/+/g, '/');
+}
+
 function normalizeDocumentType(value) {
     const raw = String(value || '').trim();
     if (!raw) return 'Documento';
@@ -414,9 +441,13 @@ async function uploadDocuments(req, res) {
                 });
             }
 
-            const nombreAlmacenado = sanitizeStorageName(nombreArchivo);
-            const baseFolder = `${String(razonSocial.r2_folder || razonSocial.nombre || 'razon_social').replace(/\/+$/, '')}/${String(empresa.carpeta || empresa.nombre || 'empresa').replace(/\/+$/, '')}/rgce/${anioEvaluacion}/${String(mesEvaluacion).padStart(2, '0')}`;
-            const storageKey = `${baseFolder}/${nombreAlmacenado}`.replace(/\/+/g, '/').replace(/^\//, '');
+            const storageKey = buildRgceStorageKey({
+                razonSocial,
+                empresa,
+                anioEvaluacion,
+                mesEvaluacion,
+                nombreArchivo,
+            });
 
             const uploadResult = await uploadFile(file.buffer, storageKey, file.mimetype || 'application/octet-stream', { context: 'rgce' });
 
