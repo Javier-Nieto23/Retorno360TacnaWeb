@@ -23,6 +23,7 @@ export default function ExpDashboard() {
     const [success, setSuccess] = useState('');
     const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: new Date().getMonth() + 1, anio_evaluacion: new Date().getFullYear() });
     const [catalogo, setCatalogo] = useState({ razones_sociales: [], empresas: [] });
+    const [dashboardSearch, setDashboardSearch] = useState('');
     const [preview, setPreview] = useState({ open: false, documento: null, observacion: '' });
 
     const cargarCatalogo = async () => {
@@ -77,6 +78,52 @@ export default function ExpDashboard() {
         if (!filters.razon_social_id) return catalogo.empresas || [];
         return (catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(filters.razon_social_id));
     }, [catalogo.empresas, filters.razon_social_id]);
+
+    const documentosFiltrados = useMemo(() => {
+        const texto = dashboardSearch.trim().toLowerCase();
+        if (!texto) return documentos;
+
+        return (documentos || []).filter((doc) => {
+            const razon = String(doc.razon_social_nombre || doc.razon_social_carpeta || '').toLowerCase();
+            const empresa = String(doc.empresa_nombre || doc.empresa_carpeta || '').toLowerCase();
+            return razon.includes(texto) || empresa.includes(texto);
+        });
+    }, [dashboardSearch, documentos]);
+
+    const estadoChart = [
+        { label: 'Entregados', value: documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'entregado').length },
+        { label: 'En atención', value: documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'atencion').length },
+        { label: 'Cerrados', value: documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'terminado').length },
+        { label: 'Observados', value: documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'observado').length },
+    ];
+
+    const tipoChart = useMemo(() => {
+        const counts = {};
+        for (const doc of documentosFiltrados) {
+            const tipo = doc.tipo_archivo || 'Sin tipo';
+            counts[tipo] = (counts[tipo] || 0) + 1;
+        }
+
+        return Object.entries(counts)
+            .map(([label, value]) => ({ label, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+    }, [documentosFiltrados]);
+
+    const razonChart = useMemo(() => {
+        const counts = {};
+        for (const doc of documentosFiltrados) {
+            const razon = doc.razon_social_nombre || doc.razon_social_carpeta || 'Sin razón social';
+            counts[razon] = (counts[razon] || 0) + 1;
+        }
+
+        return Object.entries(counts)
+            .map(([label, value]) => ({ label, value }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+    }, [documentosFiltrados]);
+
+    const maxChartValue = (items) => Math.max(1, ...items.map((item) => item.value));
 
     const handleEstado = async (documentoId, estado) => {
         try {
@@ -157,7 +204,7 @@ export default function ExpDashboard() {
             <header className="inventarios-header">
                 <div>
                     <p className="inventarios-eyebrow">Rol EXP</p>
-                    <h1>Dashboard EXP / Control de documentación</h1>
+                    <h1>Dashboard EXP / Resumen documental</h1>
                 </div>
                 <div className="inventarios-date">
                     <span>{MES_NAMES[Number(filters.mes_evaluacion || new Date().getMonth() + 1) - 1]} {filters.anio_evaluacion || new Date().getFullYear()}</span>
@@ -168,29 +215,29 @@ export default function ExpDashboard() {
                 <article className="inventarios-stat-card">
                     <span className="inventarios-stat-icon">📁</span>
                     <div>
-                        <p className="inventarios-stat-value">{summary.total_documentos || 0}</p>
+                        <p className="inventarios-stat-value">{documentosFiltrados.length}</p>
                         <p className="inventarios-stat-label">Total</p>
                     </div>
                 </article>
                 <article className="inventarios-stat-card">
                     <span className="inventarios-stat-icon">📦</span>
                     <div>
-                        <p className="inventarios-stat-value">{summary.entregados || 0}</p>
+                        <p className="inventarios-stat-value">{documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'entregado').length}</p>
                         <p className="inventarios-stat-label">Entregados</p>
                     </div>
                 </article>
                 <article className="inventarios-stat-card warning">
                     <span className="inventarios-stat-icon">⚠️</span>
                     <div>
-                        <p className="inventarios-stat-value">{summary.atencion || 0}</p>
+                        <p className="inventarios-stat-value">{documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'atencion').length}</p>
                         <p className="inventarios-stat-label">En atención</p>
                     </div>
                 </article>
                 <article className="inventarios-stat-card">
                     <span className="inventarios-stat-icon">✅</span>
                     <div>
-                        <p className="inventarios-stat-value">{summary.terminados || 0}</p>
-                        <p className="inventarios-stat-label">Terminados</p>
+                        <p className="inventarios-stat-value">{documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'terminado').length}</p>
+                        <p className="inventarios-stat-label">Cerrados</p>
                     </div>
                 </article>
             </section>
@@ -199,11 +246,22 @@ export default function ExpDashboard() {
                 <div className="inventarios-chart-header">
                     <div>
                         <h2>Filtrar documentos</h2>
-                        <p>Revisión por razón social, empresa y período</p>
+                        <p>Resumen general por razón social, empresa y período</p>
                     </div>
                 </div>
 
                 <div className="inventarios-filters" style={{ marginTop: '16px' }}>
+                    <div className="inventarios-filter-group" style={{ flex: '1 1 250px' }}>
+                        <label>Texto de búsqueda</label>
+                        <input
+                            type="text"
+                            value={dashboardSearch}
+                            onChange={(e) => setDashboardSearch(e.target.value)}
+                            placeholder="Buscar razón social o empresa"
+                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db' }}
+                        />
+                    </div>
+
                     <div className="inventarios-filter-group">
                         <label>Razón social</label>
                         <select value={filters.razon_social_id} onChange={(e) => setFilters((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}>
@@ -251,15 +309,62 @@ export default function ExpDashboard() {
             <section className="inventarios-requests-card" style={{ marginTop: '24px' }}>
                 <div className="inventarios-requests-header">
                     <div>
-                        <h2>Documentos en seguimiento</h2>
-                        <p>Se revelan en atención según la antigüedad desde la fecha de carga</p>
+                        <h2>Indicadores por tipo de documento</h2>
+                        <p>Gráficos del volumen total, por estado y por razón social</p>
                     </div>
                 </div>
 
                 {error && <p className="inventarios-error">{error}</p>}
                 {success && <p className="inventarios-success">{success}</p>}
 
-                <div className="inventarios-requests-table-wrap">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', marginTop: '20px' }}>
+                    <div className="inventarios-chart-card" style={{ padding: '18px' }}>
+                        <h3 style={{ marginBottom: '12px' }}>Estados</h3>
+                        {estadoChart.map((item) => (
+                            <div key={item.label} style={{ marginBottom: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '13px' }}>
+                                    <span>{item.label}</span>
+                                    <strong>{item.value}</strong>
+                                </div>
+                                <div style={{ height: '8px', background: '#edf1f7', borderRadius: '999px', overflow: 'hidden' }}>
+                                    <div style={{ width: `${(item.value / maxChartValue(estadoChart)) * 100}%`, height: '100%', background: '#1d4ed8', borderRadius: '999px' }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="inventarios-chart-card" style={{ padding: '18px' }}>
+                        <h3 style={{ marginBottom: '12px' }}>Tipos de documento</h3>
+                        {tipoChart.map((item) => (
+                            <div key={item.label} style={{ marginBottom: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '13px' }}>
+                                    <span>{item.label}</span>
+                                    <strong>{item.value}</strong>
+                                </div>
+                                <div style={{ height: '8px', background: '#edf1f7', borderRadius: '999px', overflow: 'hidden' }}>
+                                    <div style={{ width: `${(item.value / maxChartValue(tipoChart)) * 100}%`, height: '100%', background: '#10b981', borderRadius: '999px' }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="inventarios-chart-card" style={{ padding: '18px' }}>
+                        <h3 style={{ marginBottom: '12px' }}>Razones sociales</h3>
+                        {razonChart.map((item) => (
+                            <div key={item.label} style={{ marginBottom: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '13px' }}>
+                                    <span>{item.label}</span>
+                                    <strong>{item.value}</strong>
+                                </div>
+                                <div style={{ height: '8px', background: '#edf1f7', borderRadius: '999px', overflow: 'hidden' }}>
+                                    <div style={{ width: `${(item.value / maxChartValue(razonChart)) * 100}%`, height: '100%', background: '#f59e0b', borderRadius: '999px' }} />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="inventarios-requests-table-wrap" style={{ marginTop: '24px' }}>
                     {loading ? (
                         <p>Cargando...</p>
                     ) : (
@@ -271,35 +376,22 @@ export default function ExpDashboard() {
                                     <th>Empresa</th>
                                     <th>Tipo</th>
                                     <th>Estado</th>
-                                    <th>Días</th>
                                     <th>Observación</th>
-                                    <th>Acción</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {documentos.length > 0 ? documentos.map((doc) => {
-                                    const diasAtencion = doc.estado === 'atencion' ? getDaysSince(doc.created_at) : 0;
-                                    return (
-                                        <tr key={doc.id}>
-                                            <td>{doc.nombre_archivo}</td>
-                                            <td>{doc.razon_social_nombre || doc.razon_social_carpeta}</td>
-                                            <td>{doc.empresa_nombre || doc.empresa_carpeta}</td>
-                                            <td>{doc.tipo_archivo}</td>
-                                            <td>{doc.estado}</td>
-                                            <td>{diasAtencion}</td>
-                                            <td>{doc.observaciones || '—'}</td>
-                                            <td>
-                                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                                    <button className="inventarios-btn inventarios-btn-secondary" onClick={() => handlePreview(doc)}>Ver</button>
-                                                    <button className="inventarios-btn inventarios-btn-primary" onClick={() => handleEstado(doc.id, 'terminado')}>Cerrar</button>
-                                                    <button className="inventarios-btn inventarios-btn-filter" onClick={() => handleEstado(doc.id, 'atencion')}>Atención</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                }) : (
+                                {documentosFiltrados.length > 0 ? documentosFiltrados.map((doc) => (
+                                    <tr key={doc.id}>
+                                        <td>{doc.nombre_archivo}</td>
+                                        <td>{doc.razon_social_nombre || doc.razon_social_carpeta}</td>
+                                        <td>{doc.empresa_nombre || doc.empresa_carpeta}</td>
+                                        <td>{doc.tipo_archivo}</td>
+                                        <td>{doc.estado}</td>
+                                        <td>{doc.observaciones || '—'}</td>
+                                    </tr>
+                                )) : (
                                     <tr>
-                                        <td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>No hay documentos cargados para este filtro.</td>
+                                        <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No hay documentos para este filtro.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -307,54 +399,6 @@ export default function ExpDashboard() {
                     )}
                 </div>
             </section>
-
-            {preview.open && preview.documento && (
-                <div className="historial-preview-backdrop" onClick={cerrarPreview}>
-                    <div className="historial-preview-modal" onClick={(event) => event.stopPropagation()}>
-                        <div className="historial-preview-header">
-                            <div>
-                                <h3>{preview.documento.nombre_archivo}</h3>
-                                <p>{preview.documento.razon_social_nombre || 'Razón social'} · {preview.documento.empresa_nombre || 'Empresa'}</p>
-                            </div>
-                            <button type="button" className="preview-close" onClick={cerrarPreview}>✕</button>
-                        </div>
-
-                        <div className="historial-preview-body">
-                            {preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'pdf' ? (
-                                <object data={preview.documento.storage_url} type="application/pdf" className="historial-preview-frame">
-                                    <embed src={preview.documento.storage_url} type="application/pdf" className="historial-preview-frame" />
-                                </object>
-                            ) : preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'image' ? (
-                                <img src={preview.documento.storage_url} alt={preview.documento.nombre_archivo} className="historial-preview-image" />
-                            ) : (
-                                <div className="historial-preview-placeholder">
-                                    <p>Vista previa no disponible para este tipo de archivo.</p>
-                                    <a href={preview.documento.storage_url} target="_blank" rel="noreferrer">Abrir archivo original</a>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="historial-preview-actions">
-                            <label>Observaciones</label>
-                            <textarea
-                                value={preview.observacion}
-                                rows={5}
-                                placeholder="Escribe una observación nueva o modifica la actual..."
-                                onChange={(e) => setPreview((prev) => ({ ...prev, observacion: e.target.value }))}
-                            />
-
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
-                                <button type="button" className="historial-btn-secondary" onClick={() => handlePreviewAction('atencion')}>
-                                    Enviar a atención
-                                </button>
-                                <button type="button" className="historial-btn-primary" onClick={() => handlePreviewAction('terminado')}>
-                                    Dar por cerrado
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

@@ -18,6 +18,7 @@ export default function ExpHistorial() {
     const [filtroTextoEmpresa, setFiltroTextoEmpresa] = useState('');
     const [previewUrl, setPreviewUrl] = useState('');
     const [previewDoc, setPreviewDoc] = useState(null);
+    const [previewObservacion, setPreviewObservacion] = useState('');
 
     const cargarArchivos = async () => {
         setLoading(true);
@@ -81,11 +82,39 @@ export default function ExpHistorial() {
     const abrirPreview = (documento) => {
         setPreviewUrl(documento.storage_url || '');
         setPreviewDoc(documento);
+        setPreviewObservacion(String(documento.observaciones || ''));
     };
 
     const cerrarPreview = () => {
         setPreviewUrl('');
         setPreviewDoc(null);
+        setPreviewObservacion('');
+    };
+
+    const handlePreviewAction = async (estado) => {
+        if (!previewDoc) return;
+
+        try {
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${previewDoc.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+                body: JSON.stringify({
+                    estado,
+                    observaciones: previewObservacion.trim() || (estado === 'terminado' ? 'Documento cerrado por EXP.' : 'Documento enviado a atención por EXP.'),
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo actualizar el documento.');
+            cerrarPreview();
+            await cargarArchivos();
+        } catch (err) {
+            setError(err.message || 'No se pudo actualizar el documento.');
+        }
     };
 
     const handleDownload = (url) => {
@@ -183,7 +212,21 @@ export default function ExpHistorial() {
 
                         <div className="historial-preview-actions">
                             <label>Observaciones</label>
-                            <textarea value={previewDoc.observaciones || 'Sin observaciones'} readOnly rows={4} />
+                            <textarea
+                                value={previewObservacion}
+                                rows={4}
+                                onChange={(e) => setPreviewObservacion(e.target.value)}
+                                placeholder="Escribe nuevas observaciones o modifica la actual..."
+                            />
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                                <button type="button" className="historial-btn-secondary" onClick={() => handlePreviewAction('atencion')}>
+                                    Enviar a atención
+                                </button>
+                                <button type="button" className="historial-btn-primary" onClick={() => handlePreviewAction('terminado')}>
+                                    Dar por cerrado
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
