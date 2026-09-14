@@ -384,6 +384,7 @@ async function getDocumentos(req, res) {
 async function uploadDocuments(req, res) {
     try {
         await ensureRgceTable();
+        await syncDocumentCatalogFromMainCatalog();
 
         if (!req.files || req.files.length === 0) {
             return res.status(400).json({ success: false, message: 'Debe seleccionar al menos un archivo.' });
@@ -410,8 +411,28 @@ async function uploadDocuments(req, res) {
         }
 
         const { razonSocial, empresa } = await getRazonSocialAndEmpresa(razonSocialId, empresaId);
+
         if (!razonSocial || !empresa) {
-            return res.status(404).json({ success: false, message: 'Razón social o empresa no válidas.' });
+            console.warn('[RGCE UPLOAD] Razón social o empresa inválidas.', {
+                razonSocialId,
+                empresaId,
+                razonSocialFound: !!razonSocial,
+                empresaFound: !!empresa,
+            });
+            return res.status(404).json({ success: false, message: `Razón social o empresa no válidas. razon_social_id=${razonSocialId}, empresa_id=${empresaId}` });
+        }
+
+        if (Number(empresa.razon_social_id) !== razonSocialId) {
+            console.warn('[RGCE UPLOAD] La empresa no pertenece a la razón social seleccionada.', {
+                razonSocialId,
+                empresaId,
+                empresaRazonSocialId: empresa.razon_social_id,
+                empresaNombre: empresa.nombre,
+            });
+            return res.status(400).json({
+                success: false,
+                message: `La empresa seleccionada no pertenece a la razón social elegida. razon_social_id=${razonSocialId}, empresa_id=${empresaId}`,
+            });
         }
 
         const savedDocuments = [];
