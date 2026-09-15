@@ -21,7 +21,7 @@ export default function ExpDashboard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: new Date().getMonth() + 1, anio_evaluacion: new Date().getFullYear() });
+    const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: '', anio_evaluacion: '' });
     const [catalogo, setCatalogo] = useState({ razones_sociales: [], empresas: [] });
     const [dashboardSearch, setDashboardSearch] = useState('');
     const [preview, setPreview] = useState({ open: false, documento: null, observacion: '' });
@@ -371,6 +371,7 @@ export default function ExpDashboard() {
                     <div className="inventarios-filter-group">
                         <label>Mes</label>
                         <select value={filters.mes_evaluacion} onChange={(e) => setFilters((prev) => ({ ...prev, mes_evaluacion: e.target.value }))}>
+                            <option value="">Todos</option>
                             {MES_NAMES.map((mes, idx) => (
                                 <option key={mes} value={idx + 1}>{mes}</option>
                             ))}
@@ -380,6 +381,7 @@ export default function ExpDashboard() {
                     <div className="inventarios-filter-group">
                         <label>Año</label>
                         <select value={filters.anio_evaluacion} onChange={(e) => setFilters((prev) => ({ ...prev, anio_evaluacion: e.target.value }))}>
+                            <option value="">Todos</option>
                             {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
                                 <option key={year} value={year}>{year}</option>
                             ))}
