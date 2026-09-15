@@ -35,7 +35,7 @@ export default function ImpDashboard() {
         porcentaje_promedio: 0,
     });
     const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: new Date().getMonth() + 1, anio_evaluacion: new Date().getFullYear() });
+    const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: '', anio_evaluacion: '' });
     const [uploadForm, setUploadForm] = useState({
         razon_social_id: '',
         empresa_id: '',
@@ -477,6 +477,7 @@ export default function ImpDashboard() {
                     <div className="inventarios-filter-group">
                         <label>Mes</label>
                         <select value={filters.mes_evaluacion} onChange={(e) => setFilters((prev) => ({ ...prev, mes_evaluacion: e.target.value }))}>
+                            <option value="">Todos</option>
                             {MES_NAMES.map((mes, idx) => (
                                 <option key={mes} value={idx + 1}>{mes}</option>
                             ))}
@@ -486,6 +487,7 @@ export default function ImpDashboard() {
                     <div className="inventarios-filter-group">
                         <label>Año</label>
                         <select value={filters.anio_evaluacion} onChange={(e) => setFilters((prev) => ({ ...prev, anio_evaluacion: e.target.value }))}>
+                            <option value="">Todos</option>
                             {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
                                 <option key={year} value={year}>{year}</option>
                             ))}
