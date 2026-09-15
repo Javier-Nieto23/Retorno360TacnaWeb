@@ -133,19 +133,24 @@ export default function ExpDashboard() {
             const razonNombre = doc.razon_social_nombre || doc.razon_social_carpeta || 'Sin razón social';
 
             if (!map.has(razonKey)) {
-                map.set(razonKey, { nombre: razonNombre, total: 0 });
+                map.set(razonKey, { nombre: razonNombre, total: 0, tipos: new Set(), count: 0 });
             }
 
             const current = map.get(razonKey);
             current.total += Number(doc.porcentaje_completado || 0);
+            current.count += 1;
+            if (doc.tipo_archivo) current.tipos.add(doc.tipo_archivo);
         });
 
         return Array.from(map.entries())
-            .map(([key, value]) => ({
-                key,
-                nombre: value.nombre,
-                porcentaje: Math.min(100, Number(((value.total / Math.max(1, 8)) * 100).toFixed(1))),
-            }))
+            .map(([key, value]) => {
+                const divisor = Math.max(1, value.tipos.size || value.count || 8);
+                return {
+                    key,
+                    nombre: value.nombre,
+                    porcentaje: Math.min(100, Number(((value.total / divisor) * 100).toFixed(1))),
+                };
+            })
             .sort((a, b) => b.porcentaje - a.porcentaje);
     }, [documentosFiltrados]);
 
@@ -157,19 +162,24 @@ export default function ExpDashboard() {
             const empresaNombre = doc.empresa_nombre || doc.empresa_carpeta || 'Sin empresa';
 
             if (!map.has(empresaKey)) {
-                map.set(empresaKey, { nombre: empresaNombre, total: 0 });
+                map.set(empresaKey, { nombre: empresaNombre, total: 0, tipos: new Set(), count: 0 });
             }
 
             const current = map.get(empresaKey);
             current.total += Number(doc.porcentaje_completado || 0);
+            current.count += 1;
+            if (doc.tipo_archivo) current.tipos.add(doc.tipo_archivo);
         });
 
         return Array.from(map.entries())
-            .map(([key, value]) => ({
-                key,
-                nombre: value.nombre,
-                porcentaje: Math.min(100, Number(((value.total / Math.max(1, 8)) * 100).toFixed(1))),
-            }))
+            .map(([key, value]) => {
+                const divisor = Math.max(1, value.tipos.size || value.count || 8);
+                return {
+                    key,
+                    nombre: value.nombre,
+                    porcentaje: Math.min(100, Number(((value.total / divisor) * 100).toFixed(1))),
+                };
+            })
             .sort((a, b) => b.porcentaje - a.porcentaje);
     }, [documentosFiltrados]);
 
