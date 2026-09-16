@@ -44,7 +44,10 @@ export default function Navbar() {
                 {isExp && (
                     <>
                         <NavLink to="/exp-dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                            Dashboard
+                            Dashboard EXP
+                        </NavLink>
+                        <NavLink to="/inventarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Inventarios
                         </NavLink>
                         <NavLink to="/exp-historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Historial

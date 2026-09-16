@@ -114,7 +114,8 @@ function InventariosRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (!isInventariosUser(user)) return <Navigate to={getLandingPath(user)} replace />;
+  const hasInventoryAccess = isInventariosUser(user) || isExpUser(user);
+  if (!hasInventoryAccess) return <Navigate to={getLandingPath(user)} replace />;
 
   return (
     <>

@@ -5,7 +5,11 @@ export function isAdminUser(user) {
 
 export function isInventariosUser(user) {
     const roleName = String(user?.rol_nombre || '').toLowerCase().trim();
-    return roleName === 'inventarios' || roleName.includes('inventario');
+    return roleName === 'inventarios'
+        || roleName.includes('inventario')
+        || roleName === 'exp'
+        || roleName === 'exportacion'
+        || roleName === 'export';
 }
 
 export function isImpUser(user) {
@@ -29,9 +33,9 @@ export function isClusterUser(user) {
 
 export function getLandingPath(user) {
     if (isAdminUser(user)) return '/admin';
-    if (isInventariosUser(user)) return '/inventarios';
     if (isImpUser(user)) return '/dashboard';
     if (isExpUser(user)) return '/exp-dashboard';
+    if (isInventariosUser(user)) return '/inventarios';
     if (isClientUser(user)) return '/archivos';
     if (isClusterUser(user)) return '/dashboard-calidad';
     return '/login';
