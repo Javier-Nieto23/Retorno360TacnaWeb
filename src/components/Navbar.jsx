@@ -31,6 +31,9 @@ export default function Navbar() {
                         <NavLink to={dashboardPath} className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Dashboard
                         </NavLink>
+                        <NavLink to="/imp-upload" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Subir archivos
+                        </NavLink>
                         <NavLink to="/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Historial
                         </NavLink>

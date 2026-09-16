@@ -103,6 +103,45 @@ async function ensurePedimentoTable() {
     `);
 }
 
+async function ensureVirtualesTable() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS public.virtuales_rgce (
+            id SERIAL PRIMARY KEY,
+            razon_social_id INTEGER NOT NULL,
+            empresa_id INTEGER NOT NULL,
+            nombre_operacion VARCHAR(255) NOT NULL,
+            tipo_virtual VARCHAR(120) NOT NULL,
+            cantidad INTEGER NOT NULL DEFAULT 0,
+            mes_evaluacion INTEGER NOT NULL,
+            anio_evaluacion INTEGER NOT NULL,
+            observaciones TEXT,
+            usuario_id INTEGER,
+            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+        );
+    `);
+
+    await pool.query(`
+        ALTER TABLE public.virtuales_rgce
+        ADD COLUMN IF NOT EXISTS razon_social_id INTEGER,
+        ADD COLUMN IF NOT EXISTS empresa_id INTEGER,
+        ADD COLUMN IF NOT EXISTS nombre_operacion VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS tipo_virtual VARCHAR(120),
+        ADD COLUMN IF NOT EXISTS cantidad INTEGER,
+        ADD COLUMN IF NOT EXISTS mes_evaluacion INTEGER,
+        ADD COLUMN IF NOT EXISTS anio_evaluacion INTEGER,
+        ADD COLUMN IF NOT EXISTS observaciones TEXT,
+        ADD COLUMN IF NOT EXISTS usuario_id INTEGER,
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITHOUT TIME ZONE,
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITHOUT TIME ZONE;
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_virtuales_rgce_razon_empresa
+        ON public.virtuales_rgce (razon_social_id, empresa_id);
+    `);
+}
+
 async function ensureRgceTable() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS public.documentos_rgce (
@@ -372,6 +411,117 @@ async function getPedimentos(req, res) {
     } catch (error) {
         console.error('Error al listar pedimentos RGCE:', error);
         res.status(500).json({ success: false, message: 'No se pudieron listar los pedimentos RGCE.' });
+    }
+}
+
+async function getVirtuales(req, res) {
+    try {
+        await ensureVirtualesTable();
+        const razonSocialId = req.query.razon_social_id ? Number(req.query.razon_social_id) : null;
+        const empresaId = req.query.empresa_id ? Number(req.query.empresa_id) : null;
+        const mes = req.query.mes_evaluacion ? Number(req.query.mes_evaluacion) : null;
+        const anio = req.query.anio_evaluacion ? Number(req.query.anio_evaluacion) : null;
+
+        const conditions = [];
+        const values = [];
+
+        if (razonSocialId) {
+            values.push(razonSocialId);
+            conditions.push(`v.razon_social_id = $${values.length}`);
+        }
+
+        if (empresaId) {
+            values.push(empresaId);
+            conditions.push(`v.empresa_id = $${values.length}`);
+        }
+
+        if (mes) {
+            values.push(mes);
+            conditions.push(`v.mes_evaluacion = $${values.length}`);
+        }
+
+        if (anio) {
+            values.push(anio);
+            conditions.push(`v.anio_evaluacion = $${values.length}`);
+        }
+
+        const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+        const result = await pool.query(`
+            SELECT
+                v.*,
+                rs.nombre AS razon_social_nombre,
+                e.nombre AS empresa_nombre
+            FROM public.virtuales_rgce v
+            LEFT JOIN public.razon_social rs ON rs.id = v.razon_social_id
+            LEFT JOIN public.empresa e ON e.id = v.empresa_id
+            ${whereClause}
+            ORDER BY v.anio_evaluacion DESC, v.mes_evaluacion DESC, v.created_at DESC
+        `, values);
+
+        res.json({ success: true, virtuales: result.rows });
+    } catch (error) {
+        console.error('Error al listar virtuales RGCE:', error);
+        res.status(500).json({ success: false, message: 'Error al listar virtuales RGCE.' });
+    }
+}
+
+async function createVirtual(req, res) {
+    try {
+        await ensureVirtualesTable();
+        const razonSocialId = Number(req.body.razon_social_id);
+        const empresaId = Number(req.body.empresa_id);
+        const nombreOperacion = String(req.body.nombre_operacion || req.body.nombre || '').trim();
+        const tipoVirtual = String(req.body.tipo_virtual || '').trim();
+        const cantidad = Number(req.body.cantidad || 0);
+        const mesEvaluacion = Number(req.body.mes_evaluacion || new Date().getMonth() + 1);
+        const anioEvaluacion = Number(req.body.anio_evaluacion || new Date().getFullYear());
+        const observaciones = String(req.body.observaciones || '').trim();
+
+        if (!razonSocialId || !empresaId) {
+            return res.status(400).json({ success: false, message: 'Debe seleccionar razón social y empresa.' });
+        }
+
+        if (!nombreOperacion) {
+            return res.status(400).json({ success: false, message: 'Debe indicar la operación virtual.' });
+        }
+
+        if (!tipoVirtual) {
+            return res.status(400).json({ success: false, message: 'Debe indicar el tipo de virtual.' });
+        }
+
+        const { razonSocial, empresa } = await getRazonSocialAndEmpresa(razonSocialId, empresaId);
+        if (!razonSocial || !empresa) {
+            return res.status(404).json({ success: false, message: 'Razón social o empresa no válidas.' });
+        }
+
+        const empresaRazonSocialId = Number(empresa.id_razon ?? 0);
+        if (empresaRazonSocialId !== razonSocialId) {
+            return res.status(400).json({ success: false, message: 'La empresa no pertenece a la razón social seleccionada.' });
+        }
+
+        const result = await pool.query(`
+            INSERT INTO public.virtuales_rgce (
+                razon_social_id,
+                empresa_id,
+                nombre_operacion,
+                tipo_virtual,
+                cantidad,
+                mes_evaluacion,
+                anio_evaluacion,
+                observaciones,
+                usuario_id,
+                created_at,
+                updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+            RETURNING *;
+        `, [razonSocialId, empresaId, nombreOperacion, tipoVirtual, Number.isFinite(cantidad) ? cantidad : 0, mesEvaluacion, anioEvaluacion, observaciones, req.user?.id]);
+
+        res.status(201).json({ success: true, virtual: result.rows[0] });
+    } catch (error) {
+        console.error('Error al crear registro virtual RGCE:', error);
+        res.status(500).json({ success: false, message: 'No se pudo guardar el registro virtual.' });
     }
 }
 
@@ -887,4 +1037,6 @@ module.exports = {
     getCatalogo,
     getDocumentoPreview,
     getDocumentoDownloadUrl,
+    getVirtuales,
+    createVirtual,
 };
