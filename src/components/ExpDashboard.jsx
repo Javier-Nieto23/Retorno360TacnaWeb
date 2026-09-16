@@ -250,22 +250,7 @@ export default function ExpDashboard() {
 
     return (
         <div className="exp-portal-shell">
-            <header className="exp-portal-header">
-                <div className="exp-title-wrap">
-                    <h1>Trazabilidad 3.1.42 · Auditoría de operaciones virtuales</h1>
-                    <p className="exp-subtitle">Materialidad de transferencias virtuales — Regla 3.1.42 RGCE 2026 — checklist de 18 documentos por pedimento</p>
 
-                </div>
-
-
-            </header>
-
-            <div className="exp-banner">
-                <span className="exp-banner-mark" />
-                <p>
-                    <strong>Cobertura:</strong> {documentosFiltrados.length || 0} pedimentos en {documentosFiltrados.length ? '2' : '0'} hojas mensuales (AGOSTO 2025 — JULIO 2026). Estado de la auditoría: {summary.terminados || 0} auditados · {summary.atencion || 0} con auditoría parcial · {summary.observados || 0} sin auditor asignado.
-                </p>
-            </div>
 
             <section className="exp-kpi-grid">
                 {kpiCards.map((item, index) => (
