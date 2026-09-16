@@ -161,6 +161,77 @@ export default function ExpDashboard() {
             .slice(0, 5);
     }, [documentosFiltrados]);
 
+    const cumplimientoPorCliente = useMemo(() => {
+        const map = new Map();
+
+        (documentosFiltrados || []).forEach((doc) => {
+            const clienteKey = String(doc.empresa_id || doc.empresa_nombre || 'sin-cliente');
+            const clienteNombre = doc.empresa_nombre || doc.empresa_carpeta || 'Sin cliente';
+
+            if (!map.has(clienteKey)) {
+                map.set(clienteKey, { nombre: clienteNombre, total: 0, count: 0 });
+            }
+
+            const current = map.get(clienteKey);
+            current.total += Number(doc.porcentaje_completado || 0);
+            current.count += 1;
+        });
+
+        return Array.from(map.entries())
+            .map(([key, value]) => ({
+                key,
+                nombre: value.nombre,
+                total: value.total,
+                count: value.count,
+                porcentaje: value.count ? Math.min(100, Number(((value.total / value.count) * 100).toFixed(1))) : 0,
+            }))
+            .sort((a, b) => b.porcentaje - a.porcentaje)
+            .slice(0, 7);
+    }, [documentosFiltrados]);
+
+    const cumplimientoPorMes = useMemo(() => {
+        const map = new Map();
+
+        (documentosFiltrados || []).forEach((doc) => {
+            const mes = Number(doc.mes_evaluacion || new Date().getMonth() + 1);
+            const anio = Number(doc.anio_evaluacion || new Date().getFullYear());
+            const key = `${anio}-${String(mes).padStart(2, '0')}`;
+            const label = `${MES_NAMES[mes - 1] || 'Mes'} ${anio}`;
+
+            if (!map.has(key)) {
+                map.set(key, { label, total: 0, count: 0, auditado: 0, parcial: 0, sinAuditor: 0 });
+            }
+
+            const current = map.get(key);
+            current.count += 1;
+            current.total += Number(doc.porcentaje_completado || 0);
+
+            const estado = String(doc.estado || '').toLowerCase();
+            if (estado === 'terminado' || estado === 'entregado' || estado === 'aprobado') {
+                current.auditado += 1;
+            } else if (estado === 'atencion' || estado === 'en_revision') {
+                current.parcial += 1;
+            } else {
+                current.sinAuditor += 1;
+            }
+        });
+
+        return Array.from(map.entries())
+            .map(([key, value]) => {
+                const porcentaje = value.count ? Math.min(100, Number(((value.total / value.count) * 100).toFixed(1))) : 0;
+                return {
+                    key,
+                    label: value.label,
+                    porcentaje,
+                    total: value.count,
+                    auditado: value.auditado,
+                    parcial: value.parcial,
+                    sinAuditor: value.sinAuditor,
+                };
+            })
+            .sort((a, b) => b.label.localeCompare(a.label));
+    }, [documentosFiltrados]);
+
     const totalBasicaCritica = Number(summary.terminados || 0) + Number(summary.atencion || 0) + Number(summary.observados || 0);
     const porcentajeBaseCritica = documentosFiltrados.length
         ? Math.min(100, Number(((Number(summary.entregados || 0) / Math.max(1, documentosFiltrados.length)) * 100).toFixed(1)))
@@ -327,6 +398,59 @@ export default function ExpDashboard() {
                                 </div>
                                 <div className="exp-progress-track">
                                     <div className="exp-progress-bar" style={{ width: `${item.porcentaje}%` }} />
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="exp-empty-state">Sin datos para mostrar.</div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            <section className="exp-extra-panels">
+                <div className="exp-panel exp-panel-compact">
+                    <div className="exp-panel-header">
+                        <h2>Cumplimiento por cliente (célula de servicio)</h2>
+                    </div>
+                    <p className="exp-panel-copy">% promedio sobre los 18 por cliente dentro de su entidad shelter — cada célula / LSS monitorea su cartera.</p>
+                    <div className="exp-client-chart">
+                        {cumplimientoPorCliente.length > 0 ? cumplimientoPorCliente.map((cliente) => (
+                            <div key={cliente.key} className="exp-client-row">
+                                <div className="exp-client-label">{cliente.nombre}</div>
+                                <div className="exp-client-track">
+                                    <div className="exp-client-bar" style={{ width: `${cliente.porcentaje}%` }} />
+                                    <div className="exp-client-track-bg" />
+                                </div>
+                                <div className="exp-client-value">{cliente.porcentaje}%</div>
+                            </div>
+                        )) : (
+                            <div className="exp-empty-state">Sin datos para mostrar.</div>
+                        )}
+                    </div>
+                </div>
+
+                <div className="exp-panel exp-panel-compact">
+                    <div className="exp-panel-header">
+                        <h2>Cumplimiento y estado de auditoría por mes</h2>
+                    </div>
+                    <p className="exp-panel-copy">Barra = % promedio del mes sobre los 18; debajo, cuántos pedimentos hay y en qué estado está su auditoría.</p>
+                    <div className="exp-month-chart">
+                        {cumplimientoPorMes.length > 0 ? cumplimientoPorMes.map((mes) => (
+                            <div key={mes.key} className="exp-month-row">
+                                <div className="exp-month-label">
+                                    <span>{mes.label}</span>
+                                    <strong>{mes.total}</strong>
+                                </div>
+                                <div className="exp-month-track">
+                                    <div className="exp-month-fill green" style={{ width: `${(mes.auditado / Math.max(1, mes.total)) * 100}%` }} />
+                                    <div className="exp-month-fill blue" style={{ width: `${(mes.parcial / Math.max(1, mes.total)) * 100}%` }} />
+                                    <div className="exp-month-fill grey" style={{ width: `${(mes.sinAuditor / Math.max(1, mes.total)) * 100}%` }} />
+                                </div>
+                                <div className="exp-month-percent">{mes.porcentaje}%</div>
+                                <div className="exp-month-badges">
+                                    {mes.auditado > 0 && <span className="exp-badge auditado">{mes.auditado} auditado</span>}
+                                    {mes.parcial > 0 && <span className="exp-badge parcial">{mes.parcial} parcial</span>}
+                                    {mes.sinAuditor > 0 && <span className="exp-badge sin-auditor">{mes.sinAuditor} sin auditor</span>}
                                 </div>
                             </div>
                         )) : (
