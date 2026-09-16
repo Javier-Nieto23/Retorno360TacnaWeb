@@ -39,9 +39,17 @@ export default function ImpDashboard() {
     const [uploadForm, setUploadForm] = useState({
         razon_social_id: '',
         empresa_id: '',
+        pedimento_id: '',
         mes_evaluacion: new Date().getMonth() + 1,
         anio_evaluacion: new Date().getFullYear(),
     });
+    const [pedimentoForm, setPedimentoForm] = useState({
+        razon_social_id: '',
+        empresa_id: '',
+        nombre_pedimento: '',
+    });
+    const [pedimentos, setPedimentos] = useState([]);
+    const [creatingPedimento, setCreatingPedimento] = useState(false);
     const [draftFiles, setDraftFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
@@ -102,6 +110,14 @@ export default function ImpDashboard() {
         if (!uploadForm.razon_social_id) return catalogo.empresas || [];
         return (catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(uploadForm.razon_social_id));
     }, [catalogo.empresas, uploadForm.razon_social_id]);
+
+    const pedimentosDisponibles = useMemo(() => {
+        if (!uploadForm.razon_social_id || !uploadForm.empresa_id) return [];
+        return (pedimentos || []).filter(
+            (pedimento) => String(pedimento.razon_social_id) === String(uploadForm.razon_social_id)
+                && String(pedimento.empresa_id) === String(uploadForm.empresa_id)
+        );
+    }, [pedimentos, uploadForm.empresa_id, uploadForm.razon_social_id]);
 
     useEffect(() => {
         if (!user) return;
@@ -185,6 +201,37 @@ export default function ImpDashboard() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
+    useEffect(() => {
+        if (!user || !uploadForm.razon_social_id || !uploadForm.empresa_id) {
+            setPedimentos([]);
+            return;
+        }
+
+        const cargarPedimentos = async () => {
+            try {
+                const query = new URLSearchParams({
+                    razon_social_id: String(uploadForm.razon_social_id),
+                    empresa_id: String(uploadForm.empresa_id),
+                });
+
+                const token = localStorage.getItem('session_token');
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/pedimentos?${query.toString()}`, {
+                    headers: {
+                        'x-user-id': String(user?.id || ''),
+                        'x-session-token': String(token || ''),
+                    },
+                });
+                const data = await response.json();
+                if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudieron cargar los pedimentos');
+                setPedimentos(data.pedimentos || []);
+            } catch (err) {
+                setPedimentos([]);
+            }
+        };
+
+        cargarPedimentos();
+    }, [user, uploadForm.razon_social_id, uploadForm.empresa_id]);
+
     const createEmptyDraftFile = () => ({
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
         file: null,
@@ -223,6 +270,68 @@ export default function ImpDashboard() {
         setDraftFiles((prev) => prev.map((item, idx) => idx === index ? { ...item, [field]: value } : item));
     };
 
+    const handleCreatePedimento = async () => {
+        if (!pedimentoForm.razon_social_id || !pedimentoForm.empresa_id) {
+            setError('Debes seleccionar razón social y empresa antes de crear una carpeta.');
+            return;
+        }
+
+        if (!pedimentoForm.nombre_pedimento.trim()) {
+            setError('Debes escribir el nombre del pedimento.');
+            return;
+        }
+
+        try {
+            setCreatingPedimento(true);
+            setError('');
+            setSuccess('');
+
+            const token = localStorage.getItem('session_token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/pedimentos`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+                body: JSON.stringify({
+                    razon_social_id: pedimentoForm.razon_social_id,
+                    empresa_id: pedimentoForm.empresa_id,
+                    nombre_pedimento: pedimentoForm.nombre_pedimento,
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data?.success) {
+                throw new Error(data?.message || 'No se pudo crear el pedimento.');
+            }
+
+            setSuccess(`La carpeta ${data.pedimento?.nombre_pedimento || pedimentoForm.nombre_pedimento} quedó creada correctamente.`);
+            setPedimentoForm((prev) => ({ ...prev, nombre_pedimento: '' }));
+            setUploadForm((prev) => ({ ...prev, pedimento_id: String(data.pedimento?.id || prev.pedimento_id) }));
+
+            const query = new URLSearchParams({
+                razon_social_id: String(pedimentoForm.razon_social_id),
+                empresa_id: String(pedimentoForm.empresa_id),
+            });
+
+            const pedimentosResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/pedimentos?${query.toString()}`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(token || ''),
+                },
+            });
+            const pedimentosData = await pedimentosResponse.json();
+            if (pedimentosResponse.ok && pedimentosData?.success) {
+                setPedimentos(pedimentosData.pedimentos || []);
+            }
+        } catch (err) {
+            setError(err.message || 'No se pudo crear la carpeta del pedimento.');
+        } finally {
+            setCreatingPedimento(false);
+        }
+    };
+
     const handleUpload = async () => {
         const fileRows = draftFiles.filter((item) => item.file);
         if (fileRows.length === 0) {
@@ -242,6 +351,9 @@ export default function ImpDashboard() {
             const formData = new FormData();
             formData.append('razon_social_id', uploadForm.razon_social_id);
             formData.append('empresa_id', uploadForm.empresa_id);
+            if (uploadForm.pedimento_id) {
+                formData.append('pedimento_id', String(uploadForm.pedimento_id));
+            }
             formData.append('mes_evaluacion', String(uploadForm.mes_evaluacion));
             formData.append('anio_evaluacion', String(uploadForm.anio_evaluacion));
 
@@ -503,6 +615,75 @@ export default function ImpDashboard() {
             </section>
 
             <section className="inventarios-upload-card" style={{ marginTop: '24px' }}>
+                <h2>Carpetas RGCE</h2>
+                <div className="inventarios-contabilidad-form" style={{ marginBottom: '24px' }}>
+                    <div className="inventarios-filters" style={{ gridTemplateColumns: 'repeat(2, minmax(220px, 1fr))', marginBottom: '1rem' }}>
+                        <div className="inventarios-filter-group">
+                            <label>Razón social*</label>
+                            <select
+                                value={pedimentoForm.razon_social_id}
+                                onChange={(e) => setPedimentoForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}
+                            >
+                                <option value="">Seleccione razón social</option>
+                                {razonesSociales.map((rs) => (
+                                    <option key={rs.id} value={rs.id}>{rs.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="inventarios-filter-group">
+                            <label>Empresa*</label>
+                            <select
+                                value={pedimentoForm.empresa_id}
+                                onChange={(e) => setPedimentoForm((prev) => ({ ...prev, empresa_id: e.target.value }))}
+                            >
+                                <option value="">Seleccione empresa</option>
+                                {pedimentoForm.razon_social_id ? (catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(pedimentoForm.razon_social_id)).map((empresa) => (
+                                    <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                                )) : null}
+                            </select>
+                        </div>
+
+                        <div className="inventarios-filter-group" style={{ gridColumn: '1 / -1' }}>
+                            <label>Nombre del pedimento</label>
+                            <input
+                                type="text"
+                                value={pedimentoForm.nombre_pedimento}
+                                onChange={(e) => setPedimentoForm((prev) => ({ ...prev, nombre_pedimento: e.target.value }))}
+                                placeholder="Ej. PED-001 / Importación 2026"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="inventarios-contabilidad-actions">
+                        <button type="button" className="inventarios-btn inventarios-btn-primary" onClick={handleCreatePedimento} disabled={creatingPedimento || !pedimentoForm.razon_social_id || !pedimentoForm.empresa_id || !pedimentoForm.nombre_pedimento.trim()}>
+                            {creatingPedimento ? 'Creando...' : 'Crear carpeta'}
+                        </button>
+                    </div>
+
+                    {pedimentosDisponibles.length > 0 && (
+                        <div style={{ marginTop: '18px' }}>
+                            <h3 style={{ margin: '0 0 12px' }}>Pedimentos disponibles</h3>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                                {pedimentosDisponibles.map((pedimento) => (
+                                    <button
+                                        key={pedimento.id}
+                                        type="button"
+                                        className="inventarios-btn inventarios-btn-secondary"
+                                        onClick={() => setUploadForm((prev) => ({ ...prev, pedimento_id: String(pedimento.id) }))}
+                                        style={{
+                                            background: uploadForm.pedimento_id === String(pedimento.id) ? '#1d4ed8' : '#f8fafc',
+                                            color: uploadForm.pedimento_id === String(pedimento.id) ? '#fff' : '#0f172a',
+                                        }}
+                                    >
+                                        {pedimento.nombre_pedimento}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 <h2>Subir documentación RGCE</h2>
                 <div className="inventarios-contabilidad-form">
                     <div className="inventarios-filters" style={{ gridTemplateColumns: 'repeat(2, minmax(220px, 1fr))', marginBottom: '1rem' }}>
@@ -510,7 +691,7 @@ export default function ImpDashboard() {
                             <label>Razón social*</label>
                             <select
                                 value={uploadForm.razon_social_id}
-                                onChange={(e) => setUploadForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}
+                                onChange={(e) => setUploadForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '', pedimento_id: '' }))}
                             >
                                 <option value="">Seleccione razón social</option>
                                 {razonesSociales.map((rs) => (
@@ -523,11 +704,24 @@ export default function ImpDashboard() {
                             <label>Empresa*</label>
                             <select
                                 value={uploadForm.empresa_id}
-                                onChange={(e) => setUploadForm((prev) => ({ ...prev, empresa_id: e.target.value }))}
+                                onChange={(e) => setUploadForm((prev) => ({ ...prev, empresa_id: e.target.value, pedimento_id: '' }))}
                             >
                                 <option value="">Seleccione empresa</option>
                                 {uploadEmpresas.map((empresa) => (
                                     <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="inventarios-filter-group">
+                            <label>Pedimento</label>
+                            <select
+                                value={uploadForm.pedimento_id}
+                                onChange={(e) => setUploadForm((prev) => ({ ...prev, pedimento_id: e.target.value }))}
+                            >
+                                <option value="">Sin pedimento</option>
+                                {pedimentosDisponibles.map((pedimento) => (
+                                    <option key={pedimento.id} value={pedimento.id}>{pedimento.nombre_pedimento}</option>
                                 ))}
                             </select>
                         </div>

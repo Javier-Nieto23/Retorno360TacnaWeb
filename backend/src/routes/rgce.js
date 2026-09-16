@@ -12,6 +12,8 @@ const {
     getCatalogo,
     getDocumentoPreview,
     getDocumentoDownloadUrl,
+    createPedimento,
+    getPedimentos,
 } = require('../controllers/rgceController');
 
 function allowImpOrExp(req, res, next) {
@@ -22,10 +24,12 @@ function allowImpOrExp(req, res, next) {
 }
 
 router.get('/catalogo', authMiddleware, allowImpOrExp, getCatalogo);
+router.get('/pedimentos', authMiddleware, allowImpOrExp, getPedimentos);
 router.get('/dashboard', authMiddleware, allowImpOrExp, getDashboard);
 router.get('/documentos', authMiddleware, allowImpOrExp, getDocumentos);
 router.get('/:id/download-url', authMiddleware, allowImpOrExp, getDocumentoDownloadUrl);
 router.get('/:id/preview', authMiddleware, allowImpOrExp, getDocumentoPreview);
+router.post('/pedimentos', authMiddleware, requireImp, createPedimento);
 router.post('/upload', authMiddleware, requireImp, uploadRgce.array('archivos', 20), uploadDocuments);
 router.patch('/:id', authMiddleware, allowImpOrExp, updateDocumento);
 

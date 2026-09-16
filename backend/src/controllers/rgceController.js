@@ -74,14 +74,45 @@ async function syncDocumentCatalogFromMainCatalog() {
     `);
 }
 
+async function ensurePedimentoTable() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS public.pedimentos_rgce (
+            id SERIAL PRIMARY KEY,
+            razon_social_id INTEGER NOT NULL,
+            empresa_id INTEGER NOT NULL,
+            nombre_pedimento VARCHAR(255) NOT NULL,
+            carpeta VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT NOW()
+        );
+    `);
+
+    await pool.query(`
+        ALTER TABLE public.pedimentos_rgce
+        ADD COLUMN IF NOT EXISTS razon_social_id INTEGER,
+        ADD COLUMN IF NOT EXISTS empresa_id INTEGER,
+        ADD COLUMN IF NOT EXISTS nombre_pedimento VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS carpeta VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITHOUT TIME ZONE,
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITHOUT TIME ZONE;
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_pedimentos_rgce_razon_empresa
+        ON public.pedimentos_rgce (razon_social_id, empresa_id);
+    `);
+}
+
 async function ensureRgceTable() {
     await pool.query(`
         CREATE TABLE IF NOT EXISTS public.documentos_rgce (
             id SERIAL PRIMARY KEY,
             razon_social_id INTEGER,
             empresa_id INTEGER,
+            pedimento_id INTEGER,
             razon_social_carpeta VARCHAR(500) NOT NULL,
             empresa_carpeta VARCHAR(500) NOT NULL,
+            pedimento_carpeta VARCHAR(500),
             tipo_archivo VARCHAR(120) NOT NULL,
             nombre_archivo VARCHAR(500) NOT NULL,
             nombre_almacenado VARCHAR(500) NOT NULL,
@@ -102,8 +133,10 @@ async function ensureRgceTable() {
         ALTER TABLE public.documentos_rgce
         ADD COLUMN IF NOT EXISTS razon_social_id INTEGER,
         ADD COLUMN IF NOT EXISTS empresa_id INTEGER,
+        ADD COLUMN IF NOT EXISTS pedimento_id INTEGER,
         ADD COLUMN IF NOT EXISTS razon_social_carpeta VARCHAR(500),
         ADD COLUMN IF NOT EXISTS empresa_carpeta VARCHAR(500),
+        ADD COLUMN IF NOT EXISTS pedimento_carpeta VARCHAR(500),
         ADD COLUMN IF NOT EXISTS tipo_archivo VARCHAR(120),
         ADD COLUMN IF NOT EXISTS nombre_archivo VARCHAR(500),
         ADD COLUMN IF NOT EXISTS nombre_almacenado VARCHAR(500),
@@ -183,14 +216,16 @@ function normalizeStorageFolder(value, fallback = '') {
     return finalValue || fallback;
 }
 
-function buildRgceStorageKey({ razonSocialName, empresaName, anioEvaluacion, mesEvaluacion, nombreArchivo }) {
+function buildRgceStorageKey({ razonSocialName, empresaName, pedimentoName, anioEvaluacion, mesEvaluacion, nombreArchivo }) {
     const razonFolder = normalizeStorageFolder(razonSocialName || 'razon_social');
     const empresaFolder = normalizeStorageFolder(empresaName || 'empresa');
+    const pedimentoFolder = normalizeStorageFolder(pedimentoName || 'sin-pedimento');
     const nombreAlmacenado = sanitizeStorageName(nombreArchivo);
 
     const pathParts = [
         razonFolder,
         empresaFolder,
+        pedimentoFolder,
         'rgce',
         String(anioEvaluacion),
         String(mesEvaluacion).padStart(2, '0'),
@@ -246,6 +281,98 @@ async function getRazonSocialAndEmpresa(razonSocialId, empresaId) {
         razonSocial: razonSocialResult.rows[0],
         empresa: empresaResult.rows[0],
     };
+}
+
+async function createPedimento(req, res) {
+    try {
+        await ensurePedimentoTable();
+        const razonSocialId = Number(req.body.razon_social_id);
+        const empresaId = Number(req.body.empresa_id);
+        const nombrePedimento = String(req.body.nombre_pedimento || req.body.nombre || '').trim();
+
+        if (!razonSocialId || !empresaId) {
+            return res.status(400).json({ success: false, message: 'Debe seleccionar razón social y empresa para crear un pedimento.' });
+        }
+
+        if (!nombrePedimento) {
+            return res.status(400).json({ success: false, message: 'Debe indicar el nombre del pedimento.' });
+        }
+
+        const { razonSocial, empresa } = await getRazonSocialAndEmpresa(razonSocialId, empresaId);
+        if (!razonSocial || !empresa) {
+            return res.status(404).json({ success: false, message: 'Razón social o empresa no válidas para crear el pedimento.' });
+        }
+
+        const empresaRazonSocialId = Number(empresa.id_razon ?? 0);
+        if (empresaRazonSocialId !== razonSocialId) {
+            return res.status(400).json({ success: false, message: 'La empresa no pertenece a la razón social seleccionada.' });
+        }
+
+        const carpeta = normalizeStorageFolder(nombrePedimento)
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-');
+
+        if (!carpeta) {
+            return res.status(400).json({ success: false, message: 'El nombre del pedimento no es válido.' });
+        }
+
+        const existing = await pool.query(`
+            SELECT id
+            FROM public.pedimentos_rgce
+            WHERE razon_social_id = $1 AND empresa_id = $2 AND LOWER(TRIM(carpeta)) = LOWER(TRIM($3))
+            LIMIT 1;
+        `, [razonSocialId, empresaId, carpeta]);
+
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ success: false, message: 'Ya existe un pedimento con ese nombre para esta empresa.' });
+        }
+
+        const result = await pool.query(`
+            INSERT INTO public.pedimentos_rgce (razon_social_id, empresa_id, nombre_pedimento, carpeta, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, NOW(), NOW())
+            RETURNING *;
+        `, [razonSocialId, empresaId, nombrePedimento, carpeta]);
+
+        res.status(201).json({ success: true, pedimento: result.rows[0] });
+    } catch (error) {
+        console.error('Error al crear pedimento RGCE:', error);
+        res.status(500).json({ success: false, message: 'No se pudo crear el pedimento RGCE.' });
+    }
+}
+
+async function getPedimentos(req, res) {
+    try {
+        await ensurePedimentoTable();
+        const razonSocialId = req.query.razon_social_id ? Number(req.query.razon_social_id) : null;
+        const empresaId = req.query.empresa_id ? Number(req.query.empresa_id) : null;
+
+        const conditions = [];
+        const values = [];
+
+        if (razonSocialId) {
+            values.push(razonSocialId);
+            conditions.push(`p.razon_social_id = $${values.length}`);
+        }
+
+        if (empresaId) {
+            values.push(empresaId);
+            conditions.push(`p.empresa_id = $${values.length}`);
+        }
+
+        const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+        const result = await pool.query(`
+            SELECT p.*
+            FROM public.pedimentos_rgce p
+            ${whereClause}
+            ORDER BY p.created_at DESC
+        `, values);
+
+        res.json({ success: true, pedimentos: result.rows });
+    } catch (error) {
+        console.error('Error al listar pedimentos RGCE:', error);
+        res.status(500).json({ success: false, message: 'No se pudieron listar los pedimentos RGCE.' });
+    }
 }
 
 async function getDashboard(req, res) {
@@ -411,6 +538,7 @@ async function uploadDocuments(req, res) {
 
         const razonSocialId = Number(req.body.razon_social_id);
         const empresaId = Number(req.body.empresa_id);
+        const pedimentoId = Number(req.body.pedimento_id || 0);
 
         if (!razonSocialId || !empresaId) {
             return res.status(400).json({ success: false, message: 'Debe seleccionar razón social y empresa antes de subir archivos.' });
@@ -458,6 +586,24 @@ async function uploadDocuments(req, res) {
         const razonSocialFolder = normalizeStorageFolder(razonSocial.nombre || 'razon_social');
         const empresaFolder = normalizeStorageFolder(empresa.nombre || 'empresa');
 
+        let pedimentoNombre = 'sin-pedimento';
+        let pedimentoFolder = 'sin-pedimento';
+        if (pedimentoId) {
+            const pedimentoResult = await pool.query(`
+                SELECT id, razon_social_id, empresa_id, nombre_pedimento, carpeta
+                FROM public.pedimentos_rgce
+                WHERE id = $1 AND razon_social_id = $2 AND empresa_id = $3
+                LIMIT 1;
+            `, [pedimentoId, razonSocialId, empresaId]);
+
+            if (!pedimentoResult.rows.length) {
+                return res.status(400).json({ success: false, message: 'El pedimento seleccionado no pertenece a la razón social y empresa elegidas.' });
+            }
+
+            pedimentoNombre = pedimentoResult.rows[0].nombre_pedimento || 'sin-pedimento';
+            pedimentoFolder = normalizeStorageFolder(pedimentoResult.rows[0].carpeta || pedimentoNombre || 'sin-pedimento');
+        }
+
         const savedDocuments = [];
 
         for (let index = 0; index < req.files.length; index += 1) {
@@ -489,6 +635,7 @@ async function uploadDocuments(req, res) {
             const storageKey = buildRgceStorageKey({
                 razonSocialName: razonSocial.nombre,
                 empresaName: empresa.nombre,
+                pedimentoName: pedimentoFolder,
                 anioEvaluacion,
                 mesEvaluacion,
                 nombreArchivo,
@@ -500,8 +647,10 @@ async function uploadDocuments(req, res) {
                 INSERT INTO public.documentos_rgce (
                     razon_social_id,
                     empresa_id,
+                    pedimento_id,
                     razon_social_carpeta,
                     empresa_carpeta,
+                    pedimento_carpeta,
                     tipo_archivo,
                     nombre_archivo,
                     nombre_almacenado,
@@ -516,13 +665,15 @@ async function uploadDocuments(req, res) {
                     created_at,
                     updated_at
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW(), NOW())
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
                 RETURNING *;
             `, [
                 razonSocialId,
                 empresaId,
+                pedimentoId || null,
                 razonSocialFolder,
                 empresaFolder,
+                pedimentoFolder,
                 tipoArchivo,
                 nombreArchivo,
                 nombreAlmacenado,
