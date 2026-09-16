@@ -254,13 +254,10 @@ export default function ExpDashboard() {
                 <div className="exp-title-wrap">
                     <h1>Trazabilidad 3.1.42 · Auditoría de operaciones virtuales</h1>
                     <p className="exp-subtitle">Materialidad de transferencias virtuales — Regla 3.1.42 RGCE 2026 — checklist de 18 documentos por pedimento</p>
-                    <p className="exp-meta">Fuente: ARCHIVO AUDITORIA VIRTUAL.xlsx (SharePoint • 3.1.42 (VIRTUALES) / 1 – PROVEDORES V1) • Generado: {new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</p>
+
                 </div>
 
-                <div className="exp-header-actions">
-                    <button className="exp-mini-btn">Carpeta 3.1.42 (VIRTUALES) en SharePoint</button>
-                    <button className="exp-theme-btn">☼ Tema</button>
-                </div>
+
             </header>
 
             <div className="exp-banner">
