@@ -49,9 +49,6 @@ export default function Navbar() {
                         <NavLink to="/inventarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Inventarios
                         </NavLink>
-                        <NavLink to="/exp-historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                            Historial
-                        </NavLink>
                     </>
                 )}
                 {isClient && (

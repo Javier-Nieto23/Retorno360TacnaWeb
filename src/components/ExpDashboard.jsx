@@ -1,30 +1,32 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import './ExpDashboard.css';
 
 const MES_NAMES = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-function getDaysSince(dateValue) {
-    if (!dateValue) return 0;
-    const target = new Date(dateValue);
-    const today = new Date();
-    const diffMs = today.getTime() - target.getTime();
-    return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-}
-
 export default function ExpDashboard() {
     const { user } = useAuth();
     const [documentos, setDocumentos] = useState([]);
-    const [summary, setSummary] = useState({ total_documentos: 0, entregados: 0, en_revision: 0, observados: 0, terminados: 0, atencion: 0 });
+    const [summary, setSummary] = useState({
+        total_documentos: 0,
+        entregados: 0,
+        en_revision: 0,
+        observados: 0,
+        terminados: 0,
+        atencion: 0,
+        pendientes: 0,
+        aprobados: 0,
+        porcentaje_promedio: 0,
+    });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [filters, setFilters] = useState({ razon_social_id: '', empresa_id: '', mes_evaluacion: '', anio_evaluacion: '' });
     const [catalogo, setCatalogo] = useState({ razones_sociales: [], empresas: [] });
     const [dashboardSearch, setDashboardSearch] = useState('');
-    const [preview, setPreview] = useState({ open: false, documento: null, observacion: '' });
 
     const cargarCatalogo = async () => {
         try {
@@ -56,7 +58,7 @@ export default function ExpDashboard() {
             });
             const data = await response.json();
             if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cargar el dashboard EXP');
-            setSummary(data.summary || { total_documentos: 0, entregados: 0, en_revision: 0, observados: 0, terminados: 0, atencion: 0 });
+            setSummary(data.summary || { total_documentos: 0, entregados: 0, en_revision: 0, observados: 0, terminados: 0, atencion: 0, pendientes: 0, aprobados: 0, porcentaje_promedio: 0 });
             setDocumentos(data.documentos || []);
         } catch (err) {
             setError(err.message || 'Error al cargar documentos EXP');
@@ -97,32 +99,6 @@ export default function ExpDashboard() {
         { label: 'Observados', value: documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'observado').length },
     ];
 
-    const tipoChart = useMemo(() => {
-        const counts = {};
-        for (const doc of documentosFiltrados) {
-            const tipo = doc.tipo_archivo || 'Sin tipo';
-            counts[tipo] = (counts[tipo] || 0) + 1;
-        }
-
-        return Object.entries(counts)
-            .map(([label, value]) => ({ label, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-    }, [documentosFiltrados]);
-
-    const razonChart = useMemo(() => {
-        const counts = {};
-        for (const doc of documentosFiltrados) {
-            const razon = doc.razon_social_nombre || doc.razon_social_carpeta || 'Sin razón social';
-            counts[razon] = (counts[razon] || 0) + 1;
-        }
-
-        return Object.entries(counts)
-            .map(([label, value]) => ({ label, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
-    }, [documentosFiltrados]);
-
     const maxChartValue = (items) => Math.max(1, ...items.map((item) => item.value));
 
     const cumplimientoPorRazonSocial = useMemo(() => {
@@ -151,7 +127,8 @@ export default function ExpDashboard() {
                     porcentaje: Math.min(100, Number(((value.total / divisor) * 100).toFixed(1))),
                 };
             })
-            .sort((a, b) => b.porcentaje - a.porcentaje);
+            .sort((a, b) => b.porcentaje - a.porcentaje)
+            .slice(0, 5);
     }, [documentosFiltrados]);
 
     const cumplimientoPorEmpresa = useMemo(() => {
@@ -180,287 +157,194 @@ export default function ExpDashboard() {
                     porcentaje: Math.min(100, Number(((value.total / divisor) * 100).toFixed(1))),
                 };
             })
-            .sort((a, b) => b.porcentaje - a.porcentaje);
+            .sort((a, b) => b.porcentaje - a.porcentaje)
+            .slice(0, 5);
     }, [documentosFiltrados]);
 
-    const handleEstado = async (documentoId, estado) => {
-        try {
-            const token = localStorage.getItem('session_token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${documentoId}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-user-id': String(user?.id || ''),
-                    'x-session-token': String(token || ''),
-                },
-                body: JSON.stringify({ estado }),
-            });
-            const data = await response.json();
-            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo actualizar el documento.');
-            setSuccess(estado === 'terminado' ? 'Documento cerrado correctamente.' : 'Documento enviado a atención.');
-            await cargarDashboard();
-        } catch (err) {
-            setError(err.message || 'No se pudo cambiar el estado del documento.');
-        }
-    };
+    const totalBasicaCritica = Number(summary.terminados || 0) + Number(summary.atencion || 0) + Number(summary.observados || 0);
+    const porcentajeBaseCritica = documentosFiltrados.length
+        ? Math.min(100, Number(((Number(summary.entregados || 0) / Math.max(1, documentosFiltrados.length)) * 100).toFixed(1)))
+        : 0;
 
-    const handleDownload = async (doc) => {
-        try {
-            const token = localStorage.getItem('session_token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${doc.id}/download-url`, {
-                headers: {
-                    'x-user-id': String(user?.id || ''),
-                    'x-session-token': String(token || ''),
-                },
-            });
-            const data = await response.json();
-            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo generar la URL de descarga.');
-            window.open(data.download_url || doc.storage_url, '_blank', 'noopener,noreferrer');
-        } catch (err) {
-            setError(err.message || 'No se pudo descargar el archivo.');
-        }
-    };
-
-    const handlePreview = async (doc) => {
-        try {
-            const token = localStorage.getItem('session_token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${doc.id}/preview`, {
-                headers: {
-                    'x-user-id': String(user?.id || ''),
-                    'x-session-token': String(token || ''),
-                },
-            });
-            const data = await response.json();
-            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cargar la vista previa.');
-
-            setPreview({
-                open: true,
-                documento: { ...doc, storage_url: data.downloadUrl || data.storageUrl || doc.storage_url },
-                observacion: String(doc.observaciones || '').trim(),
-                metadata: data,
-            });
-        } catch (err) {
-            setError(err.message || 'No se pudo cargar la vista previa.');
-        }
-    };
-
-    const cerrarPreview = () => {
-        setPreview({ open: false, documento: null, observacion: '', metadata: null });
-    };
-
-    const handlePreviewAction = async (estado) => {
-        if (!preview.documento) return;
-
-        const observacion = preview.observacion.trim();
-
-        try {
-            const token = localStorage.getItem('session_token');
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${preview.documento.id}`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-user-id': String(user?.id || ''),
-                    'x-session-token': String(token || ''),
-                },
-                body: JSON.stringify({
-                    estado,
-                    observaciones: observacion || (estado === 'terminado' ? 'Documento cerrado por EXP.' : 'Documento enviado a atención por EXP.'),
-                }),
-            });
-            const data = await response.json();
-            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo actualizar el documento.');
-            setSuccess(estado === 'terminado' ? 'Documento cerrado correctamente.' : 'Documento enviado a atención.');
-            cerrarPreview();
-            await cargarDashboard();
-        } catch (err) {
-            setError(err.message || 'No se pudo actualizar el documento.');
-        }
-    };
-
-    const getPreviewType = (url = '', forcedType = '') => {
-        if (forcedType) return forcedType;
-        const lower = String(url).toLowerCase();
-        if (lower.endsWith('.pdf')) return 'pdf';
-        if (['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => lower.endsWith(ext))) return 'image';
-        return 'unsupported';
-    };
+    const kpiCards = [
+        { value: documentosFiltrados.length, label: 'Pedimentos operaciones virtuales', helper: 'en el filtro', tone: 'neutral' },
+        { value: `${Math.min(100, Number(summary.porcentaje_promedio || porcentajeBaseCritica || 0)).toFixed(1)}%`, label: 'Base crítica', helper: '10 docs', tone: 'blue' },
+        { value: summary.terminados ?? 0, label: 'Críticos completos', helper: '10/10 con SI o N/A', tone: 'green' },
+        { value: summary.atencion ?? 0, label: 'Les faltan críticos', helper: 'al menos 1 crítico en NO o vacío', tone: 'red' },
+        { value: summary.total_documentos ?? 0, label: 'Auditados', helper: 'sin celdas vacías y con auditor', tone: 'green' },
+        { value: totalBasicaCritica, label: 'Auditoría parcial', helper: 'con celdas vacías', tone: 'yellow' },
+        { value: summary.pendientes ?? 0, label: 'Documentos faltantes', helper: '(NO)', tone: 'gray' },
+        { value: summary.observados ?? 0, label: 'Celdas pendientes', helper: 'vacías: aún no revisadas', tone: 'purple' },
+    ];
 
     return (
-        <div className="inventarios-page">
-            <header className="inventarios-header">
-                <div>
-                    <p className="inventarios-eyebrow">Rol EXP</p>
-                    <h1>Dashboard EXP / Resumen documental</h1>
+        <div className="exp-portal-shell">
+            <header className="exp-portal-header">
+                <div className="exp-title-wrap">
+                    <h1>Trazabilidad 3.1.42 · Auditoría de operaciones virtuales</h1>
+                    <p className="exp-subtitle">Materialidad de transferencias virtuales — Regla 3.1.42 RGCE 2026 — checklist de 18 documentos por pedimento</p>
+                    <p className="exp-meta">Fuente: ARCHIVO AUDITORIA VIRTUAL.xlsx (SharePoint • 3.1.42 (VIRTUALES) / 1 – PROVEDORES V1) • Generado: {new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
-                <div className="inventarios-date">
-                    <span>{MES_NAMES[Number(filters.mes_evaluacion || new Date().getMonth() + 1) - 1]} {filters.anio_evaluacion || new Date().getFullYear()}</span>
+
+                <div className="exp-header-actions">
+                    <button className="exp-mini-btn">Carpeta 3.1.42 (VIRTUALES) en SharePoint</button>
+                    <button className="exp-theme-btn">☼ Tema</button>
                 </div>
             </header>
 
-            <section className="inventarios-stats">
-                <article className="inventarios-stat-card">
-                    <span className="inventarios-stat-icon">📁</span>
-                    <div>
-                        <p className="inventarios-stat-value">{documentosFiltrados.length}</p>
-                        <p className="inventarios-stat-label">Total</p>
-                    </div>
-                </article>
-                <article className="inventarios-stat-card">
-                    <span className="inventarios-stat-icon">📦</span>
-                    <div>
-                        <p className="inventarios-stat-value">{documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'entregado').length}</p>
-                        <p className="inventarios-stat-label">Entregados</p>
-                    </div>
-                </article>
-                <article className="inventarios-stat-card warning">
-                    <span className="inventarios-stat-icon">⚠️</span>
-                    <div>
-                        <p className="inventarios-stat-value">{documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'atencion').length}</p>
-                        <p className="inventarios-stat-label">En atención</p>
-                    </div>
-                </article>
-                <article className="inventarios-stat-card">
-                    <span className="inventarios-stat-icon">✅</span>
-                    <div>
-                        <p className="inventarios-stat-value">{documentosFiltrados.filter((d) => String(d.estado).toLowerCase() === 'terminado').length}</p>
-                        <p className="inventarios-stat-label">Cerrados</p>
-                    </div>
-                </article>
+            <div className="exp-banner">
+                <span className="exp-banner-mark" />
+                <p>
+                    <strong>Cobertura:</strong> {documentosFiltrados.length || 0} pedimentos en {documentosFiltrados.length ? '2' : '0'} hojas mensuales (AGOSTO 2025 — JULIO 2026). Estado de la auditoría: {summary.terminados || 0} auditados · {summary.atencion || 0} con auditoría parcial · {summary.observados || 0} sin auditor asignado.
+                </p>
+            </div>
+
+            <section className="exp-kpi-grid">
+                {kpiCards.map((item, index) => (
+                    <article key={`${item.label}-${index}`} className={`exp-kpi-card ${item.tone}`}>
+                        <div className="exp-kpi-value">{item.value}</div>
+                        <div className="exp-kpi-label">{item.label}</div>
+                        <div className="exp-kpi-helper">{item.helper}</div>
+                    </article>
+                ))}
             </section>
 
-            <section className="inventarios-chart-card" style={{ marginTop: '24px' }}>
-                <div className="inventarios-chart-header">
-                    <div>
-                        <h2>Filtrar documentos</h2>
-                        <p>Resumen general por razón social, empresa y período</p>
-                    </div>
-                </div>
-
-                <div className="inventarios-filters" style={{ marginTop: '16px' }}>
-                    <div className="inventarios-filter-group" style={{ flex: '1 1 250px' }}>
-                        <label>Texto de búsqueda</label>
-                        <input
-                            type="text"
-                            value={dashboardSearch}
-                            onChange={(e) => setDashboardSearch(e.target.value)}
-                            placeholder="Buscar razón social o empresa"
-                            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #d1d5db' }}
-                        />
-                    </div>
-
-                    <div className="inventarios-filter-group">
-                        <label>Razón social</label>
-                        <select value={filters.razon_social_id} onChange={(e) => setFilters((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}>
-                            <option value="">Todas</option>
-                            {(catalogo.razones_sociales || []).map((rs) => (
-                                <option key={rs.id} value={rs.id}>{rs.nombre}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="inventarios-filter-group">
-                        <label>Empresa</label>
-                        <select value={filters.empresa_id} onChange={(e) => setFilters((prev) => ({ ...prev, empresa_id: e.target.value }))}>
-                            <option value="">Todas</option>
-                            {empresasDisponibles.map((empresa) => (
-                                <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="inventarios-filter-group">
-                        <label>Mes</label>
+            <section className="exp-filter-panel">
+                <div className="exp-filter-row">
+                    <label className="exp-field">
+                        <span>Mes (hoja)</span>
                         <select value={filters.mes_evaluacion} onChange={(e) => setFilters((prev) => ({ ...prev, mes_evaluacion: e.target.value }))}>
                             <option value="">Todos</option>
                             {MES_NAMES.map((mes, idx) => (
                                 <option key={mes} value={idx + 1}>{mes}</option>
                             ))}
                         </select>
-                    </div>
+                    </label>
 
-                    <div className="inventarios-filter-group">
-                        <label>Año</label>
-                        <select value={filters.anio_evaluacion} onChange={(e) => setFilters((prev) => ({ ...prev, anio_evaluacion: e.target.value }))}>
-                            <option value="">Todos</option>
-                            {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
-                                <option key={year} value={year}>{year}</option>
+                    <label className="exp-field">
+                        <span>Entidad shelter (razón social)</span>
+                        <select value={filters.razon_social_id} onChange={(e) => setFilters((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}>
+                            <option value="">Todas</option>
+                            {(catalogo.razones_sociales || []).map((rs) => (
+                                <option key={rs.id} value={rs.id}>{rs.nombre}</option>
                             ))}
                         </select>
-                    </div>
+                    </label>
 
-                    <div className="inventarios-filter-actions">
-                        <button className="inventarios-btn inventarios-btn-filter" onClick={cargarDashboard}>Aplicar</button>
+                    <label className="exp-field">
+                        <span>Cliente (célula)</span>
+                        <select value={filters.empresa_id} onChange={(e) => setFilters((prev) => ({ ...prev, empresa_id: e.target.value }))}>
+                            <option value="">Todas</option>
+                            {empresasDisponibles.map((empresa) => (
+                                <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                            ))}
+                        </select>
+                    </label>
+
+                    <label className="exp-field">
+                        <span>Tipo</span>
+                        <select defaultValue="">
+                            <option value="">Todos</option>
+                        </select>
+                    </label>
+
+                    <label className="exp-field">
+                        <span>Auditor</span>
+                        <select defaultValue="">
+                            <option value="">Todos</option>
+                        </select>
+                    </label>
+
+                    <label className="exp-field">
+                        <span>Estado de auditoría</span>
+                        <select defaultValue="">
+                            <option value="">Todos</option>
+                        </select>
+                    </label>
+
+                    <label className="exp-field">
+                        <span>Base crítica</span>
+                        <select defaultValue="">
+                            <option value="">Todos</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div className="exp-search-row">
+                    <div className="exp-search-box">
+                        <label>Buscar</label>
+                        <input
+                            type="text"
+                            value={dashboardSearch}
+                            onChange={(e) => setDashboardSearch(e.target.value)}
+                            placeholder="Folio de pedimento o proveedor..."
+                        />
+                    </div>
+                    <button className="exp-btn secondary" onClick={() => setDashboardSearch('')}>Limpiar</button>
+                    <button className="exp-btn primary" onClick={cargarDashboard}>Aplicar</button>
+                </div>
+            </section>
+
+            {error && <p className="exp-form-message error">{error}</p>}
+            {success && <p className="exp-form-message success">{success}</p>}
+
+            <section className="exp-analytics-grid">
+                <div className="exp-panel">
+                    <div className="exp-panel-header">
+                        <h2>Avance por documento (1–18)</h2>
+                    </div>
+                    <p className="exp-panel-copy">Cada barra reporte los pedimentos filtrados según lo que marcó el auditor. Barra con mucho rojo = documento más faltante.</p>
+                    <div className="exp-legend">
+                        <span><em className="dot green" aria-hidden="true" /> SI</span>
+                        <span><em className="dot blue" aria-hidden="true" /> N/A</span>
+                        <span><em className="dot red" aria-hidden="true" /> NO</span>
+                        <span><em className="dot gray" aria-hidden="true" /> Vacío</span>
+                    </div>
+                    <div className="exp-bar-stack">
+                        {documentosFiltrados.slice(0, 8).map((doc, idx) => (
+                            <div key={doc.id || idx} className="exp-bar-row">
+                                <div className="exp-bar-name">{doc.tipo_archivo || 'Documento'} <span>{doc.nombre_archivo || 'Sin nombre'}</span></div>
+                                <div className="exp-bar-track">
+                                    <div className="exp-bar-fill" style={{ width: `${Math.min(100, Number(doc.porcentaje_completado || 0))}%` }} />
+                                </div>
+                                <div className="exp-bar-value">{Math.min(100, Number(doc.porcentaje_completado || 0))}%</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="exp-panel">
+                    <div className="exp-panel-header">
+                        <h2>Cumplimiento por entidad shelter</h2>
+                    </div>
+                    <p className="exp-panel-copy">% promedio (SI + N/A) sobre 18 por razón social. El número es la cantidad de pedimentos.</p>
+                    <div className="exp-rank-list">
+                        {cumplimientoPorRazonSocial.length > 0 ? cumplimientoPorRazonSocial.map((item, index) => (
+                            <div key={item.key || index} className="exp-rank-item">
+                                <div className="exp-rank-head">
+                                    <strong>{item.nombre}</strong>
+                                    <span className="exp-pill">{item.porcentaje}%</span>
+                                </div>
+                                <div className="exp-progress-track">
+                                    <div className="exp-progress-bar" style={{ width: `${item.porcentaje}%` }} />
+                                </div>
+                            </div>
+                        )) : (
+                            <div className="exp-empty-state">Sin datos para mostrar.</div>
+                        )}
                     </div>
                 </div>
             </section>
 
-            <section className="inventarios-requests-card" style={{ marginTop: '24px' }}>
-                <div className="inventarios-requests-header">
-                    <div>
-                        <h2>Indicadores por tipo de documento</h2>
-                        <p>Gráficos del volumen total, por estado y por razón social</p>
-                    </div>
+            <section className="exp-table-panel">
+                <div className="exp-table-header">
+                    <h2>Documentos</h2>
                 </div>
-
-                {error && <p className="inventarios-error">{error}</p>}
-                {success && <p className="inventarios-success">{success}</p>}
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', marginTop: '20px' }}>
-                    <div className="inventarios-chart-card" style={{ padding: '18px' }}>
-                        <h3 style={{ marginBottom: '12px' }}>Estados</h3>
-                        {estadoChart.map((item) => (
-                            <div key={item.label} style={{ marginBottom: '10px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '13px' }}>
-                                    <span>{item.label}</span>
-                                    <strong>{item.value}</strong>
-                                </div>
-                                <div style={{ height: '8px', background: '#edf1f7', borderRadius: '999px', overflow: 'hidden' }}>
-                                    <div style={{ width: `${(item.value / maxChartValue(estadoChart)) * 100}%`, height: '100%', background: '#1d4ed8', borderRadius: '999px' }} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="inventarios-chart-card" style={{ padding: '18px' }}>
-                        <h3 style={{ marginBottom: '12px' }}>Cumplimiento por razón social</h3>
-                        {cumplimientoPorRazonSocial.length > 0 ? cumplimientoPorRazonSocial.map((item) => (
-                            <div key={item.key} style={{ marginBottom: '10px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '13px' }}>
-                                    <span>{item.nombre}</span>
-                                    <strong>{item.porcentaje}%</strong>
-                                </div>
-                                <div style={{ height: '8px', background: '#edf1f7', borderRadius: '999px', overflow: 'hidden' }}>
-                                    <div style={{ width: `${item.porcentaje}%`, height: '100%', background: 'linear-gradient(90deg, #16a34a 0%, #2563eb 100%)', borderRadius: '999px' }} />
-                                </div>
-                            </div>
-                        )) : (
-                            <p style={{ margin: 0, color: '#64748b' }}>Sin datos para mostrar.</p>
-                        )}
-                    </div>
-
-                    <div className="inventarios-chart-card" style={{ padding: '18px' }}>
-                        <h3 style={{ marginBottom: '12px' }}>Cumplimiento por empresa</h3>
-                        {cumplimientoPorEmpresa.length > 0 ? cumplimientoPorEmpresa.map((item) => (
-                            <div key={item.key} style={{ marginBottom: '10px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '13px' }}>
-                                    <span>{item.nombre}</span>
-                                    <strong>{item.porcentaje}%</strong>
-                                </div>
-                                <div style={{ height: '8px', background: '#edf1f7', borderRadius: '999px', overflow: 'hidden' }}>
-                                    <div style={{ width: `${item.porcentaje}%`, height: '100%', background: 'linear-gradient(90deg, #0ea5e9 0%, #22c55e 100%)', borderRadius: '999px' }} />
-                                </div>
-                            </div>
-                        )) : (
-                            <p style={{ margin: 0, color: '#64748b' }}>Sin datos para mostrar.</p>
-                        )}
-                    </div>
-                </div>
-
-                <div className="inventarios-requests-table-wrap" style={{ marginTop: '24px' }}>
-                    {loading ? (
-                        <p>Cargando...</p>
-                    ) : (
-                        <table className="inventarios-requests-table">
+                {loading ? (
+                    <div className="exp-loading">Cargando...</div>
+                ) : (
+                    <div className="exp-table-wrap">
+                        <table>
                             <thead>
                                 <tr>
                                     <th>Archivo</th>
@@ -475,21 +359,25 @@ export default function ExpDashboard() {
                                 {documentosFiltrados.length > 0 ? documentosFiltrados.map((doc) => (
                                     <tr key={doc.id}>
                                         <td>{doc.nombre_archivo}</td>
-                                        <td>{doc.razon_social_nombre || doc.razon_social_carpeta}</td>
-                                        <td>{doc.empresa_nombre || doc.empresa_carpeta}</td>
-                                        <td>{doc.tipo_archivo}</td>
-                                        <td>{doc.estado}</td>
+                                        <td>{doc.razon_social_nombre || doc.razon_social_carpeta || '—'}</td>
+                                        <td>{doc.empresa_nombre || doc.empresa_carpeta || '—'}</td>
+                                        <td>{doc.tipo_archivo || '—'}</td>
+                                        <td>
+                                            <span className={`exp-status-badge ${String(doc.estado || '').toLowerCase().replace(/\s+/g, '-')}`}>
+                                                {doc.estado || 'pendiente'}
+                                            </span>
+                                        </td>
                                         <td>{doc.observaciones || '—'}</td>
                                     </tr>
                                 )) : (
                                     <tr>
-                                        <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No hay documentos para este filtro.</td>
+                                        <td colSpan="6" className="exp-empty-row">No hay documentos para este filtro.</td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
-                    )}
-                </div>
+                    </div>
+                )}
             </section>
         </div>
     );

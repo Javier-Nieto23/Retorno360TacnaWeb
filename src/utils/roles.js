@@ -5,11 +5,7 @@ export function isAdminUser(user) {
 
 export function isInventariosUser(user) {
     const roleName = String(user?.rol_nombre || '').toLowerCase().trim();
-    return roleName === 'inventarios'
-        || roleName.includes('inventario')
-        || roleName === 'exp'
-        || roleName === 'exportacion'
-        || roleName === 'export';
+    return roleName === 'inventarios' || roleName.includes('inventario');
 }
 
 export function isImpUser(user) {
