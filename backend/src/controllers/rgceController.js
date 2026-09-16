@@ -878,6 +878,8 @@ async function getCatalogo(req, res) {
 module.exports = {
     DOCUMENT_TYPES,
     ensureRgceTable,
+    createPedimento,
+    getPedimentos,
     getDashboard,
     getDocumentos,
     uploadDocuments,
