@@ -1,27 +1,28 @@
 :root {
-    --exp-bg: #eef2f7;
+    --exp-bg: #f3f6fb;
     --exp-card: #f7f9fc;
     --exp-surface: #ffffff;
-    --exp-border: #dfe6ee;
-    --exp-text: #1f2937;
-    --exp-muted: #6b7280;
-    --exp-blue: #1d4ed8;
-    --exp-blue-soft: #dfeaff;
+    --exp-border: #dfe5ee;
+    --exp-text: #1f2430;
+    --exp-muted: #687385;
+    --exp-blue: #2563eb;
+    --exp-blue-strong: #1d4ed8;
+    --exp-blue-soft: #edf4ff;
     --exp-green: #16a34a;
-    --exp-green-soft: #d7f7e2;
+    --exp-green-soft: #eafaf0;
     --exp-red: #dc2626;
-    --exp-red-soft: #ffe1e1;
+    --exp-red-soft: #ffe7e7;
     --exp-yellow: #d97706;
-    --exp-yellow-soft: #fff0c7;
+    --exp-yellow-soft: #fff4d9;
     --exp-gray: #6b7280;
-    --exp-gray-soft: #e5e7eb;
-    --exp-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+    --exp-gray-soft: #edf1f5;
+    --exp-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 
 .exp-portal-shell {
     max-width: 1360px;
     margin: 0 auto;
-    padding: 22px 18px 36px;
+    padding: 18px 18px 36px;
     color: var(--exp-text);
 }
 
@@ -30,26 +31,28 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 18px;
-    padding: 16px 0 8px;
+    padding: 8px 0 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .exp-title-wrap h1 {
     margin: 0;
-    font-size: clamp(1.8rem, 2vw, 2.6rem);
+    font-size: clamp(1.55rem, 1.9vw, 2.2rem);
     letter-spacing: -0.04em;
-    line-height: 1.22;
+    line-height: 1.2;
     font-weight: 700;
+    color: #1f2937;
 }
 
 .exp-subtitle,
 .exp-meta {
     margin: 4px 0 0;
     color: var(--exp-muted);
-    font-size: 0.92rem;
+    font-size: 0.9rem;
 }
 
 .exp-meta {
-    font-size: 0.82rem;
+    font-size: 0.8rem;
 }
 
 .exp-header-actions {
@@ -88,13 +91,14 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    background: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.85);
     border: 1px solid var(--exp-border);
     border-left: 3px solid var(--exp-blue);
     border-radius: 10px;
     padding: 12px 14px;
     margin-top: 18px;
     color: var(--exp-text);
+    box-shadow: var(--exp-shadow);
 }
 
 .exp-banner p {
@@ -125,11 +129,19 @@
     border-radius: 10px;
     padding: 14px 12px 12px;
     box-shadow: var(--exp-shadow);
-    min-height: 120px;
+    min-height: 118px;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    border-left: 3px solid transparent;
 }
+
+.exp-kpi-card.blue { border-left-color: var(--exp-blue); }
+.exp-kpi-card.green { border-left-color: var(--exp-green); }
+.exp-kpi-card.red { border-left-color: var(--exp-red); }
+.exp-kpi-card.yellow { border-left-color: var(--exp-yellow); }
+.exp-kpi-card.purple { border-left-color: #7c3aed; }
+.exp-kpi-card.gray { border-left-color: #94a3b8; }
 
 .exp-kpi-card.neutral {
     background: linear-gradient(180deg, #f9fbff, #f6f9ff);
@@ -186,6 +198,7 @@
     border: 1px solid var(--exp-border);
     border-radius: 12px;
     padding: 16px 14px;
+    box-shadow: var(--exp-shadow);
 }
 
 .exp-filter-row {
@@ -286,6 +299,13 @@
     border-radius: 12px;
     padding: 16px 18px;
     box-shadow: var(--exp-shadow);
+}
+
+.exp-panel-header h2,
+.exp-table-header h2 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: #1f2937;
 }
 
 .exp-panel-compact {
@@ -421,7 +441,7 @@
 .exp-progress-bar {
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, #60a5fa 0%, #2563eb 100%);
+    background: linear-gradient(90deg, #1d4ed8 0%, #2563eb 100%);
 }
 
 .exp-client-chart,
@@ -601,7 +621,7 @@
 
 .exp-table-wrap th {
     background: #f8fafc;
-    color: var(--exp-muted);
+    color: #475569;
     font-weight: 700;
 }
 
