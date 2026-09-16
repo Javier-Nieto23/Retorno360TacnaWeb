@@ -12,6 +12,7 @@ import ArchivosCliente from './components/ArchivosCliente';
 import SolicitudParte from './components/SolicitudParte';
 import ImpDashboard from './components/ImpDashboard';
 import ExpDashboard from './components/ExpDashboard';
+import ExpHistorial from './components/ExpHistorial';
 import InventariosDashboard from './components/InventariosDashboard';
 import { getLandingPath, isAdminUser, isClientUser, isClusterUser, isExpUser, isImpUser, isInventariosUser } from './utils/roles';
 
@@ -113,8 +114,7 @@ function InventariosRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  const hasInventoryAccess = isInventariosUser(user) || isExpUser(user);
-  if (!hasInventoryAccess) return <Navigate to={getLandingPath(user)} replace />;
+  if (!isInventariosUser(user)) return <Navigate to={getLandingPath(user)} replace />;
 
   return (
     <>
@@ -147,6 +147,7 @@ function AppRoutes() {
       <Route path="/solicitud-parte" element={<ClientRoute><SolicitudParte /></ClientRoute>} />
       <Route path="/historial" element={<ImpRoute><Historial /></ImpRoute>} />
       <Route path="/exp-dashboard" element={<ExpRoute><ExpDashboard /></ExpRoute>} />
+      <Route path="/exp-historial" element={<ExpRoute><ExpHistorial /></ExpRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/inventarios" element={<InventariosRoute><InventariosDashboard /></InventariosRoute>} />
 
