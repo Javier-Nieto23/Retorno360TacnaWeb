@@ -33,6 +33,7 @@ export default function ImpUpload() {
     const [pedimentos, setPedimentos] = useState([]);
     const [draftFiles, setDraftFiles] = useState([]);
     const [virtuales, setVirtuales] = useState([]);
+    const [virtualPedimentos, setVirtualPedimentos] = useState([]);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [creatingPedimento, setCreatingPedimento] = useState(false);
@@ -42,6 +43,7 @@ export default function ImpUpload() {
     const [virtualForm, setVirtualForm] = useState({
         razon_social_id: '',
         empresa_id: '',
+        pedimento_id: '',
         nombre_operacion: '',
         tipo_virtual: 'Transferencia',
         cantidad: 1,
@@ -127,6 +129,35 @@ export default function ImpUpload() {
 
         cargarPedimentos();
     }, [user, uploadForm.razon_social_id, uploadForm.empresa_id]);
+
+    useEffect(() => {
+        if (!user || !virtualForm.razon_social_id || !virtualForm.empresa_id) {
+            setVirtualPedimentos([]);
+            return;
+        }
+
+        async function cargarVirtualPedimentos() {
+            try {
+                const query = new URLSearchParams({
+                    razon_social_id: String(virtualForm.razon_social_id),
+                    empresa_id: String(virtualForm.empresa_id),
+                });
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/pedimentos?${query.toString()}`, {
+                    headers: {
+                        'x-user-id': String(user?.id || ''),
+                        'x-session-token': String(localStorage.getItem('session_token') || ''),
+                    },
+                });
+                const data = await response.json();
+                if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudieron cargar los pedimentos');
+                setVirtualPedimentos(data.pedimentos || []);
+            } catch {
+                setVirtualPedimentos([]);
+            }
+        }
+
+        cargarVirtualPedimentos();
+    }, [user, virtualForm.razon_social_id, virtualForm.empresa_id]);
 
     const createEmptyDraftFile = () => ({
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -328,6 +359,7 @@ export default function ImpUpload() {
                 body: JSON.stringify({
                     razon_social_id: virtualForm.razon_social_id,
                     empresa_id: virtualForm.empresa_id,
+                    pedimento_id: virtualForm.pedimento_id ? Number(virtualForm.pedimento_id) : null,
                     nombre_operacion: virtualForm.nombre_operacion,
                     tipo_virtual: virtualForm.tipo_virtual,
                     cantidad: Number(virtualForm.cantidad || 0),
@@ -341,7 +373,7 @@ export default function ImpUpload() {
             if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo guardar la operación virtual.');
 
             setSuccess('La operación virtual se registró correctamente.');
-            setVirtualForm((prev) => ({ ...prev, nombre_operacion: '', tipo_virtual: 'Transferencia', cantidad: 1, observaciones: '' }));
+            setVirtualForm((prev) => ({ ...prev, empresa_id: '', pedimento_id: '', nombre_operacion: '', tipo_virtual: 'Transferencia', cantidad: 1, observaciones: '' }));
             await cargarVirtuales();
         } catch (err) {
             setError(err.message || 'No se pudo registrar la operación virtual.');
@@ -653,7 +685,7 @@ export default function ImpUpload() {
                         <label>Razón social</label>
                         <select
                             value={virtualForm.razon_social_id}
-                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '', pedimento_id: '' }))}
                         >
                             <option value="">Seleccione razón social</option>
                             {(razonesSociales || []).map((rs) => (
@@ -666,11 +698,25 @@ export default function ImpUpload() {
                         <label>Empresa</label>
                         <select
                             value={virtualForm.empresa_id}
-                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, empresa_id: e.target.value }))}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, empresa_id: e.target.value, pedimento_id: '' }))}
                         >
                             <option value="">Seleccione empresa</option>
                             {(catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(virtualForm.razon_social_id)).map((empresa) => (
                                 <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="imp-upload-field">
+                        <label>Pedimento</label>
+                        <select
+                            value={virtualForm.pedimento_id}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, pedimento_id: e.target.value }))}
+                            disabled={!virtualForm.razon_social_id || !virtualForm.empresa_id}
+                        >
+                            <option value="">Seleccione pedimento</option>
+                            {virtualPedimentos.map((pedimento) => (
+                                <option key={pedimento.id} value={pedimento.id}>{pedimento.nombre_pedimento}</option>
                             ))}
                         </select>
                     </div>
@@ -758,6 +804,7 @@ export default function ImpUpload() {
                                     <tr>
                                         <th>Operación</th>
                                         <th>Tipo</th>
+                                        <th>Pedimento</th>
                                         <th>Cantidad</th>
                                         <th>Empresa</th>
                                         <th>Mes / Año</th>
@@ -768,6 +815,7 @@ export default function ImpUpload() {
                                         <tr key={item.id}>
                                             <td>{item.nombre_operacion}</td>
                                             <td>{item.tipo_virtual}</td>
+                                            <td>{item.pedimento_nombre || 'Sin pedimento'}</td>
                                             <td>{item.cantidad}</td>
                                             <td>{item.empresa_nombre || 'N/A'}</td>
                                             <td>{MES_NAMES[(Number(item.mes_evaluacion || 1) - 1)] || ''} / {item.anio_evaluacion}</td>

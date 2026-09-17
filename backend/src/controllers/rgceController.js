@@ -109,6 +109,7 @@ async function ensureVirtualesTable() {
             id SERIAL PRIMARY KEY,
             razon_social_id INTEGER NOT NULL,
             empresa_id INTEGER NOT NULL,
+            pedimento_id INTEGER,
             nombre_operacion VARCHAR(255) NOT NULL,
             tipo_virtual VARCHAR(120) NOT NULL,
             cantidad INTEGER NOT NULL DEFAULT 0,
@@ -125,6 +126,7 @@ async function ensureVirtualesTable() {
         ALTER TABLE public.virtuales_rgce
         ADD COLUMN IF NOT EXISTS razon_social_id INTEGER,
         ADD COLUMN IF NOT EXISTS empresa_id INTEGER,
+        ADD COLUMN IF NOT EXISTS pedimento_id INTEGER,
         ADD COLUMN IF NOT EXISTS nombre_operacion VARCHAR(255),
         ADD COLUMN IF NOT EXISTS tipo_virtual VARCHAR(120),
         ADD COLUMN IF NOT EXISTS cantidad INTEGER,
@@ -139,6 +141,11 @@ async function ensureVirtualesTable() {
     await pool.query(`
         CREATE INDEX IF NOT EXISTS idx_virtuales_rgce_razon_empresa
         ON public.virtuales_rgce (razon_social_id, empresa_id);
+    `);
+
+    await pool.query(`
+        CREATE INDEX IF NOT EXISTS idx_virtuales_rgce_pedimento
+        ON public.virtuales_rgce (pedimento_id);
     `);
 }
 
@@ -451,10 +458,12 @@ async function getVirtuales(req, res) {
             SELECT
                 v.*,
                 rs.nombre AS razon_social_nombre,
-                e.nombre AS empresa_nombre
+                e.nombre AS empresa_nombre,
+                p.nombre_pedimento AS pedimento_nombre
             FROM public.virtuales_rgce v
             LEFT JOIN public.razon_social rs ON rs.id = v.razon_social_id
             LEFT JOIN public.empresa e ON e.id = v.empresa_id
+            LEFT JOIN public.pedimentos_rgce p ON p.id = v.pedimento_id
             ${whereClause}
             ORDER BY v.anio_evaluacion DESC, v.mes_evaluacion DESC, v.created_at DESC
         `, values);
@@ -471,6 +480,7 @@ async function createVirtual(req, res) {
         await ensureVirtualesTable();
         const razonSocialId = Number(req.body.razon_social_id);
         const empresaId = Number(req.body.empresa_id);
+        const pedimentoId = Number(req.body.pedimento_id || 0);
         const nombreOperacion = String(req.body.nombre_operacion || req.body.nombre || '').trim();
         const tipoVirtual = String(req.body.tipo_virtual || '').trim();
         const cantidad = Number(req.body.cantidad || 0);
@@ -480,6 +490,19 @@ async function createVirtual(req, res) {
 
         if (!razonSocialId || !empresaId) {
             return res.status(400).json({ success: false, message: 'Debe seleccionar razón social y empresa.' });
+        }
+
+        if (pedimentoId) {
+            const pedimentoResult = await pool.query(`
+                SELECT id
+                FROM public.pedimentos_rgce
+                WHERE id = $1 AND razon_social_id = $2 AND empresa_id = $3
+                LIMIT 1;
+            `, [pedimentoId, razonSocialId, empresaId]);
+
+            if (pedimentoResult.rows.length === 0) {
+                return res.status(400).json({ success: false, message: 'El pedimento seleccionado no pertenece a la empresa y razón social elegidas.' });
+            }
         }
 
         if (!nombreOperacion) {
@@ -504,6 +527,7 @@ async function createVirtual(req, res) {
             INSERT INTO public.virtuales_rgce (
                 razon_social_id,
                 empresa_id,
+                pedimento_id,
                 nombre_operacion,
                 tipo_virtual,
                 cantidad,
@@ -514,9 +538,9 @@ async function createVirtual(req, res) {
                 created_at,
                 updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
             RETURNING *;
-        `, [razonSocialId, empresaId, nombreOperacion, tipoVirtual, Number.isFinite(cantidad) ? cantidad : 0, mesEvaluacion, anioEvaluacion, observaciones, req.user?.id]);
+        `, [razonSocialId, empresaId, pedimentoId || null, nombreOperacion, tipoVirtual, Number.isFinite(cantidad) ? cantidad : 0, mesEvaluacion, anioEvaluacion, observaciones, req.user?.id]);
 
         res.status(201).json({ success: true, virtual: result.rows[0] });
     } catch (error) {
