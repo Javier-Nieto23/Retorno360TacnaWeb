@@ -356,331 +356,428 @@ export default function ImpUpload() {
     }, [user]);
 
     return (
-        <div className="inventarios-page">
-            <header className="inventarios-header">
-                <div>
-                    <p className="inventarios-eyebrow">Rol IMP</p>
-                    <h1>Subir documentos RGCE</h1>
+        <div className="imp-upload-page">
+            <header className="imp-upload-header">
+                <div className="imp-upload-title-wrap">
+                    <span className="imp-upload-kicker">Rol IMP</span>
+                    <h1>Carga y seguimiento documental</h1>
+                    <p>Gestiona carpetas, sube documentos RGCE y registra operaciones virtuales sin perder contexto.</p>
                 </div>
-                <div className="inventarios-date">
-                    <span>{MES_NAMES[Number(uploadForm.mes_evaluacion || new Date().getMonth() + 1) - 1]} {uploadForm.anio_evaluacion || new Date().getFullYear()}</span>
+                <div className="imp-upload-header-pill">
+                    <span>Periodo</span>
+                    <strong>{MES_NAMES[Number(uploadForm.mes_evaluacion || new Date().getMonth() + 1) - 1]} {uploadForm.anio_evaluacion || new Date().getFullYear()}</strong>
                 </div>
             </header>
 
-            <section className="inventarios-upload-card" style={{ marginTop: '18px' }}>
-                <h2>Carpetas RGCE</h2>
-                <div className="inventarios-contabilidad-form" style={{ marginBottom: '24px' }}>
-                    <div className="inventarios-filters" style={{ gridTemplateColumns: 'repeat(2, minmax(220px, 1fr))', marginBottom: '1rem' }}>
-                        <div className="inventarios-filter-group">
-                            <label>Razón social*</label>
-                            <select
-                                value={pedimentoForm.razon_social_id}
-                                onChange={(e) => setPedimentoForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}
-                            >
-                                <option value="">Seleccione razón social</option>
-                                {(razonesSociales || []).map((rs) => (
-                                    <option key={rs.id} value={rs.id}>{rs.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="inventarios-filter-group">
-                            <label>Empresa*</label>
-                            <select
-                                value={pedimentoForm.empresa_id}
-                                onChange={(e) => setPedimentoForm((prev) => ({ ...prev, empresa_id: e.target.value }))}
-                            >
-                                <option value="">Seleccione empresa</option>
-                                {catalogoEmpresasPorRazon.map((empresa) => (
-                                    <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="inventarios-filter-group" style={{ gridColumn: '1 / -1' }}>
-                            <label>Nombre del pedimento</label>
-                            <input
-                                type="text"
-                                value={pedimentoForm.nombre_pedimento}
-                                onChange={(e) => setPedimentoForm((prev) => ({ ...prev, nombre_pedimento: e.target.value }))}
-                                placeholder="Ej. PED-001 / Importación 2026"
-                            />
-                        </div>
+            <section className="imp-upload-quickstats">
+                <article className="imp-upload-stat">
+                    <span className="imp-upload-stat-icon">📁</span>
+                    <div>
+                        <strong>{pedimentosDisponibles.length}</strong>
+                        <small>Carpetas</small>
                     </div>
-
-                    <div className="inventarios-contabilidad-actions">
-                        <button type="button" className="inventarios-btn inventarios-btn-primary" onClick={handleCreatePedimento} disabled={creatingPedimento || !pedimentoForm.razon_social_id || !pedimentoForm.empresa_id || !pedimentoForm.nombre_pedimento.trim()}>
-                            {creatingPedimento ? 'Creando...' : 'Crear carpeta'}
-                        </button>
+                </article>
+                <article className="imp-upload-stat">
+                    <span className="imp-upload-stat-icon">🧾</span>
+                    <div>
+                        <strong>{draftFiles.filter((item) => item.file).length}</strong>
+                        <small>Archivos listos</small>
                     </div>
-
-                    {pedimentosDisponibles.length > 0 && (
-                        <div style={{ marginTop: '18px' }}>
-                            <h3 style={{ margin: '0 0 12px' }}>Pedimentos disponibles</h3>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                                {pedimentosDisponibles.map((pedimento) => (
-                                    <button
-                                        key={pedimento.id}
-                                        type="button"
-                                        className="inventarios-btn inventarios-btn-secondary"
-                                        onClick={() => setUploadForm((prev) => ({ ...prev, pedimento_id: String(pedimento.id) }))}
-                                        style={{
-                                            background: uploadForm.pedimento_id === String(pedimento.id) ? '#1d4ed8' : '#f8fafc',
-                                            color: uploadForm.pedimento_id === String(pedimento.id) ? '#fff' : '#0f172a',
-                                        }}
-                                    >
-                                        {pedimento.nombre_pedimento}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <h2>Subir documentación RGCE</h2>
-                <div className="inventarios-contabilidad-form">
-                    <div className="inventarios-filters" style={{ gridTemplateColumns: 'repeat(2, minmax(220px, 1fr))', marginBottom: '1rem' }}>
-                        <div className="inventarios-filter-group">
-                            <label>Razón social*</label>
-                            <select
-                                value={uploadForm.razon_social_id}
-                                onChange={(e) => setUploadForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '', pedimento_id: '' }))}
-                            >
-                                <option value="">Seleccione razón social</option>
-                                {(razonesSociales || []).map((rs) => (
-                                    <option key={rs.id} value={rs.id}>{rs.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="inventarios-filter-group">
-                            <label>Empresa*</label>
-                            <select
-                                value={uploadForm.empresa_id}
-                                onChange={(e) => setUploadForm((prev) => ({ ...prev, empresa_id: e.target.value, pedimento_id: '' }))}
-                            >
-                                <option value="">Seleccione empresa</option>
-                                {uploadEmpresas.map((empresa) => (
-                                    <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="inventarios-filter-group">
-                            <label>Pedimento</label>
-                            <select
-                                value={uploadForm.pedimento_id}
-                                onChange={(e) => setUploadForm((prev) => ({ ...prev, pedimento_id: e.target.value }))}
-                            >
-                                <option value="">Sin pedimento</option>
-                                {pedimentosDisponibles.map((pedimento) => (
-                                    <option key={pedimento.id} value={pedimento.id}>{pedimento.nombre_pedimento}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="inventarios-filter-group">
-                            <label>Mes del archivo*</label>
-                            <select
-                                value={uploadForm.mes_evaluacion}
-                                onChange={(e) => setUploadForm((prev) => ({ ...prev, mes_evaluacion: Number(e.target.value) }))}
-                            >
-                                {MES_NAMES.map((mes, idx) => (
-                                    <option key={mes} value={idx + 1}>{mes}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="inventarios-filter-group">
-                            <label>Año del archivo*</label>
-                            <select
-                                value={uploadForm.anio_evaluacion}
-                                onChange={(e) => setUploadForm((prev) => ({ ...prev, anio_evaluacion: Number(e.target.value) }))}
-                            >
-                                {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
-                                    <option key={year} value={year}>{year}</option>
-                                ))}
-                            </select>
-                        </div>
+                </article>
+                <article className="imp-upload-stat">
+                    <span className="imp-upload-stat-icon">🧠</span>
+                    <div>
+                        <strong>{virtuales.length}</strong>
+                        <small>Virtuales</small>
                     </div>
-
-                    <div className="inventarios-rgce-file-list">
-                        {draftFiles.map((item, index) => (
-                            <div key={item.id} className="inventarios-rgce-file-row">
-                                <div className="inventarios-rgce-file-input">
-                                    <input
-                                        type="file"
-                                        accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg,.webp"
-                                        onChange={(event) => handleFileSelect(event, index)}
-                                    />
-                                    {item.file && <small>{item.file.name}</small>}
-                                </div>
-                                <div className="inventarios-rgce-file-select">
-                                    <select value={item.tipo_archivo} onChange={(e) => handleDraftChange(index, 'tipo_archivo', e.target.value)}>
-                                        <option value="">Tipo de archivo</option>
-                                        {(catalogo.tipos || []).map((tipo) => (
-                                            <option key={tipo} value={tipo}>{tipo}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="inventarios-rgce-file-rename">
-                                    <input
-                                        type="text"
-                                        value={item.nuevo_nombre}
-                                        onChange={(e) => handleDraftChange(index, 'nuevo_nombre', e.target.value)}
-                                        placeholder={item.file ? 'Nuevo nombre del archivo' : 'Nombre del archivo'}
-                                        disabled={!item.file}
-                                    />
-                                </div>
-                                <div className="inventarios-rgce-file-number" aria-hidden="true" />
-                            </div>
-                        ))}
+                </article>
+                <article className="imp-upload-stat">
+                    <span className="imp-upload-stat-icon">⏱️</span>
+                    <div>
+                        <strong>{uploadForm.mes_evaluacion}</strong>
+                        <small>Mes activo</small>
                     </div>
-
-                    <div className="inventarios-rgce-actions-row">
-                        <button type="button" className="inventarios-btn inventarios-btn-secondary" onClick={addFileRow}>
-                            Agregar otra fila
-                        </button>
-                    </div>
-
-                    {error && <p className="inventarios-error">{error}</p>}
-                    {success && <p className="inventarios-success">{success}</p>}
-
-                    <div className="inventarios-contabilidad-actions">
-                        <button className="inventarios-btn inventarios-btn-primary" onClick={handleUpload} disabled={uploading || draftFiles.every((item) => !item.file)}>
-                            {uploading ? 'Subiendo...' : 'Guardar documentación'}
-                        </button>
-                    </div>
-                </div>
+                </article>
             </section>
 
-            <section className="inventarios-upload-card" style={{ marginTop: '24px' }}>
-                <h2>Operaciones virtuales</h2>
-                <div className="inventarios-contabilidad-form">
-                    <div className="inventarios-filters" style={{ gridTemplateColumns: 'repeat(2, minmax(220px, 1fr))', marginBottom: '1rem' }}>
-                        <div className="inventarios-filter-group">
-                            <label>Razón social*</label>
-                            <select
-                                value={virtualForm.razon_social_id}
-                                onChange={(e) => setVirtualForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}
-                            >
-                                <option value="">Seleccione razón social</option>
-                                {(razonesSociales || []).map((rs) => (
-                                    <option key={rs.id} value={rs.id}>{rs.nombre}</option>
-                                ))}
-                            </select>
+            <section className="imp-upload-shell">
+                <div className="imp-upload-main">
+                    <div className="imp-upload-card">
+                        <div className="imp-upload-card-head">
+                            <div>
+                                <span className="imp-upload-step">Paso 1</span>
+                                <h2>Organiza la operación</h2>
+                            </div>
+                            <span className="imp-upload-chip">Empresa y pedimento</span>
                         </div>
-                        <div className="inventarios-filter-group">
-                            <label>Empresa*</label>
-                            <select
-                                value={virtualForm.empresa_id}
-                                onChange={(e) => setVirtualForm((prev) => ({ ...prev, empresa_id: e.target.value }))}
-                            >
-                                <option value="">Seleccione empresa</option>
-                                {(catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(virtualForm.razon_social_id)).map((empresa) => (
-                                    <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="inventarios-filter-group">
-                            <label>Nombre de la operación*</label>
-                            <input
-                                type="text"
-                                value={virtualForm.nombre_operacion}
-                                onChange={(e) => setVirtualForm((prev) => ({ ...prev, nombre_operacion: e.target.value }))}
-                                placeholder="Ej. Transferencia de materiales"
-                            />
-                        </div>
-                        <div className="inventarios-filter-group">
-                            <label>Tipo de virtual*</label>
-                            <select
-                                value={virtualForm.tipo_virtual}
-                                onChange={(e) => setVirtualForm((prev) => ({ ...prev, tipo_virtual: e.target.value }))}
-                            >
-                                <option value="Transferencia">Transferencia</option>
-                                <option value="Ajuste">Ajuste</option>
-                                <option value="Traspaso">Traspaso</option>
-                                <option value="Inventario">Inventario</option>
-                            </select>
-                        </div>
-                        <div className="inventarios-filter-group">
-                            <label>Cantidad</label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={virtualForm.cantidad}
-                                onChange={(e) => setVirtualForm((prev) => ({ ...prev, cantidad: Number(e.target.value || 0) }))}
-                            />
-                        </div>
-                        <div className="inventarios-filter-group">
-                            <label>Mes</label>
-                            <select
-                                value={virtualForm.mes_evaluacion}
-                                onChange={(e) => setVirtualForm((prev) => ({ ...prev, mes_evaluacion: Number(e.target.value) }))}
-                            >
-                                {MES_NAMES.map((mes, idx) => (
-                                    <option key={mes} value={idx + 1}>{mes}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="inventarios-filter-group">
-                            <label>Año</label>
-                            <select
-                                value={virtualForm.anio_evaluacion}
-                                onChange={(e) => setVirtualForm((prev) => ({ ...prev, anio_evaluacion: Number(e.target.value) }))}
-                            >
-                                {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
-                                    <option key={year} value={year}>{year}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="inventarios-filter-group" style={{ gridColumn: '1 / -1' }}>
-                            <label>Observaciones</label>
-                            <textarea
-                                rows="3"
-                                value={virtualForm.observaciones}
-                                onChange={(e) => setVirtualForm((prev) => ({ ...prev, observaciones: e.target.value }))}
-                                placeholder="Detalles adicionales de la operación virtual"
-                            />
-                        </div>
-                    </div>
 
-                    <div className="inventarios-contabilidad-actions">
-                        <button type="button" className="inventarios-btn inventarios-btn-primary" onClick={handleVirtualSubmit} disabled={savingVirtual || !virtualForm.razon_social_id || !virtualForm.empresa_id || !virtualForm.nombre_operacion.trim()}>
-                            {savingVirtual ? 'Guardando...' : 'Guardar operación virtual'}
-                        </button>
-                    </div>
+                        <div className="imp-upload-form-grid two-columns">
+                            <div className="imp-upload-field">
+                                <label>Razón social</label>
+                                <select
+                                    value={pedimentoForm.razon_social_id}
+                                    onChange={(e) => setPedimentoForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}
+                                >
+                                    <option value="">Seleccione razón social</option>
+                                    {(razonesSociales || []).map((rs) => (
+                                        <option key={rs.id} value={rs.id}>{rs.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
 
-                    {virtuales.length > 0 && (
-                        <div style={{ marginTop: '20px' }}>
-                            <h3 style={{ margin: '0 0 12px' }}>Registros recientes</h3>
-                            <div className="inventarios-requests-table-wrap">
-                                <table className="inventarios-requests-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Operación</th>
-                                            <th>Tipo</th>
-                                            <th>Cantidad</th>
-                                            <th>Empresa</th>
-                                            <th>Mes / Año</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {virtuales.map((item) => (
-                                            <tr key={item.id}>
-                                                <td>{item.nombre_operacion}</td>
-                                                <td>{item.tipo_virtual}</td>
-                                                <td>{item.cantidad}</td>
-                                                <td>{item.empresa_nombre || 'N/A'}</td>
-                                                <td>{MES_NAMES[(Number(item.mes_evaluacion || 1) - 1)] || ''} / {item.anio_evaluacion}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                            <div className="imp-upload-field">
+                                <label>Empresa</label>
+                                <select
+                                    value={pedimentoForm.empresa_id}
+                                    onChange={(e) => setPedimentoForm((prev) => ({ ...prev, empresa_id: e.target.value }))}
+                                >
+                                    <option value="">Seleccione empresa</option>
+                                    {catalogoEmpresasPorRazon.map((empresa) => (
+                                        <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="imp-upload-field full-width">
+                                <label>Nombre del pedimento</label>
+                                <input
+                                    type="text"
+                                    value={pedimentoForm.nombre_pedimento}
+                                    onChange={(e) => setPedimentoForm((prev) => ({ ...prev, nombre_pedimento: e.target.value }))}
+                                    placeholder="Ej. PED-001 / Importación 2026"
+                                />
                             </div>
                         </div>
-                    )}
+
+                        <div className="imp-upload-actions-row">
+                            <button type="button" className="inventarios-btn inventarios-btn-primary" onClick={handleCreatePedimento} disabled={creatingPedimento || !pedimentoForm.razon_social_id || !pedimentoForm.empresa_id || !pedimentoForm.nombre_pedimento.trim()}>
+                                {creatingPedimento ? 'Creando...' : 'Crear carpeta'}
+                            </button>
+                        </div>
+
+                        {pedimentosDisponibles.length > 0 && (
+                            <div className="imp-upload-pill-wrap">
+                                <h3>Carpetas disponibles</h3>
+                                <div className="imp-upload-pills">
+                                    {pedimentosDisponibles.map((pedimento) => (
+                                        <button
+                                            key={pedimento.id}
+                                            type="button"
+                                            className={`imp-upload-pill ${uploadForm.pedimento_id === String(pedimento.id) ? 'active' : ''}`}
+                                            onClick={() => setUploadForm((prev) => ({ ...prev, pedimento_id: String(pedimento.id) }))}
+                                        >
+                                            {pedimento.nombre_pedimento}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="imp-upload-card">
+                        <div className="imp-upload-card-head">
+                            <div>
+                                <span className="imp-upload-step">Paso 2</span>
+                                <h2>Carga de documentos</h2>
+                            </div>
+                            <span className="imp-upload-chip success">RGCE</span>
+                        </div>
+
+                        <div className="imp-upload-form-grid three-columns">
+                            <div className="imp-upload-field">
+                                <label>Razón social</label>
+                                <select
+                                    value={uploadForm.razon_social_id}
+                                    onChange={(e) => setUploadForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '', pedimento_id: '' }))}
+                                >
+                                    <option value="">Seleccione</option>
+                                    {(razonesSociales || []).map((rs) => (
+                                        <option key={rs.id} value={rs.id}>{rs.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="imp-upload-field">
+                                <label>Empresa</label>
+                                <select
+                                    value={uploadForm.empresa_id}
+                                    onChange={(e) => setUploadForm((prev) => ({ ...prev, empresa_id: e.target.value, pedimento_id: '' }))}
+                                >
+                                    <option value="">Seleccione</option>
+                                    {uploadEmpresas.map((empresa) => (
+                                        <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="imp-upload-field">
+                                <label>Pedimento</label>
+                                <select
+                                    value={uploadForm.pedimento_id}
+                                    onChange={(e) => setUploadForm((prev) => ({ ...prev, pedimento_id: e.target.value }))}
+                                >
+                                    <option value="">Sin pedimento</option>
+                                    {pedimentosDisponibles.map((pedimento) => (
+                                        <option key={pedimento.id} value={pedimento.id}>{pedimento.nombre_pedimento}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="imp-upload-field">
+                                <label>Mes</label>
+                                <select
+                                    value={uploadForm.mes_evaluacion}
+                                    onChange={(e) => setUploadForm((prev) => ({ ...prev, mes_evaluacion: Number(e.target.value) }))}
+                                >
+                                    {MES_NAMES.map((mes, idx) => (
+                                        <option key={mes} value={idx + 1}>{mes}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="imp-upload-field">
+                                <label>Año</label>
+                                <select
+                                    value={uploadForm.anio_evaluacion}
+                                    onChange={(e) => setUploadForm((prev) => ({ ...prev, anio_evaluacion: Number(e.target.value) }))}
+                                >
+                                    {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
+                                        <option key={year} value={year}>{year}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="imp-upload-file-list">
+                            {draftFiles.map((item, index) => (
+                                <div key={item.id} className="imp-upload-file-row">
+                                    <div className="imp-upload-file-box">
+                                        <label className="imp-upload-file-picker">
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.xlsx,.xls,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                                                onChange={(event) => handleFileSelect(event, index)}
+                                            />
+                                            <span>{item.file ? 'Cambiar archivo' : 'Seleccionar archivo'}</span>
+                                        </label>
+                                        {item.file && <small>{item.file.name}</small>}
+                                    </div>
+
+                                    <div className="imp-upload-file-meta">
+                                        <select value={item.tipo_archivo} onChange={(e) => handleDraftChange(index, 'tipo_archivo', e.target.value)}>
+                                            <option value="">Tipo de archivo</option>
+                                            {(catalogo.tipos || []).map((tipo) => (
+                                                <option key={tipo} value={tipo}>{tipo}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="imp-upload-file-name">
+                                        <input
+                                            type="text"
+                                            value={item.nuevo_nombre}
+                                            onChange={(e) => handleDraftChange(index, 'nuevo_nombre', e.target.value)}
+                                            placeholder={item.file ? 'Nombre personalizado' : 'Nombre del archivo'}
+                                            disabled={!item.file}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="imp-upload-actions-row justify-between">
+                            <button type="button" className="inventarios-btn inventarios-btn-secondary" onClick={addFileRow}>
+                                Agregar archivo
+                            </button>
+                            <button className="inventarios-btn inventarios-btn-primary" onClick={handleUpload} disabled={uploading || draftFiles.every((item) => !item.file)}>
+                                {uploading ? 'Subiendo...' : 'Guardar documentación'}
+                            </button>
+                        </div>
+
+                        {error && <p className="imp-upload-message error">{error}</p>}
+                        {success && <p className="imp-upload-message success">{success}</p>}
+                    </div>
                 </div>
+
+                <aside className="imp-upload-side">
+                    <div className="imp-upload-card compact">
+                        <div className="imp-upload-card-head small">
+                            <div>
+                                <span className="imp-upload-step light">Guía</span>
+                                <h3>Flujo recomendado</h3>
+                            </div>
+                        </div>
+                        <ul className="imp-upload-tips">
+                            <li>1. Selecciona la razón social y la empresa.</li>
+                            <li>2. Crea o usa una carpeta del pedimento.</li>
+                            <li>3. Sube los archivos con su tipo correcto.</li>
+                            <li>4. Revisa el periodo antes de guardar.</li>
+                        </ul>
+                    </div>
+
+                    <div className="imp-upload-card compact">
+                        <div className="imp-upload-card-head small">
+                            <div>
+                                <span className="imp-upload-step light">Virtuales</span>
+                                <h3>Últimos registros</h3>
+                            </div>
+                        </div>
+                        {virtuales.length > 0 ? (
+                            <div className="imp-upload-side-list">
+                                {virtuales.slice(0, 4).map((item) => (
+                                    <div key={item.id} className="imp-upload-side-item">
+                                        <strong>{item.nombre_operacion}</strong>
+                                        <span>{item.tipo_virtual}</span>
+                                        <small>{MES_NAMES[(Number(item.mes_evaluacion || 1) - 1)] || ''} / {item.anio_evaluacion}</small>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="imp-upload-empty">No hay operaciones virtuales registradas.</p>
+                        )}
+                    </div>
+                </aside>
+            </section>
+
+            <section className="imp-upload-card imp-upload-virtual-card">
+                <div className="imp-upload-card-head">
+                    <div>
+                        <span className="imp-upload-step">Paso 3</span>
+                        <h2>Operaciones virtuales</h2>
+                    </div>
+                    <span className="imp-upload-chip neutral">Control</span>
+                </div>
+
+                <div className="imp-upload-form-grid three-columns">
+                    <div className="imp-upload-field">
+                        <label>Razón social</label>
+                        <select
+                            value={virtualForm.razon_social_id}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '' }))}
+                        >
+                            <option value="">Seleccione razón social</option>
+                            {(razonesSociales || []).map((rs) => (
+                                <option key={rs.id} value={rs.id}>{rs.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="imp-upload-field">
+                        <label>Empresa</label>
+                        <select
+                            value={virtualForm.empresa_id}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, empresa_id: e.target.value }))}
+                        >
+                            <option value="">Seleccione empresa</option>
+                            {(catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(virtualForm.razon_social_id)).map((empresa) => (
+                                <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="imp-upload-field">
+                        <label>Tipo de virtual</label>
+                        <select
+                            value={virtualForm.tipo_virtual}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, tipo_virtual: e.target.value }))}
+                        >
+                            <option value="Transferencia">Transferencia</option>
+                            <option value="Ajuste">Ajuste</option>
+                            <option value="Traspaso">Traspaso</option>
+                            <option value="Inventario">Inventario</option>
+                        </select>
+                    </div>
+
+                    <div className="imp-upload-field">
+                        <label>Nombre de la operación</label>
+                        <input
+                            type="text"
+                            value={virtualForm.nombre_operacion}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, nombre_operacion: e.target.value }))}
+                            placeholder="Ej. Transferencia de materiales"
+                        />
+                    </div>
+
+                    <div className="imp-upload-field">
+                        <label>Cantidad</label>
+                        <input
+                            type="number"
+                            min="0"
+                            value={virtualForm.cantidad}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, cantidad: Number(e.target.value || 0) }))}
+                        />
+                    </div>
+
+                    <div className="imp-upload-field">
+                        <label>Mes</label>
+                        <select
+                            value={virtualForm.mes_evaluacion}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, mes_evaluacion: Number(e.target.value) }))}
+                        >
+                            {MES_NAMES.map((mes, idx) => (
+                                <option key={mes} value={idx + 1}>{mes}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="imp-upload-field">
+                        <label>Año</label>
+                        <select
+                            value={virtualForm.anio_evaluacion}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, anio_evaluacion: Number(e.target.value) }))}
+                        >
+                            {[new Date().getFullYear() - 1, new Date().getFullYear(), new Date().getFullYear() + 1].map((year) => (
+                                <option key={year} value={year}>{year}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="imp-upload-field full-width">
+                        <label>Observaciones</label>
+                        <textarea
+                            rows="3"
+                            value={virtualForm.observaciones}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, observaciones: e.target.value }))}
+                            placeholder="Detalles adicionales de la operación virtual"
+                        />
+                    </div>
+                </div>
+
+                <div className="imp-upload-actions-row justify-end">
+                    <button type="button" className="inventarios-btn inventarios-btn-primary" onClick={handleVirtualSubmit} disabled={savingVirtual || !virtualForm.razon_social_id || !virtualForm.empresa_id || !virtualForm.nombre_operacion.trim()}>
+                        {savingVirtual ? 'Guardando...' : 'Guardar operación virtual'}
+                    </button>
+                </div>
+
+                {virtuales.length > 0 && (
+                    <div className="imp-upload-list-wrap">
+                        <h3>Registros recientes</h3>
+                        <div className="inventarios-requests-table-wrap">
+                            <table className="inventarios-requests-table">
+                                <thead>
+                                    <tr>
+                                        <th>Operación</th>
+                                        <th>Tipo</th>
+                                        <th>Cantidad</th>
+                                        <th>Empresa</th>
+                                        <th>Mes / Año</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {virtuales.map((item) => (
+                                        <tr key={item.id}>
+                                            <td>{item.nombre_operacion}</td>
+                                            <td>{item.tipo_virtual}</td>
+                                            <td>{item.cantidad}</td>
+                                            <td>{item.empresa_nombre || 'N/A'}</td>
+                                            <td>{MES_NAMES[(Number(item.mes_evaluacion || 1) - 1)] || ''} / {item.anio_evaluacion}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
             </section>
 
             {loading && <div className="inventarios-loading">Cargando información...</div>}
