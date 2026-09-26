@@ -12,6 +12,7 @@ const {
     getCatalogo,
     getDocumentoPreview,
     getDocumentoDownloadUrl,
+    createProveedor,
     createPedimento,
     getPedimentos,
     getVirtuales,
@@ -32,6 +33,7 @@ router.get('/dashboard', authMiddleware, allowImpOrExp, getDashboard);
 router.get('/documentos', authMiddleware, allowImpOrExp, getDocumentos);
 router.get('/:id/download-url', authMiddleware, allowImpOrExp, getDocumentoDownloadUrl);
 router.get('/:id/preview', authMiddleware, allowImpOrExp, getDocumentoPreview);
+router.post('/proveedores', authMiddleware, requireImp, createProveedor);
 router.post('/pedimentos', authMiddleware, requireImp, createPedimento);
 router.post('/virtuales', authMiddleware, requireImp, createVirtual);
 router.post('/upload', authMiddleware, requireImp, uploadRgce.array('archivos', 20), uploadDocuments);

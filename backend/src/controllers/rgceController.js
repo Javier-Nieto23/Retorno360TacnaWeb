@@ -329,6 +329,64 @@ async function getRazonSocialAndEmpresa(razonSocialId, empresaId) {
     };
 }
 
+async function createProveedor(req, res) {
+    try {
+        await ensureDocumentCatalogTables();
+
+        const razonSocialId = Number(req.body.razon_social_id);
+        const nombreProveedor = String(req.body.nombre_proveedor || req.body.nombre_empresa || '').trim();
+
+        if (!razonSocialId) {
+            return res.status(400).json({ success: false, message: 'Debe seleccionar una razón social para crear el proveedor.' });
+        }
+
+        if (!nombreProveedor) {
+            return res.status(400).json({ success: false, message: 'Debe indicar el nombre del proveedor.' });
+        }
+
+        const razonSocialResult = await pool.query(`
+            SELECT id_razon, nombre_razon_social AS nombre
+            FROM public.razon_social_documentos
+            WHERE id_razon = $1
+            LIMIT 1;
+        `, [razonSocialId]);
+
+        if (!razonSocialResult.rows.length) {
+            return res.status(404).json({ success: false, message: 'La razón social seleccionada no existe en el catálogo de documentos.' });
+        }
+
+        const proveedorExistente = await pool.query(`
+            SELECT id
+            FROM public.empresas_documentos
+            WHERE id_razon = $1
+              AND LOWER(TRIM(nombre_empresa)) = LOWER(TRIM($2))
+            LIMIT 1;
+        `, [razonSocialId, nombreProveedor]);
+
+        if (proveedorExistente.rows.length > 0) {
+            return res.status(409).json({ success: false, message: 'Ya existe un proveedor con ese nombre para la razón social seleccionada.' });
+        }
+
+        const nextIdResult = await pool.query(`
+            SELECT COALESCE(MAX(id_empresa), 0) + 1 AS next_id
+            FROM public.empresas_documentos;
+        `);
+
+        const nextId = Number(nextIdResult.rows[0]?.next_id || 1);
+
+        const result = await pool.query(`
+            INSERT INTO public.empresas_documentos (id_empresa, nombre_empresa, id_razon, created_at)
+            VALUES ($1, $2, $3, NOW())
+            RETURNING *;
+        `, [nextId, nombreProveedor, razonSocialId]);
+
+        res.status(201).json({ success: true, proveedor: result.rows[0] });
+    } catch (error) {
+        console.error('Error al crear proveedor RGCE:', error);
+        res.status(500).json({ success: false, message: 'No se pudo crear el proveedor RGCE.' });
+    }
+}
+
 async function createPedimento(req, res) {
     try {
         await ensurePedimentoTable();
@@ -1052,6 +1110,7 @@ async function getCatalogo(req, res) {
 module.exports = {
     DOCUMENT_TYPES,
     ensureRgceTable,
+    createProveedor,
     createPedimento,
     getPedimentos,
     getDashboard,

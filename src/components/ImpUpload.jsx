@@ -37,9 +37,14 @@ export default function ImpUpload() {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [creatingPedimento, setCreatingPedimento] = useState(false);
+    const [creatingProveedor, setCreatingProveedor] = useState(false);
     const [savingVirtual, setSavingVirtual] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [proveedorForm, setProveedorForm] = useState({
+        razon_social_id: '',
+        nombre_proveedor: '',
+    });
     const [virtualForm, setVirtualForm] = useState({
         razon_social_id: '',
         empresa_id: '',
@@ -253,6 +258,63 @@ export default function ImpUpload() {
             setError(err.message || 'No se pudo crear la carpeta del pedimento.');
         } finally {
             setCreatingPedimento(false);
+        }
+    };
+
+    const handleCreateProveedor = async () => {
+        if (!proveedorForm.razon_social_id) {
+            setError('Debe seleccionar la razón social para crear el proveedor.');
+            return;
+        }
+
+        if (!proveedorForm.nombre_proveedor.trim()) {
+            setError('Debe indicar el nombre del proveedor.');
+            return;
+        }
+
+        try {
+            setCreatingProveedor(true);
+            setError('');
+            setSuccess('');
+
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/proveedores`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(localStorage.getItem('session_token') || ''),
+                },
+                body: JSON.stringify({
+                    razon_social_id: proveedorForm.razon_social_id,
+                    nombre_proveedor: proveedorForm.nombre_proveedor,
+                }),
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo crear el proveedor.');
+
+            setSuccess(`El proveedor ${data.proveedor?.nombre_empresa || proveedorForm.nombre_proveedor} quedó registrado.`);
+            setProveedorForm({ razon_social_id: proveedorForm.razon_social_id, nombre_proveedor: '' });
+
+            const catalogoResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/catalogo`, {
+                headers: {
+                    'x-user-id': String(user?.id || ''),
+                    'x-session-token': String(localStorage.getItem('session_token') || ''),
+                },
+            });
+            const catalogoData = await catalogoResponse.json();
+            if (catalogoResponse.ok && catalogoData?.success) {
+                setCatalogo({
+                    tipos: catalogoData.tipos || DOCUMENT_TYPES,
+                    razones_sociales: catalogoData.razones_sociales || [],
+                    empresas: catalogoData.empresas || [],
+                });
+                setRazonesSociales(catalogoData.razones_sociales || []);
+            }
+        } catch (err) {
+            setError(err.message || 'No se pudo crear el proveedor.');
+        } finally {
+            setCreatingProveedor(false);
         }
     };
 
@@ -510,6 +572,58 @@ export default function ImpUpload() {
                         <div className="imp-upload-card-head">
                             <div>
                                 <span className="imp-upload-step">Paso 2</span>
+                                <h2>Proveedores</h2>
+                            </div>
+                            <span className="imp-upload-chip neutral">Catálogo</span>
+                        </div>
+
+                        <div className="imp-upload-form-grid two-columns">
+                            <div className="imp-upload-field">
+                                <label>Razón social</label>
+                                <select
+                                    value={proveedorForm.razon_social_id}
+                                    onChange={(e) => setProveedorForm((prev) => ({ ...prev, razon_social_id: e.target.value }))}
+                                >
+                                    <option value="">Seleccione razón social</option>
+                                    {(razonesSociales || []).map((rs) => (
+                                        <option key={rs.id} value={rs.id}>{rs.nombre}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="imp-upload-field">
+                                <label>Nombre del proveedor</label>
+                                <input
+                                    type="text"
+                                    value={proveedorForm.nombre_proveedor}
+                                    onChange={(e) => setProveedorForm((prev) => ({ ...prev, nombre_proveedor: e.target.value }))}
+                                    placeholder="Ej. Proveedor XYZ"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="imp-upload-actions-row">
+                            <button type="button" className="inventarios-btn inventarios-btn-primary" onClick={handleCreateProveedor} disabled={creatingProveedor || !proveedorForm.razon_social_id || !proveedorForm.nombre_proveedor.trim()}>
+                                {creatingProveedor ? 'Guardando...' : 'Guardar proveedor'}
+                            </button>
+                        </div>
+
+                        {proveedorForm.razon_social_id && (
+                            <div className="imp-upload-pill-wrap">
+                                <h3>Proveedores vinculados</h3>
+                                <div className="imp-upload-pills">
+                                    {(catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(proveedorForm.razon_social_id)).map((empresa) => (
+                                        <span key={empresa.id} className="imp-upload-pill active">{empresa.nombre}</span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="imp-upload-card">
+                        <div className="imp-upload-card-head">
+                            <div>
+                                <span className="imp-upload-step">Paso 3</span>
                                 <h2>Carga de documentos</h2>
                             </div>
                             <span className="imp-upload-chip success">RGCE</span>
