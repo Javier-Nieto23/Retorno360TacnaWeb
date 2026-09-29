@@ -16,6 +16,17 @@ const DOCUMENT_TYPES = [
     'CFDI / Remisión',
     'Verificación de domicilio',
     'Proceso Productivo',
+    'Contrato de Compra / PO',
+    'Carta Porte',
+    'Escrito Libre',
+    'SUA cliente Tacna almacen',
+    'Proceso Productivo cliente Tacna',
+    'Pedimento AF maquinaria que se involucra en PP',
+    'Manifestación de Valor',
+    'Inventario / PANTALLA SEER',
+    'Certificado de Origen',
+    'Ficha Técnica',
+    'CFDI de Traslado / Remision',
 ];
 
 export default function ImpUpload() {
@@ -49,6 +60,7 @@ export default function ImpUpload() {
         razon_social_id: '',
         empresa_id: '',
         pedimento_id: '',
+        proveedor_id: '',
         nombre_operacion: '',
         tipo_virtual: 'Transferencia',
         cantidad: 1,
@@ -74,6 +86,11 @@ export default function ImpUpload() {
         if (!pedimentoForm.razon_social_id) return [];
         return (catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(pedimentoForm.razon_social_id));
     }, [catalogo.empresas, pedimentoForm.razon_social_id]);
+
+    const proveedoresDisponibles = useMemo(() => {
+        if (!virtualForm.razon_social_id) return [];
+        return (catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(virtualForm.razon_social_id));
+    }, [catalogo.empresas, virtualForm.razon_social_id]);
 
     useEffect(() => {
         if (!user) return;
@@ -401,8 +418,18 @@ export default function ImpUpload() {
     };
 
     const handleVirtualSubmit = async () => {
-        if (!virtualForm.razon_social_id || !virtualForm.empresa_id || !virtualForm.nombre_operacion.trim()) {
-            setError('Debe completar razón social, empresa y nombre de la operación virtual.');
+        if (!virtualForm.razon_social_id || !virtualForm.empresa_id) {
+            setError('Debe completar razón social y empresa antes de guardar la operación virtual.');
+            return;
+        }
+
+        if (!virtualForm.proveedor_id) {
+            setError('Debe seleccionar un proveedor cargado en la base de datos.');
+            return;
+        }
+
+        if (!virtualForm.nombre_operacion.trim()) {
+            setError('Debe indicar el nombre de la operación virtual.');
             return;
         }
 
@@ -422,6 +449,7 @@ export default function ImpUpload() {
                     razon_social_id: virtualForm.razon_social_id,
                     empresa_id: virtualForm.empresa_id,
                     pedimento_id: virtualForm.pedimento_id ? Number(virtualForm.pedimento_id) : null,
+                    proveedor_id: virtualForm.proveedor_id ? Number(virtualForm.proveedor_id) : null,
                     nombre_operacion: virtualForm.nombre_operacion,
                     tipo_virtual: virtualForm.tipo_virtual,
                     cantidad: Number(virtualForm.cantidad || 0),
@@ -435,7 +463,7 @@ export default function ImpUpload() {
             if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo guardar la operación virtual.');
 
             setSuccess('La operación virtual se registró correctamente.');
-            setVirtualForm((prev) => ({ ...prev, empresa_id: '', pedimento_id: '', nombre_operacion: '', tipo_virtual: 'Transferencia', cantidad: 1, observaciones: '' }));
+            setVirtualForm((prev) => ({ ...prev, empresa_id: '', pedimento_id: '', proveedor_id: '', nombre_operacion: '', tipo_virtual: 'Transferencia', cantidad: 1, observaciones: '' }));
             await cargarVirtuales();
         } catch (err) {
             setError(err.message || 'No se pudo registrar la operación virtual.');
@@ -799,7 +827,7 @@ export default function ImpUpload() {
                         <label>Razón social</label>
                         <select
                             value={virtualForm.razon_social_id}
-                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '', pedimento_id: '' }))}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, razon_social_id: e.target.value, empresa_id: '', pedimento_id: '', proveedor_id: '' }))}
                         >
                             <option value="">Seleccione razón social</option>
                             {(razonesSociales || []).map((rs) => (
@@ -812,7 +840,7 @@ export default function ImpUpload() {
                         <label>Empresa</label>
                         <select
                             value={virtualForm.empresa_id}
-                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, empresa_id: e.target.value, pedimento_id: '' }))}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, empresa_id: e.target.value, pedimento_id: '', proveedor_id: '' }))}
                         >
                             <option value="">Seleccione empresa</option>
                             {(catalogo.empresas || []).filter((empresa) => String(empresa.id_razon) === String(virtualForm.razon_social_id)).map((empresa) => (
@@ -854,8 +882,22 @@ export default function ImpUpload() {
                             type="text"
                             value={virtualForm.nombre_operacion}
                             onChange={(e) => setVirtualForm((prev) => ({ ...prev, nombre_operacion: e.target.value }))}
-                            placeholder="Ej. Transferencia de materiales"
+                            placeholder="Ej. Venta regional / Transferencia de materia prima"
                         />
+                    </div>
+
+                    <div className="imp-upload-field">
+                        <label>Proveedor</label>
+                        <select
+                            value={virtualForm.proveedor_id}
+                            onChange={(e) => setVirtualForm((prev) => ({ ...prev, proveedor_id: e.target.value }))}
+                            disabled={!virtualForm.razon_social_id || !virtualForm.empresa_id}
+                        >
+                            <option value="">Seleccione proveedor</option>
+                            {proveedoresDisponibles.map((proveedor) => (
+                                <option key={proveedor.id} value={proveedor.id}>{proveedor.nombre}</option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="imp-upload-field">

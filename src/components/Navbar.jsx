@@ -65,9 +65,17 @@ export default function Navbar() {
                     </>
                 )}
                 {isAdmin && (
-                    <NavLink to="/configuracion" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                        Configuración
-                    </NavLink>
+                    <>
+                        <NavLink to="/admin" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Dashboard
+                        </NavLink>
+                        <NavLink to="/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Historial
+                        </NavLink>
+                        <NavLink to="/configuracion" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Configuración
+                        </NavLink>
+                    </>
                 )}
                 {isCluster && (
                     <>

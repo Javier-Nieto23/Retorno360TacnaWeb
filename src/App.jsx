@@ -68,6 +68,20 @@ function ClientRoute({ children }) {
   );
 }
 
+function HistorialRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="app-loading">Cargando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isImpUser(user) && !isAdminUser(user)) return <Navigate to={getLandingPath(user)} replace />;
+
+  return (
+    <>
+      <Navbar />
+      <main className="app-main">{children}</main>
+    </>
+  );
+}
+
 function ImpRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando...</div>;
@@ -146,7 +160,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<DashboardRoute />} />
       <Route path="/archivos" element={<ClientRoute><ArchivosCliente /></ClientRoute>} />
       <Route path="/solicitud-parte" element={<ClientRoute><SolicitudParte /></ClientRoute>} />
-      <Route path="/historial" element={<ImpRoute><Historial /></ImpRoute>} />
+      <Route path="/historial" element={<HistorialRoute><Historial /></HistorialRoute>} />
       <Route path="/imp-upload" element={<ImpRoute><ImpUpload /></ImpRoute>} />
       <Route path="/exp-dashboard" element={<ExpRoute><ExpDashboard /></ExpRoute>} />
       <Route path="/exp-historial" element={<ExpRoute><ExpHistorial /></ExpRoute>} />
