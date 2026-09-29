@@ -3,6 +3,23 @@ import { fileService, rgceService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './Historial.css';
 
+function formatDateTime(value) {
+    if (!value) return '—';
+    return new Date(value).toLocaleString('es-PE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function formatPeriodLabel(anio, mes) {
+    if (!anio && !mes) return '—';
+    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    return `${monthNames[Number(mes) - 1] || '—'} ${anio || ''}`.trim();
+}
+
 export default function Historial() {
     const { user } = useAuth();
     const [archivos, setArchivos] = useState([]);
@@ -12,16 +29,20 @@ export default function Historial() {
     const [filtroTextoEmpresa, setFiltroTextoEmpresa] = useState('');
     const [preview, setPreview] = useState({ open: false, documento: null, observacion: '' });
     const [empresaSeleccionadaPorRazon, setEmpresaSeleccionadaPorRazon] = useState({});
+    const isAdminHistory = Boolean(user && (String(user.rol_nombre || '').toLowerCase() === 'admin' || user.is_admin));
 
     const cargarArchivos = async () => {
         setLoading(true);
         setError('');
 
         try {
-            const { data } = await rgceService.documentos();
-            setArchivos(data.documentos || []);
+            const { data } = isAdminHistory
+                ? await fileService.historial()
+                : await rgceService.documentos();
+
+            setArchivos(isAdminHistory ? (data?.archivos || []) : (data?.documentos || []));
         } catch (err) {
-            setError(err.response?.data?.error || 'Error al cargar el historial RGCE.');
+            setError(err.response?.data?.error || (isAdminHistory ? 'Error al cargar el historial del administrador.' : 'Error al cargar el historial RGCE.'));
             setArchivos([]);
         } finally {
             setLoading(false);
@@ -45,6 +66,20 @@ export default function Historial() {
             return coincideRazon && coincideEmpresa;
         });
     }, [archivos, filtroTextoEmpresa, filtroTextoRazonSocial]);
+
+    const historialAdmin = useMemo(() => {
+        const normalized = Array.isArray(archivosFiltrados) ? archivosFiltrados : [];
+        return {
+            inventarios: normalized.filter((archivo) => {
+                const bucketContext = String(archivo?.bucket_context || 'inventory').toLowerCase();
+                return bucketContext === 'inventory' || bucketContext === 'inventario';
+            }),
+            auditoria: normalized.filter((archivo) => {
+                const bucketContext = String(archivo?.bucket_context || '').toLowerCase();
+                return bucketContext === 'audit' || bucketContext === 'auditoria';
+            }),
+        };
+    }, [archivosFiltrados]);
 
     const grupos = useMemo(() => {
         const map = new Map();
@@ -175,104 +210,228 @@ export default function Historial() {
     return (
         <div className="historial-page">
             <div className="historial-header">
-                <h1>Historial RGCE</h1>
-                <p className="historial-subtitle">Archivos cargados en el bucket RGCE, organizados por razón social y empresa.</p>
+                {isAdminHistory ? (
+                    <>
+                        <h1>Historial de archivos</h1>
+                        <p className="historial-subtitle">Separado por inventarios y documentos de auditoría para administradores.</p>
+                    </>
+                ) : (
+                    <>
+                        <h1>Historial RGCE</h1>
+                        <p className="historial-subtitle">Archivos cargados en el bucket RGCE, organizados por razón social y empresa.</p>
+                    </>
+                )}
             </div>
 
-            <div className="historial-filters">
-                <div className="historial-filter-group">
-                    <label>Razón social</label>
-                    <input
-                        type="text"
-                        placeholder="Buscar razón social"
-                        value={filtroTextoRazonSocial}
-                        onChange={(e) => setFiltroTextoRazonSocial(e.target.value)}
-                    />
-                </div>
-                <div className="historial-filter-group">
-                    <label>Empresa</label>
-                    <input
-                        type="text"
-                        placeholder="Buscar empresa"
-                        value={filtroTextoEmpresa}
-                        onChange={(e) => setFiltroTextoEmpresa(e.target.value)}
-                    />
-                </div>
-            </div>
+            {isAdminHistory ? (
+                <>
+                    <div className="historial-filters">
+                        <div className="historial-filter-group">
+                            <label>Razón social</label>
+                            <input
+                                type="text"
+                                placeholder="Buscar razón social"
+                                value={filtroTextoRazonSocial}
+                                onChange={(e) => setFiltroTextoRazonSocial(e.target.value)}
+                            />
+                        </div>
+                        <div className="historial-filter-group">
+                            <label>Empresa</label>
+                            <input
+                                type="text"
+                                placeholder="Buscar empresa"
+                                value={filtroTextoEmpresa}
+                                onChange={(e) => setFiltroTextoEmpresa(e.target.value)}
+                            />
+                        </div>
+                    </div>
 
-            {error && <div className="historial-error">{error}</div>}
+                    {error && <div className="historial-error">{error}</div>}
 
-            {loading ? (
-                <div className="historial-empty">
-                    <p>Cargando historial...</p>
-                </div>
-            ) : grupos.length === 0 ? (
-                <div className="historial-empty">
-                    <span>📭</span>
-                    <p>No hay archivos para mostrar.</p>
-                </div>
-            ) : (
-                <div className="historial-groups">
-                    {grupos.map((razon) => {
-                        const empresaSeleccionada = empresaSeleccionadaPorRazon[razon.id] || razon.empresas[0]?.id || '';
-                        const documentosEmpresa = razon.empresas.find((empresa) => empresa.id === empresaSeleccionada)?.archivos || [];
-
-                        return (
-                            <div key={razon.id} className="historial-razon-group">
-                                <div className="historial-razon-header">
-                                    <h2>{razon.nombre}</h2>
-                                    <span>{razon.empresas.reduce((total, empresa) => total + empresa.archivos.length, 0)} archivos</span>
+                    <div className="admin-historial-layout">
+                        <div className="admin-historial-card inventory">
+                            <div className="admin-historial-card-header">
+                                <div>
+                                    <span className="admin-historial-kicker">Inventario</span>
+                                    <h2>Inventarios</h2>
                                 </div>
-
-                                <div className="historial-company-selector">
-                                    <label>Empresa</label>
-                                    <select
-                                        value={empresaSeleccionada}
-                                        onChange={(e) => setEmpresaSeleccionadaPorRazon((prev) => ({ ...prev, [razon.id]: e.target.value }))}
-                                    >
-                                        {razon.empresas.map((empresa) => (
-                                            <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="historial-doc-list">
-                                    {documentosEmpresa.length === 0 ? (
-                                        <div className="historial-empty small">
-                                            <p>No hay archivos para esta empresa.</p>
-                                        </div>
-                                    ) : (
-                                        documentosEmpresa.map((archivo) => (
-                                            <div key={archivo.id} className="historial-doc-item">
-                                                <div className="historial-doc-main">
-                                                    <div className="historial-doc-icon">📄</div>
-                                                    <div className="historial-doc-meta">
-                                                        <strong>{archivo.nombre_archivo}</strong>
-                                                        <span>Empresa: {archivo.empresa_nombre || '—'}</span>
-                                                        <span>Subido por: {archivo.usuario_id || '—'}</span>
-                                                        <span>Estado: {archivo.estado || 'entregado'}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="historial-doc-actions">
-                                                    <button type="button" onClick={() => handleDescargar(archivo)}>
-                                                        Descargar
-                                                    </button>
-                                                    <button type="button" className="secondary" onClick={() => abrirPreview(archivo)}>
-                                                        Observar
-                                                    </button>
-                                                    <button type="button" className="danger" onClick={() => handleEliminar(archivo)}>
-                                                        Eliminar
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
+                                <span className="admin-historial-pill">{historialAdmin.inventarios.length} archivos</span>
                             </div>
-                        );
-                    })}
-                </div>
+                            <div className="admin-historial-row">
+                                <span className="admin-historial-tag">Stock</span>
+                                <span className="admin-historial-muted">Última carga: {formatDateTime(historialAdmin.inventarios[0]?.uploaded_at || '')}</span>
+                            </div>
+                            {historialAdmin.inventarios.length === 0 ? (
+                                <p className="admin-historial-empty">No hay archivos de inventario para este filtro.</p>
+                            ) : (
+                                <div className="admin-historial-table-wrap">
+                                    <table className="admin-historial-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Archivo</th>
+                                                <th>Empresa</th>
+                                                <th>Razón social</th>
+                                                <th>Período</th>
+                                                <th>Fecha</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {historialAdmin.inventarios.map((archivo) => (
+                                                <tr key={archivo.id}>
+                                                    <td>{archivo.nombre_archivo || 'Archivo sin nombre'}</td>
+                                                    <td>{archivo.empresa_nombre || '—'}</td>
+                                                    <td>{archivo.razon_social_nombre || '—'}</td>
+                                                    <td>{formatPeriodLabel(archivo.anio, archivo.mes)}</td>
+                                                    <td>{formatDateTime(archivo.uploaded_at)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="admin-historial-card audit">
+                            <div className="admin-historial-card-header">
+                                <div>
+                                    <span className="admin-historial-kicker">Auditoría</span>
+                                    <h2>Documentos de auditoría</h2>
+                                </div>
+                                <span className="admin-historial-pill alt">{historialAdmin.auditoria.length} archivos</span>
+                            </div>
+                            <div className="admin-historial-row">
+                                <span className="admin-historial-tag alt">Documentos</span>
+                                <span className="admin-historial-muted">Última revisión: {formatDateTime(historialAdmin.auditoria[0]?.uploaded_at || '')}</span>
+                            </div>
+                            {historialAdmin.auditoria.length === 0 ? (
+                                <p className="admin-historial-empty">No hay documentos de auditoría para este filtro.</p>
+                            ) : (
+                                <div className="admin-historial-table-wrap">
+                                    <table className="admin-historial-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Archivo</th>
+                                                <th>Empresa</th>
+                                                <th>Razón social</th>
+                                                <th>Período</th>
+                                                <th>Fecha</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {historialAdmin.auditoria.map((archivo) => (
+                                                <tr key={archivo.id}>
+                                                    <td>{archivo.nombre_archivo || 'Archivo sin nombre'}</td>
+                                                    <td>{archivo.empresa_nombre || '—'}</td>
+                                                    <td>{archivo.razon_social_nombre || '—'}</td>
+                                                    <td>{formatPeriodLabel(archivo.anio, archivo.mes)}</td>
+                                                    <td>{formatDateTime(archivo.uploaded_at)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <>
+                    <div className="historial-filters">
+                        <div className="historial-filter-group">
+                            <label>Razón social</label>
+                            <input
+                                type="text"
+                                placeholder="Buscar razón social"
+                                value={filtroTextoRazonSocial}
+                                onChange={(e) => setFiltroTextoRazonSocial(e.target.value)}
+                            />
+                        </div>
+                        <div className="historial-filter-group">
+                            <label>Empresa</label>
+                            <input
+                                type="text"
+                                placeholder="Buscar empresa"
+                                value={filtroTextoEmpresa}
+                                onChange={(e) => setFiltroTextoEmpresa(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    {error && <div className="historial-error">{error}</div>}
+
+                    {loading ? (
+                        <div className="historial-empty">
+                            <p>Cargando historial...</p>
+                        </div>
+                    ) : grupos.length === 0 ? (
+                        <div className="historial-empty">
+                            <span>📭</span>
+                            <p>No hay archivos para mostrar.</p>
+                        </div>
+                    ) : (
+                        <div className="historial-groups">
+                            {grupos.map((razon) => {
+                                const empresaSeleccionada = empresaSeleccionadaPorRazon[razon.id] || razon.empresas[0]?.id || '';
+                                const documentosEmpresa = razon.empresas.find((empresa) => empresa.id === empresaSeleccionada)?.archivos || [];
+
+                                return (
+                                    <div key={razon.id} className="historial-razon-group">
+                                        <div className="historial-razon-header">
+                                            <h2>{razon.nombre}</h2>
+                                            <span>{razon.empresas.reduce((total, empresa) => total + empresa.archivos.length, 0)} archivos</span>
+                                        </div>
+
+                                        <div className="historial-company-selector">
+                                            <label>Empresa</label>
+                                            <select
+                                                value={empresaSeleccionada}
+                                                onChange={(e) => setEmpresaSeleccionadaPorRazon((prev) => ({ ...prev, [razon.id]: e.target.value }))}
+                                            >
+                                                {razon.empresas.map((empresa) => (
+                                                    <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="historial-doc-list">
+                                            {documentosEmpresa.length === 0 ? (
+                                                <div className="historial-empty small">
+                                                    <p>No hay archivos para esta empresa.</p>
+                                                </div>
+                                            ) : (
+                                                documentosEmpresa.map((archivo) => (
+                                                    <div key={archivo.id} className="historial-doc-item">
+                                                        <div className="historial-doc-main">
+                                                            <div className="historial-doc-icon">📄</div>
+                                                            <div className="historial-doc-meta">
+                                                                <strong>{archivo.nombre_archivo}</strong>
+                                                                <span>Empresa: {archivo.empresa_nombre || '—'}</span>
+                                                                <span>Subido por: {archivo.usuario_id || '—'}</span>
+                                                                <span>Estado: {archivo.estado || 'entregado'}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="historial-doc-actions">
+                                                            <button type="button" onClick={() => handleDescargar(archivo)}>
+                                                                Descargar
+                                                            </button>
+                                                            <button type="button" className="secondary" onClick={() => abrirPreview(archivo)}>
+                                                                Observar
+                                                            </button>
+                                                            <button type="button" className="danger" onClick={() => handleEliminar(archivo)}>
+                                                                Eliminar
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </>
             )}
 
             {preview.open && preview.documento && (

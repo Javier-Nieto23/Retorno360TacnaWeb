@@ -4,6 +4,143 @@
     padding: 1.25rem 0.9rem;
 }
 
+.admin-historial-layout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.2rem;
+    margin-top: 1.5rem;
+}
+
+.admin-historial-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #dfe7f1;
+    box-shadow: 0 2px 12px rgba(15, 52, 96, 0.08);
+    padding: 1rem 1.1rem 1.1rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-historial-card.inventory {
+    border-top: 4px solid #2563eb;
+    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
+}
+
+.admin-historial-card.audit {
+    border-top: 4px solid #f59e0b;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.08);
+}
+
+.admin-historial-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.8rem;
+}
+
+.admin-historial-kicker {
+    display: inline-block;
+    margin-bottom: 0.2rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+
+.admin-historial-card h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: #1a1a2e;
+}
+
+.admin-historial-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px;
+    padding: 0.45rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.08);
+    color: #1d4ed8;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.admin-historial-pill.alt {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+}
+
+.admin-historial-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    align-items: center;
+    margin-bottom: 0.9rem;
+}
+
+.admin-historial-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.admin-historial-tag.alt {
+    background: #fff7ed;
+    color: #b45309;
+}
+
+.admin-historial-muted {
+    color: #6b7280;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.admin-historial-empty {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.96rem;
+    padding: 0.8rem 0 0.15rem;
+}
+
+.admin-historial-table-wrap {
+    overflow-x: auto;
+}
+
+.admin-historial-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 480px;
+}
+
+.admin-historial-table th,
+.admin-historial-table td {
+    padding: 0.7rem 0.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+    font-size: 0.85rem;
+    color: #1f2937;
+}
+
+.admin-historial-table th {
+    color: #374151;
+    font-weight: 700;
+    background: #f8fafc;
+}
+
+.historial-page {
+    max-width: calc(100vw - 24px);
+    margin: 0 auto;
+    padding: 1.25rem 0.9rem;
+}
+
 .historial-header {
     margin-bottom: 1.5rem;
 }
