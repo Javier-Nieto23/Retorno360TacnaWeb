@@ -120,6 +120,17 @@ export default function Historial() {
 
     const abrirPreview = async (documento) => {
         try {
+            if (isAdminHistory) {
+                const { data } = await fileService.obtenerUrlDescarga(documento.id);
+                const resolvedUrl = data?.download_url || documento.storage_url || '';
+                setPreview({
+                    open: true,
+                    documento: { ...documento, storage_url: resolvedUrl },
+                    observacion: documento.observaciones || '',
+                });
+                return;
+            }
+
             const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${documento.id}/preview`, {
                 headers: {
                     'x-user-id': String(user?.id || ''),
@@ -145,6 +156,12 @@ export default function Historial() {
 
     const handleDescargar = async (archivo) => {
         try {
+            if (isAdminHistory) {
+                const { data } = await fileService.obtenerUrlDescarga(archivo.id);
+                window.open(data?.download_url || archivo.storage_url || '', '_blank', 'noopener,noreferrer');
+                return;
+            }
+
             const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${archivo.id}/download-url`, {
                 headers: {
                     'x-user-id': String(user?.id || ''),
@@ -172,6 +189,11 @@ export default function Historial() {
 
     const handleMarcarRevisado = async () => {
         if (!preview.documento) return;
+
+        if (isAdminHistory) {
+            cerrarPreview();
+            return;
+        }
 
         const observacion = preview.observacion.trim();
 
@@ -273,6 +295,7 @@ export default function Historial() {
                                                 <th>Razón social</th>
                                                 <th>Período</th>
                                                 <th>Fecha</th>
+                                                <th>Acción</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -283,6 +306,12 @@ export default function Historial() {
                                                     <td>{archivo.razon_social_nombre || '—'}</td>
                                                     <td>{formatPeriodLabel(archivo.anio, archivo.mes)}</td>
                                                     <td>{formatDateTime(archivo.uploaded_at)}</td>
+                                                    <td>
+                                                        <div className="historial-doc-actions">
+                                                            <button type="button" onClick={() => handleDescargar(archivo)}>Descargar</button>
+                                                            <button type="button" className="secondary" onClick={() => abrirPreview(archivo)}>Vista previa</button>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -315,6 +344,7 @@ export default function Historial() {
                                                 <th>Razón social</th>
                                                 <th>Período</th>
                                                 <th>Fecha</th>
+                                                <th>Acción</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -325,6 +355,12 @@ export default function Historial() {
                                                     <td>{archivo.razon_social_nombre || '—'}</td>
                                                     <td>{formatPeriodLabel(archivo.anio, archivo.mes)}</td>
                                                     <td>{formatDateTime(archivo.uploaded_at)}</td>
+                                                    <td>
+                                                        <div className="historial-doc-actions">
+                                                            <button type="button" onClick={() => handleDescargar(archivo)}>Descargar</button>
+                                                            <button type="button" className="secondary" onClick={() => abrirPreview(archivo)}>Vista previa</button>
+                                                        </div>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -472,18 +508,27 @@ export default function Historial() {
                             )}
                         </div>
 
-                        <div className="historial-preview-actions">
-                            <label>Observación</label>
-                            <textarea
-                                value={preview.observacion}
-                                rows={4}
-                                placeholder="Escribe una observación para este archivo..."
-                                onChange={(e) => setPreview((prev) => ({ ...prev, observacion: e.target.value }))}
-                            />
-                            <button type="button" className="historial-btn-primary" onClick={handleMarcarRevisado}>
-                                Marcar como revisado
-                            </button>
-                        </div>
+                        {!isAdminHistory ? (
+                            <div className="historial-preview-actions">
+                                <label>Observación</label>
+                                <textarea
+                                    value={preview.observacion}
+                                    rows={4}
+                                    placeholder="Escribe una observación para este archivo..."
+                                    onChange={(e) => setPreview((prev) => ({ ...prev, observacion: e.target.value }))}
+                                />
+                                <button type="button" className="historial-btn-primary" onClick={handleMarcarRevisado}>
+                                    Marcar como revisado
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="historial-preview-actions">
+                                <div className="historial-doc-actions" style={{ justifyContent: 'flex-end' }}>
+                                    <button type="button" onClick={() => handleDescargar(preview.documento)}>Descargar</button>
+                                    <button type="button" className="secondary" onClick={cerrarPreview}>Cerrar</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

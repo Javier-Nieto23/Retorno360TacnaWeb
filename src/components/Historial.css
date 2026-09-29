@@ -919,23 +919,33 @@
 }
 
 .historial-doc-actions button {
-    border: 1px solid #d1d5db;
-    background: white;
-    color: #111827;
-    border-radius: 8px;
-    padding: 0.55rem 0.8rem;
-    font-size: 0.82rem;
+    border: 1px solid rgba(37, 99, 235, 0.12);
+    background: linear-gradient(180deg, #ffffff 0%, #f5f9ff 100%);
+    color: #0f172a;
+    border-radius: 10px;
+    padding: 0.58rem 0.82rem;
+    font-size: 0.8rem;
+    font-weight: 700;
     cursor: pointer;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.historial-doc-actions button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.08);
+    border-color: rgba(37, 99, 235, 0.2);
 }
 
 .historial-doc-actions button.secondary {
-    background: #f3f4f6;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+    color: #374151;
 }
 
 .historial-doc-actions button.danger {
-    border-color: #fecaca;
+    border-color: rgba(239, 68, 68, 0.18);
     color: #b91c1c;
-    background: #fff1f2;
+    background: linear-gradient(180deg, #fff5f5 0%, #fef2f2 100%);
 }
 
 .historial-empty.small {
@@ -957,10 +967,11 @@
 .historial-preview-modal {
     width: min(1100px, 92vw);
     max-height: 90vh;
-    background: white;
-    border-radius: 16px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 18px;
     overflow: hidden;
-    box-shadow: 0 25px 50px rgba(15, 23, 42, 0.25);
+    border: 1px solid rgba(148, 163, 184, 0.26);
+    box-shadow: 0 28px 60px rgba(15, 23, 42, 0.22);
 }
 
 .historial-preview-header {
@@ -970,6 +981,7 @@
     gap: 1rem;
     padding: 1rem 1rem 0.75rem;
     border-bottom: 1px solid #e5e7eb;
+    background: linear-gradient(180deg, rgba(239, 246, 255, 0.75) 0%, rgba(255, 255, 255, 0) 100%);
 }
 
 .historial-preview-header h3 {
@@ -986,12 +998,19 @@
 
 .preview-close {
     border: none;
-    background: #f3f4f6;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
     width: 36px;
     height: 36px;
     border-radius: 999px;
     cursor: pointer;
     font-size: 1rem;
+    color: #334155;
+    transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.preview-close:hover {
+    transform: scale(1.04);
+    background: linear-gradient(180deg, #eef2ff 0%, #dbeafe 100%);
 }
 
 .historial-preview-body {
@@ -1054,12 +1073,19 @@
 .historial-btn-primary {
     justify-self: flex-end;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     background: linear-gradient(135deg, #0f3460, #2563eb);
     color: white;
-    padding: 0.7rem 1rem;
+    padding: 0.75rem 1.1rem;
     font-weight: 700;
     cursor: pointer;
+    box-shadow: 0 10px 18px rgba(37, 99, 235, 0.18);
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.historial-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 22px rgba(37, 99, 235, 0.22);
 }
 
 @media (max-width: 700px) {
