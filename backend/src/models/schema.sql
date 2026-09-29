@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS public.archivos_historial
     tamano bigint,
     uploaded_at timestamp without time zone DEFAULT now(),
     empresa_id integer,
+    bucket_context character varying(40) DEFAULT 'inventory',
     CONSTRAINT archivos_historial_pkey PRIMARY KEY (id)
 );
 

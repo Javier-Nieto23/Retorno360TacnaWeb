@@ -30,6 +30,25 @@ function formatDateTime(value) {
     });
 }
 
+function formatPeriodLabel(anio, mes) {
+    return `${MONTH_NAMES[Number(mes) - 1] || '—'} ${anio || ''}`.trim();
+}
+
+function buildHistorialAdminByBucket(archivos = []) {
+    const normalized = Array.isArray(archivos) ? archivos : [];
+
+    return {
+        inventarios: normalized.filter((archivo) => {
+            const bucketContext = String(archivo?.bucket_context || 'inventory').toLowerCase();
+            return bucketContext === 'inventory' || bucketContext === 'inventario';
+        }),
+        auditoria: normalized.filter((archivo) => {
+            const bucketContext = String(archivo?.bucket_context || '').toLowerCase();
+            return bucketContext === 'audit' || bucketContext === 'auditoria';
+        }),
+    };
+}
+
 export default function AdminDashboard() {
     const [loading, setLoading] = useState(true);
     const [loadingDeleteRequests, setLoadingDeleteRequests] = useState(false);
@@ -92,6 +111,7 @@ export default function AdminDashboard() {
 
     const [filteringDashboard, setFilteringDashboard] = useState(false);
     const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
+    const [historialAdmin, setHistorialAdmin] = useState({ inventarios: [], auditoria: [] });
 
     async function cargarDatos() {
         setLoading(true);
@@ -99,11 +119,12 @@ export default function AdminDashboard() {
         setLoadingObservacionesRevision(true);
         setError('');
         try {
-            const [dashboardRes, catalogoRes, solicitudesRes, observacionesRes] = await Promise.allSettled([
+            const [dashboardRes, catalogoRes, solicitudesRes, observacionesRes, historialRes] = await Promise.allSettled([
                 adminService.dashboard(appliedFilters),
                 adminService.catalogo(),
                 fileService.listarSolicitudesEliminacion({ estado: 'pendiente' }),
                 fileService.listarObservaciones({ estado: 'en_revision' }),
+                fileService.historial(appliedFilters),
             ]);
 
             if (dashboardRes.status === 'rejected' && catalogoRes.status === 'rejected') {
@@ -144,6 +165,12 @@ export default function AdminDashboard() {
 
                     return next;
                 });
+            }
+            if (historialRes.status === 'fulfilled') {
+                const archivos = historialRes.value.data?.archivos || [];
+                setHistorialAdmin(buildHistorialAdminByBucket(archivos));
+            } else {
+                setHistorialAdmin({ inventarios: [], auditoria: [] });
             }
             setCalendarRefreshKey((prev) => prev + 1);
         } catch (err) {
@@ -323,9 +350,13 @@ export default function AdminDashboard() {
         setError('');
 
         try {
-            const { data } = await adminService.dashboard(tableFilters);
+            const [dashboardData, historialData] = await Promise.all([
+                adminService.dashboard(tableFilters),
+                fileService.historial(tableFilters),
+            ]);
             setAppliedFilters(tableFilters);
-            setDashboard(data);
+            setDashboard(dashboardData.data);
+            setHistorialAdmin(buildHistorialAdminByBucket(historialData.data?.archivos || []));
             setCalendarRefreshKey((prev) => prev + 1);
         } catch (err) {
             setError(err.response?.data?.error || 'No se pudo aplicar el filtro del dashboard.');
@@ -819,6 +850,102 @@ export default function AdminDashboard() {
                                 </table>
                             </div>
                         )}
+                    </section>
+
+                    <section className="admin-card admin-files-card">
+                        <div className="admin-requests-header">
+                            <div>
+                                <h2>Historial de archivos</h2>
+                                <p className="admin-section-meta">Separado por inventarios y documentos de auditoría para administradores.</p>
+                            </div>
+                            <span className="admin-requests-count">{historialAdmin.inventarios.length + historialAdmin.auditoria.length}</span>
+                        </div>
+
+                        <div className="admin-grid">
+                            <div className="admin-card admin-bucket-card inventory">
+                                <div className="admin-bucket-card-header">
+                                    <div>
+                                        <span className="admin-bucket-kicker">Inventario</span>
+                                        <h2>Inventarios</h2>
+                                    </div>
+                                    <span className="admin-bucket-pill">{historialAdmin.inventarios.length} archivos</span>
+                                </div>
+                                <div className="admin-bucket-summary">
+                                    <span className="admin-bucket-chip">Stock</span>
+                                    <span className="admin-bucket-chip muted">Última carga: {formatDateTime(historialAdmin.inventarios[0]?.uploaded_at || '')}</span>
+                                </div>
+                                {historialAdmin.inventarios.length === 0 ? (
+                                    <p className="admin-empty">No hay archivos de inventario para este filtro.</p>
+                                ) : (
+                                    <div className="admin-table-wrap">
+                                        <table className="admin-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Archivo</th>
+                                                    <th>Empresa</th>
+                                                    <th>Razón social</th>
+                                                    <th>Período</th>
+                                                    <th>Fecha</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {historialAdmin.inventarios.map((archivo) => (
+                                                    <tr key={archivo.id}>
+                                                        <td>{archivo.nombre_archivo || 'Archivo sin nombre'}</td>
+                                                        <td>{archivo.empresa_nombre || '—'}</td>
+                                                        <td>{archivo.razon_social_nombre || '—'}</td>
+                                                        <td>{formatPeriodLabel(archivo.anio, archivo.mes)}</td>
+                                                        <td>{formatDateTime(archivo.uploaded_at)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="admin-card admin-bucket-card audit">
+                                <div className="admin-bucket-card-header">
+                                    <div>
+                                        <span className="admin-bucket-kicker">Auditoría</span>
+                                        <h2>Documentos de auditoría</h2>
+                                    </div>
+                                    <span className="admin-bucket-pill alt">{historialAdmin.auditoria.length} archivos</span>
+                                </div>
+                                <div className="admin-bucket-summary">
+                                    <span className="admin-bucket-chip alt">Documentos</span>
+                                    <span className="admin-bucket-chip muted">Última revisión: {formatDateTime(historialAdmin.auditoria[0]?.uploaded_at || '')}</span>
+                                </div>
+                                {historialAdmin.auditoria.length === 0 ? (
+                                    <p className="admin-empty">No hay documentos de auditoría para este filtro.</p>
+                                ) : (
+                                    <div className="admin-table-wrap">
+                                        <table className="admin-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Archivo</th>
+                                                    <th>Empresa</th>
+                                                    <th>Razón social</th>
+                                                    <th>Período</th>
+                                                    <th>Fecha</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {historialAdmin.auditoria.map((archivo) => (
+                                                    <tr key={archivo.id}>
+                                                        <td>{archivo.nombre_archivo || 'Archivo sin nombre'}</td>
+                                                        <td>{archivo.empresa_nombre || '—'}</td>
+                                                        <td>{archivo.razon_social_nombre || '—'}</td>
+                                                        <td>{formatPeriodLabel(archivo.anio, archivo.mes)}</td>
+                                                        <td>{formatDateTime(archivo.uploaded_at)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </section>
 
                     <div className="admin-grid">

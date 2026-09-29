@@ -190,6 +190,92 @@
     padding: 1.2rem 1.2rem;
 }
 
+.admin-bucket-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+}
+
+.admin-bucket-card.inventory {
+    border-top: 4px solid #2563eb;
+    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.08);
+}
+
+.admin-bucket-card.audit {
+    border-top: 4px solid #f59e0b;
+    box-shadow: 0 10px 30px rgba(245, 158, 11, 0.08);
+}
+
+.admin-bucket-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.8rem;
+}
+
+.admin-bucket-kicker {
+    display: inline-block;
+    margin-bottom: 0.25rem;
+    color: #6b7280;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.admin-bucket-card h2 {
+    margin: 0;
+    font-size: 1.08rem;
+}
+
+.admin-bucket-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 95px;
+    padding: 0.5rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(37, 99, 235, 0.08);
+    color: #1d4ed8;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.admin-bucket-pill.alt {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+}
+
+.admin-bucket-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+}
+
+.admin-bucket-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.admin-bucket-chip.alt {
+    background: #fff7ed;
+    color: #b45309;
+}
+
+.admin-bucket-chip.muted {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
 .admin-card h2 {
     margin: 0 0 1rem;
     color: #1a1a2e;

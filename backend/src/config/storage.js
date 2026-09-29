@@ -2,24 +2,37 @@ const { S3Client, PutObjectCommand, DeleteObjectCommand, HeadBucketCommand, GetO
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 function resolveBucketConfig(context = 'default') {
-    const isRgceContext = context === 'rgce';
-    const bucketName = String(
-        isRgceContext
-            ? (process.env.R2_BUCKET_NAME_RGCE || 'rgce')
-            : (process.env.R2_BUCKET_NAME || 'rgce')
-    ).trim() || (isRgceContext ? 'rgce' : 'rgce');
+    const normalizedContext = String(context || 'default').toLowerCase();
+    const contextMap = {
+        default: { bucketEnv: 'R2_BUCKET_NAME', publicEnv: 'R2_PUBLIC_URL', fallback: 'retorno360web' },
+        inventory: { bucketEnv: 'R2_BUCKET_NAME_INVENTARIOS', publicEnv: 'R2_PUBLIC_URL_INVENTARIOS', fallback: process.env.R2_BUCKET_NAME || 'retorno360web' },
+        inventario: { bucketEnv: 'R2_BUCKET_NAME_INVENTARIOS', publicEnv: 'R2_PUBLIC_URL_INVENTARIOS', fallback: process.env.R2_BUCKET_NAME || 'retorno360web' },
+        audit: { bucketEnv: 'R2_BUCKET_NAME_AUDITORIA', publicEnv: 'R2_PUBLIC_URL_AUDITORIA', fallback: 'auditoria' },
+        auditoria: { bucketEnv: 'R2_BUCKET_NAME_AUDITORIA', publicEnv: 'R2_PUBLIC_URL_AUDITORIA', fallback: 'auditoria' },
+        rgce: { bucketEnv: 'R2_BUCKET_NAME_RGCE', publicEnv: 'R2_PUBLIC_URL_RGCE', fallback: 'rgce' },
+    };
 
-    const publicUrlBase = String(
-        isRgceContext
-            ? (process.env.R2_PUBLIC_URL_RGCE || process.env.R2_PUBLIC_URL || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${bucketName}`)
-            : (process.env.R2_PUBLIC_URL || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${bucketName}`)
-    ).replace(/\/+$/, '');
+    const config = contextMap[normalizedContext] || contextMap.default;
+    const bucketName = String(process.env[config.bucketEnv] || config.fallback || 'retorno360web').trim() || config.fallback || 'retorno360web';
+    const publicUrlBase = String(process.env[config.publicEnv] || process.env.R2_PUBLIC_URL || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${bucketName}`).replace(/\/+$/, '');
 
     return { bucketName, publicUrlBase };
 }
 
 const defaultBucketConfig = resolveBucketConfig('default');
+const inventoryBucketConfig = resolveBucketConfig('inventory');
+const auditBucketConfig = resolveBucketConfig('audit');
 const rgceBucketConfig = resolveBucketConfig('rgce');
+
+function getBucketConfig(context = 'default') {
+    const normalizedContext = String(context || 'default').toLowerCase();
+
+    if (normalizedContext === 'rgce') return rgceBucketConfig;
+    if (normalizedContext === 'audit' || normalizedContext === 'auditoria') return auditBucketConfig;
+    if (normalizedContext === 'inventory' || normalizedContext === 'inventario') return inventoryBucketConfig;
+
+    return defaultBucketConfig;
+}
 const r2Client = new S3Client({
     region: 'auto',
     endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
@@ -59,7 +72,7 @@ function wrapR2Error(operation, error, bucketNameOverride) {
  */
 async function uploadFile(buffer, storageKey, mimeType, options = {}) {
     const context = String(options.context || 'default').toLowerCase();
-    const bucketConfig = context === 'rgce' ? rgceBucketConfig : defaultBucketConfig;
+    const bucketConfig = getBucketConfig(context);
     const bucketName = options.bucketName || bucketConfig.bucketName;
     const publicUrlBase = options.publicUrlBase || bucketConfig.publicUrlBase;
 
@@ -96,7 +109,7 @@ async function getDownloadUrl({
 }) {
     const isR2Mode = String(process.env.STORAGE_MODE || '').toLowerCase() === 'r2';
     const resolvedContext = String(context || 'default').toLowerCase();
-    const bucketConfig = resolvedContext === 'rgce' ? rgceBucketConfig : defaultBucketConfig;
+    const bucketConfig = getBucketConfig(resolvedContext);
 
     if (!isR2Mode) {
         if (storageUrl) return storageUrl;
@@ -140,7 +153,7 @@ async function deleteFile(storageKey, options = {}) {
     }
 
     const context = String(options.context || 'default').toLowerCase();
-    const bucketConfig = context === 'rgce' ? rgceBucketConfig : defaultBucketConfig;
+    const bucketConfig = getBucketConfig(context);
     const targetBucket = options.bucketName || bucketConfig.bucketName;
 
     const command = new DeleteObjectCommand({
@@ -159,7 +172,7 @@ async function deleteFile(storageKey, options = {}) {
  * @returns {Promise<boolean>}
  */
 async function checkCloudflareConnection(context = 'default') {
-    const bucketConfig = context === 'rgce' ? rgceBucketConfig : defaultBucketConfig;
+    const bucketConfig = getBucketConfig(context);
     try {
         const command = new HeadBucketCommand({
             Bucket: bucketConfig.bucketName,
@@ -196,7 +209,7 @@ async function getFileBuffer(storageKey, options = {}) {
         throw error;
     }
     const context = String(options.context || 'default').toLowerCase();
-    const bucketConfig = context === 'rgce' ? rgceBucketConfig : defaultBucketConfig;
+    const bucketConfig = getBucketConfig(context);
     const targetBucket = options.bucketName || bucketConfig.bucketName;
 
     const command = new GetObjectCommand({
@@ -220,7 +233,7 @@ async function getObjectMetadata(storageKey, options = {}) {
     }
 
     const context = String(options.context || 'default').toLowerCase();
-    const bucketConfig = context === 'rgce' ? rgceBucketConfig : defaultBucketConfig;
+    const bucketConfig = getBucketConfig(context);
     const targetBucket = options.bucketName || bucketConfig.bucketName;
     const command = new HeadObjectCommand({
         Bucket: targetBucket,

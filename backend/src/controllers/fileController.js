@@ -13,6 +13,8 @@ let observacionMensajesTableReady = false;
 let observacionMensajesTableInitPromise = null;
 let historialTipoArchivoColumnReady = false;
 let historialTipoArchivoColumnInitPromise = null;
+let historialBucketContextColumnReady = false;
+let historialBucketContextColumnInitPromise = null;
 
 function isAdminUser(req) {
     const roleName = String(req.user?.rol_nombre || '').toLowerCase().trim();
@@ -421,6 +423,35 @@ async function ensureHistorialTipoArchivoColumn() {
     }
 }
 
+async function ensureHistorialBucketContextColumn() {
+    if (historialBucketContextColumnReady) return;
+    if (historialBucketContextColumnInitPromise) {
+        await historialBucketContextColumnInitPromise;
+        return;
+    }
+
+    historialBucketContextColumnInitPromise = (async () => {
+        await pool.query(
+            `ALTER TABLE archivos_historial
+             ADD COLUMN IF NOT EXISTS bucket_context VARCHAR(40) DEFAULT 'inventory'`
+        );
+
+        await pool.query(
+            `UPDATE archivos_historial
+             SET bucket_context = 'inventory'
+             WHERE bucket_context IS NULL OR TRIM(bucket_context) = ''`
+        );
+
+        historialBucketContextColumnReady = true;
+    })();
+
+    try {
+        await historialBucketContextColumnInitPromise;
+    } finally {
+        historialBucketContextColumnInitPromise = null;
+    }
+}
+
 async function ensureHistorialEmpresaColumn() {
     if (historialEmpresaColumnReady) return;
     if (historialEmpresaColumnInitPromise) {
@@ -479,6 +510,22 @@ async function ensureHistorialEmpresaColumn() {
     } finally {
         historialEmpresaColumnInitPromise = null;
     }
+}
+
+function normalizeBucketContext(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    if (!raw) return 'inventory';
+
+    const map = {
+        default: 'default',
+        inventory: 'inventory',
+        inventario: 'inventory',
+        audit: 'audit',
+        auditoria: 'audit',
+        rgce: 'rgce',
+    };
+
+    return map[raw] || 'inventory';
 }
 
 function normalizeArchivoTipo(value) {
@@ -699,11 +746,12 @@ async function upload(req, res) {
     }
 
 
-    const { anio, mes, empresa_id, razon_social_id, tipo_archivo } = req.body;
+    const { anio, mes, empresa_id, razon_social_id, tipo_archivo, bucket_context, bucket } = req.body;
     if (!anio || !mes) {
         return res.status(400).json({ error: 'El año y mes son requeridos.' });
     }
 
+    const bucketContext = normalizeBucketContext(bucket_context || bucket || 'inventory');
     const tipoArchivo = normalizeArchivoTipo(tipo_archivo);
 
     const empresaIdNum = empresa_id ? Number(empresa_id) : null;
@@ -729,6 +777,7 @@ async function upload(req, res) {
     try {
         await ensureHistorialEmpresaColumn();
         await ensureHistorialTipoArchivoColumn();
+        await ensureHistorialBucketContextColumn();
         await ensureDeleteRequestsTable();
 
         const empresaContextResult = empresaIdNum
@@ -807,16 +856,18 @@ async function upload(req, res) {
         const empresaFolder = (empresa_carpeta && String(empresa_carpeta).trim())
             ? toStorageSegment(empresa_carpeta)
             : toStorageSegment(empresa_nombre);
-        const storageKey = `${razonSocialFolder}${empresaFolder}/${nombreAlmacenado}`;
+        const storageKeyPrefix = bucketContext === 'audit'
+            ? `auditoria/${empresaFolder}/`
+            : `${razonSocialFolder}${empresaFolder}/`;
+        const storageKey = `${storageKeyPrefix}${nombreAlmacenado}`;
 
-        // Subir al storage
-        const { storageUrl } = await uploadFile(req.file.buffer, storageKey, req.file.mimetype);
+        const { storageUrl } = await uploadFile(req.file.buffer, storageKey, req.file.mimetype, { context: bucketContext });
 
         // Guardar registro en base de datos
         const result = await pool.query(
             `INSERT INTO archivos_historial
-                 (razon_social_id, usuario_id, empresa_id, nombre_archivo, nombre_almacenado, storage_key, storage_url, anio, mes, tamano, tipo_archivo)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                 (razon_social_id, usuario_id, empresa_id, nombre_archivo, nombre_almacenado, storage_key, storage_url, anio, mes, tamano, tipo_archivo, bucket_context)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING *`,
             [
                 razonSocialIdFinal,
@@ -830,6 +881,7 @@ async function upload(req, res) {
                 mesNum,
                 req.file.size,
                 tipoArchivo,
+                bucketContext,
             ]
         );
 
@@ -1995,7 +2047,7 @@ async function resolverSolicitudEliminacion(req, res) {
         await ensureDeleteRequestsTable();
 
         const solicitudResult = await pool.query(
-            `SELECT d.*, ah.storage_key, ah.razon_social_id
+            `SELECT d.*, ah.storage_key, ah.razon_social_id, ah.bucket_context
              FROM archivo_delete_requests d
              LEFT JOIN archivos_historial ah ON ah.id = d.archivo_id
              WHERE d.id = $1`,
@@ -2034,7 +2086,7 @@ async function resolverSolicitudEliminacion(req, res) {
             return res.status(400).json({ error: 'No se puede eliminar: storage_key inválido.' });
         }
 
-        await deleteFile(solicitud.storage_key);
+        await deleteFile(solicitud.storage_key, { context: solicitud.bucket_context || 'inventory' });
         await pool.query('DELETE FROM archivos_historial WHERE id = $1', [solicitud.archivo_id]);
 
         const aprobacionResult = await pool.query(
@@ -2078,7 +2130,7 @@ async function deleteArchivo(req, res) {
         }
 
         const archivo = result.rows[0];
-        await deleteFile(archivo.storage_key);
+        await deleteFile(archivo.storage_key, { context: archivo.bucket_context || 'inventory' });
         await pool.query('DELETE FROM archivos_historial WHERE id = $1', [id]);
 
         res.json({ message: 'Archivo eliminado correctamente.' });
@@ -2094,7 +2146,7 @@ async function getArchivoDownloadUrl(req, res) {
 
     try {
         const result = await pool.query(
-            `SELECT ah.id, ah.storage_key, ah.storage_url, ah.razon_social_id, ah.nombre_archivo
+            `SELECT ah.id, ah.storage_key, ah.storage_url, ah.razon_social_id, ah.nombre_archivo, ah.bucket_context
              FROM archivos_historial ah
              WHERE ah.id = $1`,
             [id]
@@ -2115,6 +2167,7 @@ async function getArchivoDownloadUrl(req, res) {
             storageKey: archivo.storage_key,
             storageUrl: archivo.storage_url,
             filename: archivo.nombre_archivo,
+            context: archivo.bucket_context || 'inventory',
         });
 
         if (!downloadUrl) {

@@ -38,6 +38,7 @@ export default function FileUpload({ onUploadSuccess }) {
     const [razonSocialId, setRazonSocialId] = useState(String(user?.razon_social_id || ''));
     const [empresaId, setEmpresaId] = useState('');
     const [tipoArchivo, setTipoArchivo] = useState('');
+    const [bucketContext, setBucketContext] = useState('inventory');
     const [loadingRazonesSociales, setLoadingRazonesSociales] = useState(false);
     const [loadingEmpresas, setLoadingEmpresas] = useState(false);
 
@@ -163,6 +164,7 @@ export default function FileUpload({ onUploadSuccess }) {
             formData.append('anio', anio);
             formData.append('mes', mes);
             formData.append('tipo_archivo', tipoArchivo);
+            formData.append('bucket_context', bucketContext);
             if (requiresCompanySelection) {
                 formData.append('razon_social_id', razonSocialId);
                 formData.append('empresa_id', empresaId);
@@ -243,6 +245,20 @@ export default function FileUpload({ onUploadSuccess }) {
             )}
 
             <div className="type-row">
+                <div className="form-field">
+                    <label>Destino del archivo*</label>
+                    <select
+                        value={bucketContext}
+                        onChange={(e) => {
+                            setBucketContext(e.target.value);
+                            setResult(null);
+                        }}
+                        disabled={uploading}
+                    >
+                        <option value="inventory">Inventarios</option>
+                        <option value="audit">Auditoría</option>
+                    </select>
+                </div>
                 <div className="form-field">
                     <label>Tipo de archivo*</label>
                     <select
