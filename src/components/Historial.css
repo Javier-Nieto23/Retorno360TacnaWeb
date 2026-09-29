@@ -1045,6 +1045,47 @@
     color: #4b5563;
 }
 
+.historial-preview-excel-panel {
+    width: 100%;
+    display: grid;
+    gap: 0.8rem;
+}
+
+.historial-preview-excel-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 0.7rem 0.9rem;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.historial-preview-excel-table-wrap {
+    width: 100%;
+    overflow: auto;
+    max-height: 480px;
+    border: 1px solid #dfe7f1;
+    border-radius: 12px;
+    background: white;
+}
+
+.historial-preview-excel-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 420px;
+}
+
+.historial-preview-excel-table td {
+    border: 1px solid #e5e7eb;
+    padding: 0.55rem 0.65rem;
+    font-size: 0.8rem;
+    color: #1f2937;
+    white-space: nowrap;
+}
+
 .historial-preview-actions {
     padding: 1rem;
     display: grid;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { fileService, rgceService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import './Historial.css';
@@ -27,7 +28,7 @@ export default function Historial() {
     const [error, setError] = useState('');
     const [filtroTextoRazonSocial, setFiltroTextoRazonSocial] = useState('');
     const [filtroTextoEmpresa, setFiltroTextoEmpresa] = useState('');
-    const [preview, setPreview] = useState({ open: false, documento: null, observacion: '' });
+    const [preview, setPreview] = useState({ open: false, documento: null, observacion: '', excelRows: [], excelSheetName: '' });
     const [empresaSeleccionadaPorRazon, setEmpresaSeleccionadaPorRazon] = useState({});
     const isAdminHistory = Boolean(user && (String(user.rol_nombre || '').toLowerCase() === 'admin' || user.is_admin));
 
@@ -120,30 +121,49 @@ export default function Historial() {
 
     const abrirPreview = async (documento) => {
         try {
+            let resolvedUrl = documento.storage_url || '';
+
             if (isAdminHistory) {
                 const { data } = await fileService.obtenerUrlDescarga(documento.id);
-                const resolvedUrl = data?.download_url || documento.storage_url || '';
+                resolvedUrl = data?.download_url || documento.storage_url || '';
+            } else {
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${documento.id}/preview`, {
+                    headers: {
+                        'x-user-id': String(user?.id || ''),
+                        'x-session-token': String(localStorage.getItem('session_token') || ''),
+                    },
+                });
+                const data = await response.json();
+                if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cargar la vista previa.');
+                resolvedUrl = data.downloadUrl || data.storageUrl || documento.storage_url || '';
+            }
+
+            const previewType = getPreviewType(resolvedUrl);
+            if (previewType === 'excel') {
+                const response = await fetch(resolvedUrl, { mode: 'cors' });
+                if (!response.ok) throw new Error('No se pudo cargar el archivo Excel.');
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0] || 'Hoja1';
+                const firstSheet = workbook.Sheets[firstSheetName];
+                const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, raw: false, defval: '' }).slice(0, 40);
+
                 setPreview({
                     open: true,
                     documento: { ...documento, storage_url: resolvedUrl },
                     observacion: documento.observaciones || '',
+                    excelRows: rows,
+                    excelSheetName: firstSheetName,
                 });
                 return;
             }
 
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/rgce/${documento.id}/preview`, {
-                headers: {
-                    'x-user-id': String(user?.id || ''),
-                    'x-session-token': String(localStorage.getItem('session_token') || ''),
-                },
-            });
-            const data = await response.json();
-            if (!response.ok || !data?.success) throw new Error(data?.message || 'No se pudo cargar la vista previa.');
-
             setPreview({
                 open: true,
-                documento: { ...documento, storage_url: data.downloadUrl || data.storageUrl || documento.storage_url || '' },
+                documento: { ...documento, storage_url: resolvedUrl },
                 observacion: documento.observaciones || '',
+                excelRows: [],
+                excelSheetName: '',
             });
         } catch (err) {
             setError(err.message || 'No se pudo cargar la vista previa.');
@@ -151,7 +171,7 @@ export default function Historial() {
     };
 
     const cerrarPreview = () => {
-        setPreview({ open: false, documento: null, observacion: '' });
+        setPreview({ open: false, documento: null, observacion: '', excelRows: [], excelSheetName: '' });
     };
 
     const handleDescargar = async (archivo) => {
@@ -224,6 +244,7 @@ export default function Historial() {
         const lower = String(url).toLowerCase();
         if (lower.endsWith('.pdf')) return 'pdf';
         if (['.png', '.jpg', '.jpeg', '.webp', '.gif'].some((ext) => lower.endsWith(ext))) return 'image';
+        if (['.xlsx', '.xls', '.xlsm', '.csv'].some((ext) => lower.endsWith(ext))) return 'excel';
         if (lower.includes('pdf') || lower.includes('image')) return lower.includes('pdf') ? 'pdf' : 'image';
         return 'unsupported';
     };
@@ -500,6 +521,31 @@ export default function Historial() {
                                 </object>
                             ) : preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'image' ? (
                                 <img src={preview.documento.storage_url} alt={preview.documento.nombre_archivo} className="historial-preview-image" />
+                            ) : preview.documento.storage_url && getPreviewType(preview.documento.storage_url) === 'excel' ? (
+                                <div className="historial-preview-excel-panel">
+                                    <div className="historial-preview-excel-header">
+                                        <span>Hoja: {preview.excelSheetName || 'Hoja 1'}</span>
+                                    </div>
+                                    {preview.excelRows.length === 0 ? (
+                                        <div className="historial-preview-placeholder">
+                                            <p>No se pudo leer contenido del archivo Excel.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="historial-preview-excel-table-wrap">
+                                            <table className="historial-preview-excel-table">
+                                                <tbody>
+                                                    {preview.excelRows.map((row, rowIndex) => (
+                                                        <tr key={`${preview.documento.id}-row-${rowIndex}`}>
+                                                            {(Array.isArray(row) ? row : [row]).map((cell, cellIndex) => (
+                                                                <td key={`${preview.documento.id}-cell-${rowIndex}-${cellIndex}`}>{cell ?? ''}</td>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
                             ) : (
                                 <div className="historial-preview-placeholder">
                                     <p>Vista previa no disponible para este tipo de archivo.</p>
