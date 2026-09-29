@@ -1790,8 +1790,12 @@ async function cerrarObservacionAdmin(req, res) {
 async function solicitarEliminacionArchivo(req, res) {
     const { id } = req.params;
 
-    if (isAdminUser(req) || isInventariosUser(req)) {
-        return res.status(400).json({ error: 'Este rol puede atender solicitudes, no crearlas.' });
+    if (isAdminUser(req)) {
+        return res.status(400).json({ error: 'Los administradores no pueden crear solicitudes de eliminación desde este flujo.' });
+    }
+
+    if (!isInventariosUser(req) && !isClientUser(req)) {
+        return res.status(403).json({ error: 'Este rol no puede crear solicitudes de eliminación.' });
     }
 
     const archivoId = Number(id);

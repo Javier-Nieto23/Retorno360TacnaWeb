@@ -38,6 +38,7 @@ export default function InventariosHistorial() {
     const [filtroTextoRazonSocial, setFiltroTextoRazonSocial] = useState('');
     const [filtroTextoEmpresa, setFiltroTextoEmpresa] = useState('');
     const [preview, setPreview] = useState({ open: false, documento: null, excelRows: [], excelSheetName: '' });
+    const [deleteRequest, setDeleteRequest] = useState({ open: false, archivo: null, motivo: '' });
 
     const cargarArchivos = async () => {
         setLoading(true);
@@ -128,16 +129,22 @@ export default function InventariosHistorial() {
     };
 
     const handleSolicitarEliminacion = async (archivo) => {
-        const motivo = window.prompt(
-            `Motivo de la eliminación para "${archivo.nombre_archivo || 'archivo'}"`,
-            'Solicito la eliminación del archivo por actualización o error de carga.'
-        );
+        setDeleteRequest({ open: true, archivo, motivo: 'Solicito la eliminación del archivo por actualización o error de carga.' });
+    };
 
-        if (motivo === null) return;
+    const confirmarSolicitudEliminacion = async () => {
+        if (!deleteRequest.archivo) return;
+
+        const motivo = deleteRequest.motivo.trim();
+        if (!motivo) {
+            setError('Escribe el motivo de la solicitud antes de continuar.');
+            return;
+        }
 
         try {
-            await fileService.solicitarEliminacion(archivo.id, motivo.trim() || 'Solicitud de eliminación.');
+            await fileService.solicitarEliminacion(deleteRequest.archivo.id, motivo);
             await cargarArchivos();
+            setDeleteRequest({ open: false, archivo: null, motivo: '' });
         } catch (err) {
             setError(err.response?.data?.error || 'No se pudo registrar la solicitud de eliminación.');
         }
@@ -267,6 +274,38 @@ export default function InventariosHistorial() {
                             </button>
                             <button type="button" className="historial-btn historial-btn-danger" onClick={() => handleSolicitarEliminacion(preview.documento)}>
                                 Solicitar eliminación
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {deleteRequest.open && deleteRequest.archivo && (
+                <div className="historial-preview-backdrop" role="dialog" aria-modal="true">
+                    <div className="historial-preview-modal">
+                        <div className="historial-preview-header">
+                            <h2>Solicitar eliminación</h2>
+                            <button type="button" className="historial-close-btn" onClick={() => setDeleteRequest({ open: false, archivo: null, motivo: '' })}>×</button>
+                        </div>
+
+                        <div className="historial-preview-placeholder" style={{ textAlign: 'left', padding: '0.5rem 0' }}>
+                            <p><strong>Archivo:</strong> {deleteRequest.archivo.nombre_archivo || 'Sin nombre'}</p>
+                            <label style={{ display: 'block', marginTop: '0.75rem', fontWeight: 600 }}>Motivo de la solicitud</label>
+                            <textarea
+                                value={deleteRequest.motivo}
+                                onChange={(e) => setDeleteRequest((prev) => ({ ...prev, motivo: e.target.value }))}
+                                rows={5}
+                                style={{ width: '100%', marginTop: '0.5rem', resize: 'vertical' }}
+                                placeholder="Describe por qué deseas eliminar este archivo..."
+                            />
+                        </div>
+
+                        <div className="historial-preview-actions">
+                            <button type="button" className="historial-btn historial-btn-secondary" onClick={() => setDeleteRequest({ open: false, archivo: null, motivo: '' })}>
+                                Cancelar
+                            </button>
+                            <button type="button" className="historial-btn historial-btn-danger" onClick={confirmarSolicitudEliminacion}>
+                                Enviar solicitud
                             </button>
                         </div>
                     </div>
