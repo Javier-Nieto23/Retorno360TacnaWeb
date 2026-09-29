@@ -15,6 +15,7 @@ import ImpUpload from './components/ImpUpload';
 import ExpDashboard from './components/ExpDashboard';
 import ExpHistorial from './components/ExpHistorial';
 import InventariosDashboard from './components/InventariosDashboard';
+import InventariosHistorial from './components/InventariosHistorial';
 import { getLandingPath, isAdminUser, isClientUser, isClusterUser, isExpUser, isImpUser, isInventariosUser } from './utils/roles';
 
 function DashboardRoute() {
@@ -139,6 +140,20 @@ function InventariosRoute({ children }) {
   );
 }
 
+function InventariosHistorialRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="app-loading">Cargando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isInventariosUser(user)) return <Navigate to={getLandingPath(user)} replace />;
+
+  return (
+    <>
+      <Navbar />
+      <main className="app-main">{children}</main>
+    </>
+  );
+}
+
 function ClusterRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando...</div>;
@@ -166,6 +181,7 @@ function AppRoutes() {
       <Route path="/exp-historial" element={<ExpRoute><ExpHistorial /></ExpRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
       <Route path="/inventarios" element={<InventariosRoute><InventariosDashboard /></InventariosRoute>} />
+      <Route path="/inventarios/historial" element={<InventariosHistorialRoute><InventariosHistorial /></InventariosHistorialRoute>} />
 
       {/*rutas para cluster protegidas correctamente*/}
       <Route path="/dashboard-calidad" element={<ClusterRoute><DashboardCalidad /></ClusterRoute>} />
