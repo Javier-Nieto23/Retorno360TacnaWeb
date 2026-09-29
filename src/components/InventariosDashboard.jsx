@@ -77,6 +77,15 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
         motivo: '',
         fecha: '',
     });
+    const [historialInventario, setHistorialInventario] = useState([]);
+    const [loadingHistorialInventario, setLoadingHistorialInventario] = useState(false);
+    const [historialInventarioError, setHistorialInventarioError] = useState('');
+    const [historialInventarioSuccess, setHistorialInventarioSuccess] = useState('');
+    const [conversacionModal, setConversacionModal] = useState({
+        open: false,
+        archivo: '',
+        items: [],
+    });
     const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
     const razonSocialIdDetectado = detectRazonSocialId(appliedFilters.razon_social_id, user);
 
@@ -194,6 +203,41 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
         }
     };
 
+    const cargarHistorialInventario = async () => {
+        setLoadingHistorialInventario(true);
+        setHistorialInventarioError('');
+        setHistorialInventarioSuccess('');
+
+        try {
+            const { data } = await fileService.historial();
+            const archivosInventario = (data?.archivos || []).filter((archivo) => {
+                const bucketContext = String(archivo?.bucket_context || 'inventory').toLowerCase();
+                return bucketContext === 'inventory' || bucketContext === 'inventario';
+            }).sort((a, b) => new Date(b.uploaded_at || b.created_at || 0) - new Date(a.uploaded_at || a.created_at || 0));
+
+            const { data: observacionesData } = await fileService.listarObservaciones({ estado: 'todos' });
+            const observacionesPorArchivo = new Map();
+            (observacionesData?.observaciones || []).forEach((obs) => {
+                const key = Number(obs.archivo_id);
+                if (!Number.isNaN(key)) {
+                    const existing = observacionesPorArchivo.get(key) || [];
+                    existing.push(obs);
+                    observacionesPorArchivo.set(key, existing);
+                }
+            });
+
+            setHistorialInventario(archivosInventario.map((archivo) => ({
+                ...archivo,
+                observaciones_count: (observacionesPorArchivo.get(Number(archivo.id)) || []).length,
+            })));
+        } catch {
+            setHistorialInventario([]);
+            setHistorialInventarioError('No se pudo cargar el historial de inventarios.');
+        } finally {
+            setLoadingHistorialInventario(false);
+        }
+    };
+
     useEffect(() => {
         if (!user) return;
         const initialFilters = { razon_social_id: '', empresa_id: '' };
@@ -201,6 +245,7 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
         setAppliedFilters(initialFilters);
         cargarPanelPrincipal(initialFilters);
         cargarSolicitudesPendientes();
+        cargarHistorialInventario();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user]);
 
@@ -291,6 +336,7 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
         try {
             await fileService.resolverSolicitudEliminacion(requestId, decision);
             await cargarSolicitudesPendientes();
+            await cargarHistorialInventario();
             await cargarPanelPrincipal(appliedFilters);
             setSolicitudesSuccess(
                 decision === 'aprobar'
@@ -302,6 +348,64 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
         } finally {
             setResolvingRequestId(null);
         }
+    };
+
+    const handlePreviewInventario = async (archivo) => {
+        try {
+            const { data } = await fileService.obtenerUrlDescarga(archivo.id);
+            const url = data?.download_url || archivo.storage_url;
+            if (!url) {
+                setHistorialInventarioError('Este archivo no tiene una vista previa disponible.');
+                return;
+            }
+            window.open(url, '_blank', 'noopener,noreferrer');
+        } catch (err) {
+            setHistorialInventarioError(err.response?.data?.error || 'No se pudo abrir la vista previa del archivo.');
+        }
+    };
+
+    const handleSolicitarEliminacionInventario = async (archivo) => {
+        const motivo = window.prompt(
+            `Motivo de la eliminación para "${archivo.nombre_archivo || 'archivo'}"`,
+            'Solicito la eliminación del archivo por actualización o error de carga.'
+        );
+
+        if (motivo === null) return;
+
+        try {
+            await fileService.solicitarEliminacion(archivo.id, motivo.trim() || 'Solicitud de eliminación.');
+            await cargarSolicitudesPendientes();
+            await cargarHistorialInventario();
+            setHistorialInventarioSuccess('Se registró la solicitud de eliminación correctamente.');
+        } catch (err) {
+            setHistorialInventarioError(err.response?.data?.error || 'No se pudo registrar la solicitud de eliminación.');
+        }
+    };
+
+    const abrirConversacionesInventario = async (archivo) => {
+        try {
+            const { data } = await fileService.listarObservaciones({ estado: 'todos' });
+            const conversaciones = (data?.observaciones || []).filter((obs) => Number(obs.archivo_id) === Number(archivo.id));
+            setConversacionModal({
+                open: true,
+                archivo: archivo.nombre_archivo || 'Archivo sin nombre',
+                items: conversaciones,
+            });
+        } catch {
+            setConversacionModal({
+                open: true,
+                archivo: archivo.nombre_archivo || 'Archivo sin nombre',
+                items: [],
+            });
+        }
+    };
+
+    const cerrarConversacionesInventario = () => {
+        setConversacionModal({
+            open: false,
+            archivo: '',
+            items: [],
+        });
     };
 
     return (
@@ -560,8 +664,80 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
                             <h2>Subir archivo</h2>
                             <FileUpload onUploadSuccess={() => {
                                 cargarPanelPrincipal(appliedFilters);
+                                cargarHistorialInventario();
                                 setCalendarRefreshKey((prev) => prev + 1);
                             }} />
+                        </section>
+
+                        <section className="inventarios-requests-card">
+                            <div className="inventarios-requests-header">
+                                <div>
+                                    <h2>Historial de inventarios</h2>
+                                    <p>Revisa los archivos cargados, solicita eliminaciones y consulta los comentarios asociados.</p>
+                                </div>
+                                <span className="inventarios-requests-badge">{historialInventario.length}</span>
+                            </div>
+
+                            {historialInventarioError && <p className="inventarios-error">{historialInventarioError}</p>}
+                            {historialInventarioSuccess && <p className="inventarios-success">{historialInventarioSuccess}</p>}
+
+                            {loadingHistorialInventario ? (
+                                <div className="inventarios-loading">Cargando historial...</div>
+                            ) : historialInventario.length === 0 ? (
+                                <div className="inventarios-empty compact">
+                                    <span>📁</span>
+                                    <p>Aún no hay archivos de inventario en este historial.</p>
+                                </div>
+                            ) : (
+                                <div className="inventarios-requests-table-wrap">
+                                    <table className="inventarios-requests-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Archivo</th>
+                                                <th>Período</th>
+                                                <th>Subido</th>
+                                                <th>Conversaciones</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {historialInventario.map((archivo) => (
+                                                <tr key={archivo.id}>
+                                                    <td>{archivo.nombre_archivo || 'Archivo sin nombre'}</td>
+                                                    <td>{formatPeriodLabel(archivo.anio, archivo.mes)}</td>
+                                                    <td>{formatDateTime(archivo.uploaded_at || archivo.created_at)}</td>
+                                                    <td>{archivo.observaciones_count || 0}</td>
+                                                    <td>
+                                                        <div className="inventarios-requests-actions">
+                                                            <button
+                                                                type="button"
+                                                                className="inventarios-btn inventarios-btn-secondary"
+                                                                onClick={() => handlePreviewInventario(archivo)}
+                                                            >
+                                                                Vista previa
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="inventarios-btn inventarios-btn-secondary"
+                                                                onClick={() => abrirConversacionesInventario(archivo)}
+                                                            >
+                                                                Conversación
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                className="inventarios-btn inventarios-btn-reject"
+                                                                onClick={() => handleSolicitarEliminacionInventario(archivo)}
+                                                            >
+                                                                Eliminar
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
                         </section>
 
                         <div className="inventarios-side-stack">
@@ -609,6 +785,36 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
                                 <div className="inventarios-modal-reason">{motivoModal.motivo}</div>
                                 <div className="inventarios-modal-actions">
                                     <button type="button" className="inventarios-btn inventarios-btn-secondary" onClick={cerrarMotivoModal}>
+                                        Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {conversacionModal.open && (
+                        <div className="inventarios-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="inventarios-chat-title">
+                            <div className="inventarios-modal inventarios-modal-wide">
+                                <h3 id="inventarios-chat-title">Conversaciones del archivo</h3>
+                                <p><strong>Archivo:</strong> {conversacionModal.archivo}</p>
+                                <div className="inventarios-modal-reason">
+                                    {conversacionModal.items.length === 0 ? (
+                                        <p>No hay conversaciones registradas para este archivo.</p>
+                                    ) : (
+                                        <ul className="inventarios-conversation-list">
+                                            {conversacionModal.items.map((item) => (
+                                                <li key={item.id}>
+                                                    <strong>{item.reportado_por_alias || 'Usuario'}:</strong>
+                                                    <span>{item.descripcion}</span>
+                                                    <small>{formatDateTime(item.created_at)}</small>
+                                                    <em>{String(item.estado || 'abierto').toUpperCase()}</em>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                                <div className="inventarios-modal-actions">
+                                    <button type="button" className="inventarios-btn inventarios-btn-secondary" onClick={cerrarConversacionesInventario}>
                                         Cerrar
                                     </button>
                                 </div>
