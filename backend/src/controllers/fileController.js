@@ -83,6 +83,19 @@ async function ensureDeleteRequestsTable() {
         );
 
         await pool.query(
+            `DELETE FROM archivo_delete_requests a
+             USING archivo_delete_requests b
+             WHERE a.id > b.id
+               AND a.archivo_id = b.archivo_id
+               AND a.estado = 'pendiente'
+               AND b.estado = 'pendiente'`
+        );
+
+        await pool.query(
+            `DROP INDEX IF EXISTS idx_archivo_delete_requests_pending_unique;`
+        );
+
+        await pool.query(
             `CREATE UNIQUE INDEX IF NOT EXISTS idx_archivo_delete_requests_pending_unique
              ON archivo_delete_requests (archivo_id)
              WHERE estado = 'pendiente'`

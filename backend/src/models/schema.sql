@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS public.documentos_rgce
 CREATE INDEX IF NOT EXISTS idx_documentos_rgce_razon_social
     ON public.documentos_rgce (razon_social_id);
 
-CREATE INDEX IF NOT EXISTS idx_documentos_rgce_empresa
+CREATE       INDEX IF NOT EXISTS idx_documentos_rgce_empresa
     ON public.documentos_rgce (empresa_id);
 
 CREATE INDEX IF NOT EXISTS idx_documentos_rgce_mes_anio
@@ -174,8 +174,11 @@ ALTER TABLE IF EXISTS public.archivo_delete_requests
     REFERENCES public.archivos_historial (id) MATCH SIMPLE
     ON UPDATE NO ACTION
     ON DELETE CASCADE;
-CREATE INDEX IF NOT EXISTS idx_archivo_delete_requests_pending_unique
-    ON public.archivo_delete_requests(archivo_id);
+DROP INDEX IF EXISTS public.idx_archivo_delete_requests_pending_unique;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_archivo_delete_requests_pending_unique
+    ON public.archivo_delete_requests(archivo_id)
+    WHERE estado = 'pendiente';
 
 
 ALTER TABLE IF EXISTS public.archivo_delete_requests
