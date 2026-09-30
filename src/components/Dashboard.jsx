@@ -20,7 +20,9 @@ export default function Dashboard() {
     const [loadingArchivos, setLoadingArchivos] = useState(false);
     const [resumenError, setResumenError] = useState('');
     const [observaciones, setObservaciones] = useState([]);
+    const [solicitudesPendientes, setSolicitudesPendientes] = useState([]);
     const [loadingObservaciones, setLoadingObservaciones] = useState(false);
+    const [loadingSolicitudesPendientes, setLoadingSolicitudesPendientes] = useState(false);
     const [detalleObservacion, setDetalleObservacion] = useState(null);
     const [detalleOpen, setDetalleOpen] = useState(false);
     const [loadingDetalle, setLoadingDetalle] = useState(false);
@@ -93,6 +95,28 @@ export default function Dashboard() {
         }
     }, [isCliente]);
 
+    const cargarSolicitudesPendientes = async () => {
+        if (!isCliente) {
+            setSolicitudesPendientes([]);
+            return;
+        }
+
+        setLoadingSolicitudesPendientes(true);
+        try {
+            const { data } = await fileService.listarSolicitudesEliminacion({ estado: 'pendiente' });
+            const rows = (data?.solicitudes || []).filter((solicitud) => {
+                const sameRazonSocial = String(solicitud.razon_social_id ?? '') === String(user?.razon_social_id ?? '');
+                const sameEmpresa = String(solicitud.empresa_id ?? '') === String(user?.empresa_id ?? '');
+                return sameRazonSocial && sameEmpresa;
+            });
+            setSolicitudesPendientes(rows);
+        } catch {
+            setSolicitudesPendientes([]);
+        } finally {
+            setLoadingSolicitudesPendientes(false);
+        }
+    };
+
     const cargarObservaciones = async ({ silent = false } = {}) => {
         if (!isCliente) {
             setObservaciones([]);
@@ -103,8 +127,15 @@ export default function Dashboard() {
             setLoadingObservaciones(true);
         }
         try {
-            const { data } = await fileService.listarObservaciones({ estado: 'en_revision' });
-            const rows = data?.observaciones || [];
+            const { data } = await fileService.listarObservaciones({ estado: 'todos' });
+            const rows = (data?.observaciones || [])
+                .filter((obs) => {
+                    const sameRazonSocial = String(obs.razon_social_id ?? '') === String(user?.razon_social_id ?? '');
+                    const sameEmpresa = String(obs.empresa_id ?? '') === String(user?.empresa_id ?? '');
+                    const isActiveObservation = String(obs.estado || '').toLowerCase() !== 'cerrado';
+                    return sameRazonSocial && sameEmpresa && isActiveObservation;
+                })
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
             setObservaciones(rows);
 
             setNuevasRespuestasPorObs((prev) => {
@@ -142,7 +173,8 @@ export default function Dashboard() {
 
     useEffect(() => {
         cargarObservaciones();
-    }, [isCliente]);
+        cargarSolicitudesPendientes();
+    }, [isCliente, user?.razon_social_id, user?.empresa_id]);
 
     const refrescarDetalleObservacion = async (observacionId, { markSeen = false, showLoading = false } = {}) => {
         if (!observacionId) return;
@@ -352,6 +384,45 @@ export default function Dashboard() {
 
             {resumenError && <div className="dashboard-error">{resumenError}</div>}
             {isCliente && (
+                <section className="obs-alert-card">
+                    <div className="obs-alert-head">
+                        <div>
+                            <h2 className="section-title">Documentos pendientes de eliminación</h2>
+                            <p className="obs-alert-subtitle">Archivos que fueron enviados para solicitud de baja y aún esperan revisión.</p>
+                        </div>
+                        <span className="obs-alert-count">
+                            {loadingSolicitudesPendientes ? '...' : `${solicitudesPendientes.length} pendientes`}
+                        </span>
+                    </div>
+
+                    {loadingSolicitudesPendientes ? (
+                        <div className="loading-text">Cargando solicitudes pendientes...</div>
+                    ) : solicitudesPendientes.length === 0 ? (
+                        <div className="empty-state">
+                            <span>🗑️</span>
+                            <p>No hay documentos pendientes de eliminación para tu empresa.</p>
+                        </div>
+                    ) : (
+                        <div className="obs-alert-list">
+                            {solicitudesPendientes.slice(0, 5).map((solicitud) => (
+                                <article key={solicitud.id} className="obs-alert-item">
+                                    <div>
+                                        <p className="obs-alert-title">{solicitud.nombre_archivo || 'Archivo sin nombre'}</p>
+                                        <p className="obs-alert-meta">
+                                            Empresa: {solicitud.empresa_nombre || '—'} · Solicitado: {new Date(solicitud.solicitado_at).toLocaleString('es-PE')}
+                                        </p>
+                                        {solicitud.motivo && (
+                                            <p className="obs-alert-new">Motivo: {solicitud.motivo}</p>
+                                        )}
+                                    </div>
+                                    <span className="obs-alert-count">Pendiente</span>
+                                </article>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            )}
+            {isCliente && (
                 <section className="client-files-card">
                     <div className="obs-alert-head">
                         <div>
@@ -420,8 +491,8 @@ export default function Dashboard() {
                 <section className="obs-alert-card">
                     <div className="obs-alert-head">
                         <div>
-                            <h2 className="section-title">Observaciones reportadas</h2>
-                            <p className="obs-alert-subtitle">Revisa observaciones del administrador y responde desde aquí.</p>
+                            <h2 className="section-title">Inventarios con observación</h2>
+                            <p className="obs-alert-subtitle">Revisa los inventarios que regresaron con observación para responder o revisar su estado.</p>
                         </div>
                         <span className="obs-alert-count">
                             {loadingObservaciones ? '...' : `${observaciones.length} pendientes`}

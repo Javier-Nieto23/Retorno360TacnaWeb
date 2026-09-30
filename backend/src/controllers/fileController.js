@@ -1882,8 +1882,9 @@ async function solicitarEliminacionArchivo(req, res) {
 
 // GET /api/files/delete-requests?estado=pendiente
 async function listarSolicitudesEliminacion(req, res) {
-    if (!canAttendDeleteRequests(req)) {
-        return res.status(403).json({ error: 'Acceso denegado. Se requiere rol admin o inventarios.' });
+    const isClient = isClientUser(req);
+    if (!canAttendDeleteRequests(req) && !isClient) {
+        return res.status(403).json({ error: 'Acceso denegado. Se requiere rol admin, inventarios o cliente.' });
     }
 
     try {
@@ -1893,8 +1894,9 @@ async function listarSolicitudesEliminacion(req, res) {
         const razonSocialId = isAdmin ? null : getAuthorizedRazonSocialId(req, res);
         if (!isAdmin && typeof razonSocialId === 'undefined') return;
 
-        const empresaId = req.query?.empresa_id ? Number(req.query.empresa_id) : null;
-        if (req.query?.empresa_id && Number.isNaN(empresaId)) {
+        const empresaId = req.query?.empresa_id ? Number(req.query.empresa_id) : getAuthorizedEmpresaId(req, res);
+        if (typeof empresaId === 'undefined') return;
+        if (req.query?.empresa_id && Number.isNaN(Number(req.query.empresa_id))) {
             return res.status(400).json({ error: 'empresa_id inválido.' });
         }
 
@@ -1947,18 +1949,23 @@ async function listarSolicitudesEliminacion(req, res) {
         }
 
         if (empresaId) {
-            const prefixes = buildEmpresaStoragePrefixes(
-                empresaContext.r2_folder,
-                empresaContext.carpeta,
-                empresaContext.nombre
-            );
-            const empresaParamIndex = params.push(empresaId);
-            const prefixClauses = prefixes.map((prefix) => {
-                const prefixParamIndex = params.push(`${prefix}%`);
-                return `LOWER(ah.storage_key) LIKE LOWER($${prefixParamIndex})`;
-            });
+            if (empresaContext && empresaContext.r2_folder) {
+                const prefixes = buildEmpresaStoragePrefixes(
+                    empresaContext.r2_folder,
+                    empresaContext.carpeta,
+                    empresaContext.nombre
+                );
+                const empresaParamIndex = params.push(empresaId);
+                const prefixClauses = prefixes.map((prefix) => {
+                    const prefixParamIndex = params.push(`${prefix}%`);
+                    return `LOWER(ah.storage_key) LIKE LOWER($${prefixParamIndex})`;
+                });
 
-            query += ` AND (ah.empresa_id = $${empresaParamIndex}${prefixClauses.length ? ` OR ${prefixClauses.join(' OR ')}` : ''})`;
+                query += ` AND (ah.empresa_id = $${empresaParamIndex}${prefixClauses.length ? ` OR ${prefixClauses.join(' OR ')}` : ''})`;
+            } else {
+                params.push(empresaId);
+                query += ` AND ah.empresa_id = $${params.length}`;
+            }
         }
 
         if (estado !== 'todos') {
