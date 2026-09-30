@@ -12,7 +12,7 @@ export default function Navbar() {
     const isImp = isImpUser(user);
     const isExp = isExpUser(user);
     const isInventarios = isInventariosUser(user);
-    const dashboardPath = isImp ? '/dashboard' : isInventarios ? '/inventarios' : isExp ? '/exp-dashboard' : '/dashboard';
+    const dashboardPath = isImp ? '/dashboard' : isInventarios ? '/inventarios' : isExp ? '/exp-dashboard' : isClient ? '/cliente-dashboard' : '/dashboard';
 
     const handleLogout = () => {
         logout();
@@ -61,6 +61,9 @@ export default function Navbar() {
                 )}
                 {isClient && (
                     <>
+                        <NavLink to="/cliente-dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Dashboard
+                        </NavLink>
                         <NavLink to="/archivos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Archivos
                         </NavLink>

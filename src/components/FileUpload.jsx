@@ -45,6 +45,8 @@ export default function FileUpload({ onUploadSuccess }) {
     const roleName = String(user?.rol_nombre || '').toLowerCase().trim();
     const isAdminRole = roleName === 'admin' || roleName.includes('admin') || Boolean(user?.is_admin);
     const isInventariosRole = roleName === 'inventarios' || roleName.includes('inventario');
+    const isClientRole = roleName === 'cliente' || roleName === 'clientes';
+    const clientBucketContext = 'default';
     const requiresCompanySelection = isInventariosRole || isAdminRole;
     const razonSocialSeleccionada = razonesSociales.find((rs) => String(rs.id) === String(razonSocialId));
     const empresaSeleccionada = empresas.find((e) => String(e.id) === String(empresaId));
@@ -52,8 +54,13 @@ export default function FileUpload({ onUploadSuccess }) {
     useEffect(() => {
         if (isInventariosRole) {
             setBucketContext('inventory');
+            return;
         }
-    }, [isInventariosRole]);
+
+        if (isClientRole) {
+            setBucketContext(clientBucketContext);
+        }
+    }, [isInventariosRole, isClientRole]);
 
     useEffect(() => {
         if (!user) {
@@ -165,7 +172,7 @@ export default function FileUpload({ onUploadSuccess }) {
         setUploading(true);
         setResult(null);
         try {
-            const selectedBucket = isInventariosRole ? 'inventory' : bucketContext;
+            const selectedBucket = isInventariosRole ? 'inventory' : isClientRole ? clientBucketContext : bucketContext;
             const formData = new FormData();
             formData.append('archivo', file);
             formData.append('anio', anio);
@@ -252,7 +259,7 @@ export default function FileUpload({ onUploadSuccess }) {
             )}
 
             <div className="type-row">
-                {!isInventariosRole ? (
+                {!isInventariosRole && !isClientRole ? (
                     <div className="form-field">
                         <label>Destino del archivo*</label>
                         <select
@@ -270,7 +277,12 @@ export default function FileUpload({ onUploadSuccess }) {
                 ) : (
                     <div className="form-field">
                         <label>Destino del archivo*</label>
-                        <input type="text" value="Inventarios" readOnly disabled />
+                        <input
+                            type="text"
+                            value={isClientRole ? 'Retorno360Web' : 'Inventarios'}
+                            readOnly
+                            disabled
+                        />
                     </div>
                 )}
                 <div className="form-field">

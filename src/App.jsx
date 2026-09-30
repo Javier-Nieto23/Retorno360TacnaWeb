@@ -55,6 +55,20 @@ function PublicRoute({ children }) {
 }
 
 
+function ClientDashboardRoute() {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="app-loading">Cargando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isClientUser(user)) return <Navigate to={getLandingPath(user)} replace />;
+
+  return (
+    <>
+      <Navbar />
+      <main className="app-main"><Dashboard /></main>
+    </>
+  );
+}
+
 function ClientRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando...</div>;
@@ -173,6 +187,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/dashboard" element={<DashboardRoute />} />
+      <Route path="/cliente-dashboard" element={<ClientDashboardRoute />} />
       <Route path="/archivos" element={<ClientRoute><ArchivosCliente /></ClientRoute>} />
       <Route path="/solicitud-parte" element={<ClientRoute><SolicitudParte /></ClientRoute>} />
       <Route path="/historial" element={<HistorialRoute><Historial /></HistorialRoute>} />

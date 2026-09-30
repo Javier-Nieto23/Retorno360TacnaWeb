@@ -32,7 +32,7 @@ export function getLandingPath(user) {
     if (isImpUser(user)) return '/dashboard';
     if (isExpUser(user)) return '/exp-dashboard';
     if (isInventariosUser(user)) return '/inventarios';
-    if (isClientUser(user)) return '/archivos';
+    if (isClientUser(user)) return '/cliente-dashboard';
     if (isClusterUser(user)) return '/dashboard-calidad';
     return '/login';
 }

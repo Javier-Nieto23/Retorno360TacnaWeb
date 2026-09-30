@@ -15,7 +15,9 @@ export default function Dashboard() {
     const roleName = String(user?.rol_nombre || '').toLowerCase();
     const isCliente = roleName === 'cliente' || roleName === 'clientes';
     const [resumen, setResumen] = useState([]);
+    const [archivos, setArchivos] = useState([]);
     const [loadingResumen, setLoadingResumen] = useState(true);
+    const [loadingArchivos, setLoadingArchivos] = useState(false);
     const [resumenError, setResumenError] = useState('');
     const [observaciones, setObservaciones] = useState([]);
     const [loadingObservaciones, setLoadingObservaciones] = useState(false);
@@ -67,9 +69,29 @@ export default function Dashboard() {
         }
     };
 
+    const cargarArchivos = async () => {
+        if (!isCliente) {
+            setArchivos([]);
+            return;
+        }
+
+        setLoadingArchivos(true);
+        try {
+            const { data } = await fileService.historial({});
+            setArchivos((data?.archivos || []).sort((a, b) => new Date(b.uploaded_at) - new Date(a.uploaded_at)));
+        } catch {
+            setArchivos([]);
+        } finally {
+            setLoadingArchivos(false);
+        }
+    };
+
     useEffect(() => {
         cargarResumen();
-    }, []);
+        if (isCliente) {
+            cargarArchivos();
+        }
+    }, [isCliente]);
 
     const cargarObservaciones = async ({ silent = false } = {}) => {
         if (!isCliente) {
@@ -283,6 +305,11 @@ export default function Dashboard() {
 
     const totalArchivos = resumen.reduce((sum, r) => sum + (Number(r.total_archivos) || 0), 0);
     const aniosUnicos = [...new Set(resumen.map((r) => r.anio))].length;
+    const periodosCargados = [...resumen].sort((a, b) => {
+        const fechaA = new Date(Number(a.anio), Number(a.mes) - 1, 1).getTime();
+        const fechaB = new Date(Number(b.anio), Number(b.mes) - 1, 1).getTime();
+        return fechaB - fechaA;
+    });
     const maxMonthlyValue = Math.max(1, ...resumenGrafico.meses.map((item) => item.total));
 
     return (
@@ -324,6 +351,71 @@ export default function Dashboard() {
             </div>
 
             {resumenError && <div className="dashboard-error">{resumenError}</div>}
+            {isCliente && (
+                <section className="client-files-card">
+                    <div className="obs-alert-head">
+                        <div>
+                            <h2 className="section-title">Archivos cargados</h2>
+                            <p className="obs-alert-subtitle">Consulta los períodos y archivos recientes subidos por tu empresa.</p>
+                        </div>
+                        <span className="obs-alert-count">{archivos.length} registros</span>
+                    </div>
+
+                    {loadingArchivos ? (
+                        <div className="loading-text">Cargando archivos...</div>
+                    ) : periodosCargados.length === 0 && archivos.length === 0 ? (
+                        <div className="empty-state">
+                            <span>📦</span>
+                            <p>Aún no hay archivos cargados para tu empresa.</p>
+                        </div>
+                    ) : (
+                        <div className="client-files-grid">
+                            <div className="client-files-panel">
+                                <h3 className="client-panel-title">Meses con carga</h3>
+                                <div className="client-period-list">
+                                    {periodosCargados.length === 0 ? (
+                                        <p className="obs-message-empty">No hay períodos registrados.</p>
+                                    ) : (
+                                        periodosCargados.slice(0, 8).map((item) => (
+                                            <div key={`${item.anio}-${item.mes}`} className="client-period-item">
+                                                <span>{MESES_NOMBRES[Number(item.mes)]} {item.anio}</span>
+                                                <strong>{item.total_archivos} archivo(s)</strong>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="client-files-panel">
+                                <h3 className="client-panel-title">Archivos recientes</h3>
+                                <div className="client-file-list">
+                                    {archivos.length === 0 ? (
+                                        <p className="obs-message-empty">Todavía no has subido archivos.</p>
+                                    ) : (
+                                        archivos.slice(0, 6).map((archivo) => (
+                                            <div key={archivo.id} className="client-file-item">
+                                                <div>
+                                                    <p className="client-file-name">{archivo.nombre_archivo}</p>
+                                                    <small className="client-file-meta">
+                                                        {archivo.tipo_archivo || 'Sin tipo'} · {MESES_NOMBRES[Number(archivo.mes)]} {archivo.anio}
+                                                    </small>
+                                                </div>
+                                                <span className="client-file-date">
+                                                    {new Date(archivo.uploaded_at).toLocaleDateString('es-PE', {
+                                                        day: '2-digit',
+                                                        month: 'short',
+                                                        year: 'numeric',
+                                                    })}
+                                                </span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </section>
+            )}
             {isCliente && (
                 <section className="obs-alert-card">
                     <div className="obs-alert-head">
@@ -372,41 +464,41 @@ export default function Dashboard() {
 
             {isCliente && (
                 <section className="missing-months-card">
-                <div className="missing-months-header">
-                    <div>
-                        <h2 className="section-title">Meses sin archivos cargados</h2>
-                        <p className="missing-months-subtitle">
-                            Distribución del año {resumenGrafico.anioSeleccionado}. Los meses en rojo no tienen archivos.
-                        </p>
+                    <div className="missing-months-header">
+                        <div>
+                            <h2 className="section-title">Meses sin archivos cargados</h2>
+                            <p className="missing-months-subtitle">
+                                Distribución del año {resumenGrafico.anioSeleccionado}. Los meses en rojo no tienen archivos.
+                            </p>
+                        </div>
+                        <span className="missing-months-legend">{resumenGrafico.mesesSinArchivos.length} sin carga</span>
                     </div>
-                    <span className="missing-months-legend">{resumenGrafico.mesesSinArchivos.length} sin carga</span>
-                </div>
 
-                {loadingResumen ? (
-                    <div className="loading-text">Cargando gráfico...</div>
-                ) : resumenGrafico.meses.every((item) => !item.tieneArchivos) ? (
-                    <div className="empty-state">
-                        <span>📊</span>
-                        <p>Aún no hay archivos cargados para mostrar la gráfica.</p>
-                    </div>
-                ) : (
-                    <div className="missing-months-chart" role="img" aria-label={`Gráfico de meses con y sin archivos del año ${resumenGrafico.anioSeleccionado}`}>
-                        {resumenGrafico.meses.map((item) => {
-                            const height = `${Math.max(8, (item.total / maxMonthlyValue) * 100)}%`;
-                            const barClass = item.total >= 2 ? 'multi-files' : item.tieneArchivos ? 'has-files' : 'no-files';
+                    {loadingResumen ? (
+                        <div className="loading-text">Cargando gráfico...</div>
+                    ) : resumenGrafico.meses.every((item) => !item.tieneArchivos) ? (
+                        <div className="empty-state">
+                            <span>📊</span>
+                            <p>Aún no hay archivos cargados para mostrar la gráfica.</p>
+                        </div>
+                    ) : (
+                        <div className="missing-months-chart" role="img" aria-label={`Gráfico de meses con y sin archivos del año ${resumenGrafico.anioSeleccionado}`}>
+                            {resumenGrafico.meses.map((item) => {
+                                const height = `${Math.max(8, (item.total / maxMonthlyValue) * 100)}%`;
+                                const barClass = item.total >= 2 ? 'multi-files' : item.tieneArchivos ? 'has-files' : 'no-files';
 
-                            return (
-                                <div key={item.mes} className={`missing-months-column ${barClass}`}>
-                                    <div className="missing-months-track">
-                                        <div className="missing-months-fill" style={{ height }} />
+                                return (
+                                    <div key={item.mes} className={`missing-months-column ${barClass}`}>
+                                        <div className="missing-months-track">
+                                            <div className="missing-months-fill" style={{ height }} />
+                                        </div>
+                                        <span className="missing-months-value">{item.tieneArchivos ? `${item.total}` : '0'}</span>
+                                        <span className="missing-months-label">{item.nombre}</span>
                                     </div>
-                                    <span className="missing-months-value">{item.tieneArchivos ? `${item.total}` : '0'}</span>
-                                    <span className="missing-months-label">{item.nombre}</span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                                );
+                            })}
+                        </div>
+                    )}
                 </section>
             )}
 
