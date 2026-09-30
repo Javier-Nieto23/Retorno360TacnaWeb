@@ -596,7 +596,7 @@ async function getEmpresaFilterContext(empresaId, razonSocialId) {
 function getAuthorizedRazonSocialId(req, res) {
     const userRazonSocialId = Number(req.user?.razon_social_id);
 
-    if (isAdminUser(req) || isInventariosUser(req)) {
+    if (isAdminUser(req)) {
         const requestedRazonSocialId = req.query?.razon_social_id
             ? Number(req.query.razon_social_id)
             : null;
@@ -607,6 +607,27 @@ function getAuthorizedRazonSocialId(req, res) {
         }
 
         return requestedRazonSocialId || null;
+    }
+
+    if (isInventariosUser(req)) {
+        const requestedRazonSocialId = req.query?.razon_social_id
+            ? Number(req.query.razon_social_id)
+            : null;
+
+        if (req.query?.razon_social_id && Number.isNaN(requestedRazonSocialId)) {
+            res.status(400).json({ error: 'razon_social_id inválido.' });
+            return undefined;
+        }
+
+        if (requestedRazonSocialId) {
+            return requestedRazonSocialId;
+        }
+
+        if (userRazonSocialId) {
+            return userRazonSocialId;
+        }
+
+        return null;
     }
 
     if (!userRazonSocialId) {
@@ -1790,12 +1811,8 @@ async function cerrarObservacionAdmin(req, res) {
 async function solicitarEliminacionArchivo(req, res) {
     const { id } = req.params;
 
-    if (isAdminUser(req)) {
-        return res.status(400).json({ error: 'Los administradores no pueden crear solicitudes de eliminación desde este flujo.' });
-    }
-
-    if (!isInventariosUser(req) && !isClientUser(req)) {
-        return res.status(403).json({ error: 'Este rol no puede crear solicitudes de eliminación.' });
+    if (!isInventariosUser(req)) {
+        return res.status(403).json({ error: 'Solo los usuarios con rol de inventarios pueden solicitar eliminación de archivos.' });
     }
 
     const archivoId = Number(id);
@@ -1804,7 +1821,10 @@ async function solicitarEliminacionArchivo(req, res) {
     }
 
     const razonSocialId = getAuthorizedRazonSocialId(req, res);
-    if (!razonSocialId) return;
+    if (typeof razonSocialId === 'undefined') return;
+    if (!razonSocialId) {
+        return res.status(403).json({ error: 'El usuario de inventarios no tiene una razón social asignada.' });
+    }
 
     const motivo = req.body?.motivo ? String(req.body.motivo).trim() : '';
     if (!motivo) {
