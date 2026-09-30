@@ -1708,8 +1708,8 @@ async function responderObservacionCliente(req, res) {
 
 // POST /api/files/observaciones/:id/responder-admin
 async function responderObservacionAdmin(req, res) {
-    if (!isAdminUser(req)) {
-        return res.status(403).json({ error: 'Solo un administrador puede responder observaciones.' });
+    if (!canAttendDeleteRequests(req)) {
+        return res.status(403).json({ error: 'Solo un administrador o inventarios puede responder observaciones.' });
     }
 
     const observacionId = Number(req.params?.id);
@@ -1779,8 +1779,8 @@ async function responderObservacionAdmin(req, res) {
 
 // PATCH /api/files/observaciones/:id/cerrar
 async function cerrarObservacionAdmin(req, res) {
-    if (!isAdminUser(req)) {
-        return res.status(403).json({ error: 'Solo un administrador puede cerrar observaciones.' });
+    if (!canAttendDeleteRequests(req)) {
+        return res.status(403).json({ error: 'Solo un administrador o inventarios puede cerrar observaciones.' });
     }
 
     const observacionId = Number(req.params?.id);
@@ -1985,8 +1985,8 @@ async function listarSolicitudesEliminacion(req, res) {
 
 // POST /api/files/delete-requests/:requestId/start-observation
 async function iniciarObservacionDesdeSolicitud(req, res) {
-    if (!isAdminUser(req)) {
-        return res.status(403).json({ error: 'Solo un administrador puede iniciar observaciones desde solicitudes.' });
+    if (!canAttendDeleteRequests(req)) {
+        return res.status(403).json({ error: 'Solo un administrador o inventarios puede iniciar observaciones desde solicitudes.' });
     }
 
     const requestId = Number(req.params?.requestId);

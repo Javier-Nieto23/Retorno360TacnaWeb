@@ -415,7 +415,16 @@ export default function Dashboard() {
                                             <p className="obs-alert-new">Motivo: {solicitud.motivo}</p>
                                         )}
                                     </div>
-                                    <span className="obs-alert-count">Pendiente</span>
+                                    <div className="obs-detail-actions">
+                                        <button
+                                            type="button"
+                                            className="obs-btn-primary"
+                                            onClick={() => abrirDetalleObservacion(solicitud.observacion_id)}
+                                            disabled={!solicitud.observacion_id}
+                                        >
+                                            {solicitud.observacion_id ? 'Abrir seguimiento' : 'Pendiente de revisión'}
+                                        </button>
+                                    </div>
                                 </article>
                             ))}
                         </div>

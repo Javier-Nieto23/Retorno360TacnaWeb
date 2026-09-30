@@ -77,6 +77,14 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
         motivo: '',
         fecha: '',
     });
+    const [seguimientoModal, setSeguimientoModal] = useState({
+        open: false,
+        loading: false,
+        observacion: null,
+        mensajes: [],
+        respuesta: '',
+        permisos: { can_respond: false, can_close: false },
+    });
     const [calendarRefreshKey, setCalendarRefreshKey] = useState(0);
     const razonSocialIdDetectado = detectRazonSocialId(appliedFilters.razon_social_id, user);
 
@@ -272,6 +280,113 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
             motivo: item.motivo || 'No se registró un motivo para esta solicitud.',
             fecha: item.solicitado_at || '',
         });
+    };
+
+    const abrirSeguimientoModal = async (solicitud) => {
+        const observacionId = Number(solicitud?.observacion_id);
+        if (Number.isNaN(observacionId) || !observacionId) {
+            try {
+                const { data } = await fileService.iniciarObservacionDesdeSolicitud(solicitud.id);
+                const nextObservacionId = Number(data?.observacion?.id || data?.solicitud?.observacion_id || 0);
+                if (!nextObservacionId) {
+                    setSolicitudesSuccess('Se inició la revisión de la solicitud.');
+                    await cargarSolicitudesPendientes();
+                    return;
+                }
+                const detail = await fileService.obtenerDetalleObservacion(nextObservacionId);
+                const mensajes = detail?.data?.mensajes || [];
+                setSeguimientoModal({
+                    open: true,
+                    loading: false,
+                    observacion: detail?.data?.observacion || null,
+                    mensajes,
+                    respuesta: '',
+                    permisos: detail?.data?.permisos || { can_respond: true, can_close: true },
+                });
+                await cargarSolicitudesPendientes();
+                return;
+            } catch (err) {
+                setSolicitudesError(err.response?.data?.error || 'No se pudo iniciar la conversación de seguimiento.');
+                return;
+            }
+        }
+
+        setSeguimientoModal({
+            open: true,
+            loading: true,
+            observacion: null,
+            mensajes: [],
+            respuesta: '',
+            permisos: { can_respond: true, can_close: true },
+        });
+
+        try {
+            const { data } = await fileService.obtenerDetalleObservacion(observacionId);
+            setSeguimientoModal({
+                open: true,
+                loading: false,
+                observacion: data?.observacion || null,
+                mensajes: data?.mensajes || [],
+                respuesta: '',
+                permisos: data?.permisos || { can_respond: true, can_close: true },
+            });
+        } catch (err) {
+            setSolicitudesError(err.response?.data?.error || 'No se pudo abrir la conversación de seguimiento.');
+            setSeguimientoModal({
+                open: false,
+                loading: false,
+                observacion: null,
+                mensajes: [],
+                respuesta: '',
+                permisos: { can_respond: false, can_close: false },
+            });
+        }
+    };
+
+    const cerrarSeguimientoModal = () => {
+        setSeguimientoModal({
+            open: false,
+            loading: false,
+            observacion: null,
+            mensajes: [],
+            respuesta: '',
+            permisos: { can_respond: false, can_close: false },
+        });
+    };
+
+    const enviarRespuestaSeguimiento = async () => {
+        const observacionId = Number(seguimientoModal.observacion?.id);
+        const respuesta = String(seguimientoModal.respuesta || '').trim();
+        if (!observacionId || !respuesta) return;
+
+        try {
+            await fileService.responderObservacionAdmin(observacionId, respuesta);
+            const { data } = await fileService.obtenerDetalleObservacion(observacionId);
+            setSeguimientoModal((prev) => ({
+                ...prev,
+                mensajes: data?.mensajes || [],
+                respuesta: '',
+                observacion: data?.observacion || prev.observacion,
+            }));
+            setSolicitudesSuccess('Respuesta enviada al cliente.');
+        } catch (err) {
+            setSolicitudesError(err.response?.data?.error || 'No se pudo enviar la respuesta.');
+        }
+    };
+
+    const cerrarObservacionSeguimiento = async () => {
+        const observacionId = Number(seguimientoModal.observacion?.id);
+        if (!observacionId) return;
+
+        try {
+            await fileService.cerrarObservacion(observacionId);
+            setSolicitudesSuccess('Observación cerrada correctamente.');
+            cerrarSeguimientoModal();
+            await cargarSolicitudesPendientes();
+            await cargarPanelPrincipal(appliedFilters);
+        } catch (err) {
+            setSolicitudesError(err.response?.data?.error || 'No se pudo cerrar la observación.');
+        }
     };
 
     const cerrarMotivoModal = () => {
@@ -531,6 +646,14 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
                                                         </button>
                                                         <button
                                                             type="button"
+                                                            className="inventarios-btn inventarios-btn-secondary"
+                                                            onClick={() => abrirSeguimientoModal(item)}
+                                                            disabled={resolvingRequestId === item.id}
+                                                        >
+                                                            {item.observacion_id ? 'Revisar chat' : 'Iniciar chat'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
                                                             className="inventarios-btn inventarios-btn-approve"
                                                             onClick={() => handleResolverSolicitud(item.id, 'aprobar')}
                                                             disabled={resolvingRequestId === item.id}
@@ -612,6 +735,63 @@ export default function InventariosDashboard({ view = 'dashboard' }) {
                                         Cerrar
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {seguimientoModal.open && (
+                        <div className="inventarios-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="inventarios-chat-title">
+                            <div className="inventarios-modal inventarios-modal-chat">
+                                {seguimientoModal.loading ? (
+                                    <p className="inventarios-empty">Cargando conversación...</p>
+                                ) : !seguimientoModal.observacion ? (
+                                    <p className="inventarios-empty">No se encontró la observación.</p>
+                                ) : (
+                                    <>
+                                        <h3 id="inventarios-chat-title">Seguimiento de observación</h3>
+                                        <p><strong>Archivo:</strong> {seguimientoModal.observacion.nombre_archivo}</p>
+                                        <p><strong>Estado:</strong> {seguimientoModal.observacion.estado || '—'}</p>
+                                        <p><strong>Descripción:</strong> {seguimientoModal.observacion.descripcion || '—'}</p>
+                                        <div className="inventarios-modal-chat-list">
+                                            {seguimientoModal.mensajes.length === 0 ? (
+                                                <p className="inventarios-empty compact">Aún no hay mensajes.</p>
+                                            ) : (
+                                                seguimientoModal.mensajes.map((msg) => (
+                                                    <div key={msg.id} className="inventarios-chat-message">
+                                                        <strong>{msg.usuario_alias || 'Usuario'}:</strong>
+                                                        <span>{msg.mensaje}</span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                        <textarea
+                                            value={seguimientoModal.respuesta}
+                                            onChange={(e) => setSeguimientoModal((prev) => ({ ...prev, respuesta: e.target.value }))}
+                                            rows={3}
+                                            placeholder="Escribe tu respuesta para el cliente..."
+                                        />
+                                        <div className="inventarios-modal-actions">
+                                            <button
+                                                type="button"
+                                                className="inventarios-btn inventarios-btn-approve"
+                                                onClick={enviarRespuestaSeguimiento}
+                                                disabled={!seguimientoModal.respuesta.trim()}
+                                            >
+                                                Enviar respuesta
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="inventarios-btn inventarios-btn-secondary"
+                                                onClick={cerrarObservacionSeguimiento}
+                                            >
+                                                Cerrar observación
+                                            </button>
+                                            <button type="button" className="inventarios-btn inventarios-btn-secondary" onClick={cerrarSeguimientoModal}>
+                                                Cerrar
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
