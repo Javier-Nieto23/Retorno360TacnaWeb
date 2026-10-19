@@ -186,7 +186,7 @@ function ClusterRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/conexion-bms" replace />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/conexion-bms" element={<DatabaseConnectionDashboard />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/dashboard" element={<DashboardRoute />} />
