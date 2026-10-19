@@ -108,6 +108,15 @@ export default function Login() {
                     <button type="submit" className="btn-login" disabled={loading}>
                         {loading ? <span className="spinner" /> : 'Ingresar'}
                     </button>
+
+                    <button
+                        type="button"
+                        className="btn-bms-check"
+                        onClick={() => navigate('/conexion-bms')}
+                    >
+                        Ver conexión BMS
+                    </button>
+
                     <a href="/register" className="btn-register">
                         No tienes cuenta? Regístrate.
                     </a>

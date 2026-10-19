@@ -11,6 +11,7 @@ const fileRoutes = require('./src/routes/files');
 const adminRoutes = require('./src/routes/admin');
 const clusterRoutes = require('./src/routes/cluster');
 const rgceRoutes = require('./src/routes/rgce');
+const sqlServerRoutes = require('./src/routes/sqlserver');
 
 const razonsocialRoutes = require('./src/routes/razonsocial');
 
@@ -88,6 +89,8 @@ app.use('/api/contabilidad', require('./src/routes/contabilidad'));
 app.use('/api/admin', adminRoutes);
 app.use('/api/cluster', clusterRoutes);
 app.use('/api/rgce', rgceRoutes);
+app.use('/api/sqlserver', sqlServerRoutes);
+app.use('/api/conexion-bms', sqlServerRoutes);
 
 app.use('/api/razonsocial', razonsocialRoutes);
 

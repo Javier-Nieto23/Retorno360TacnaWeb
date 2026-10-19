@@ -120,6 +120,11 @@ export const rgceService = {
     documentos: (params) => api.get('/rgce/documentos', { params }),
 };
 
+export const databaseConnectionService = {
+    testAwsSql: () => api.get('/sqlserver/test'),
+    statusAwsSql: () => api.get('/sqlserver/status'),
+};
+
 // Razón Social
 export const razonSocialService = {
     listar: () => api.get('/razonsocial'),

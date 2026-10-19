@@ -9,12 +9,13 @@ function getClientIp(req) {
 // POST /api/auth/login
 async function login(req, res) {
     const { nombre_usuario, password } = req.body;
-    const normalizedUser = String(nombre_usuario || '').trim();
+    const normalizedUser = String(nombre_usuario ?? '').trim();
+    const normalizedPassword = String(password ?? '').trim();
     const clientIp = getClientIp(req);
 
     console.log(`[AUTH][LOGIN] Intento de inicio de sesion usuario="${normalizedUser || 'vacio'}" ip="${clientIp}"`);
 
-    if (!nombre_usuario || !password) {
+    if (!normalizedUser || !normalizedPassword) {
         console.warn(`[AUTH][LOGIN] Rechazado: campos incompletos usuario="${normalizedUser || 'vacio'}" ip="${clientIp}"`);
         return res.status(400).json({ error: 'Nombre de usuario y contraseña son requeridos.' });
     }
@@ -48,7 +49,7 @@ async function login(req, res) {
             return res.status(401).json({ error: 'Credenciales inválidas.' });
         }
 
-        const passwordMatch = await bcrypt.compare(password, hash);
+        const passwordMatch = await bcrypt.compare(normalizedPassword, hash);
 
         if (!passwordMatch) {
             console.warn(

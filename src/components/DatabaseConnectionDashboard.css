@@ -1,0 +1,105 @@
+.database-connection-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at top, #0c1d36 0%, #061120 100%);
+  padding: 32px;
+}
+
+.database-connection-card {
+  width: min(980px, 100%);
+  background: rgba(10, 20, 35, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 28px;
+  box-shadow: 0 18px 50px rgba(2, 6, 23, 0.5);
+  padding: 28px 32px;
+  color: #e2e8f0;
+}
+
+.database-connection-title {
+  margin: 0 0 18px;
+  font-size: clamp(1.5rem, 2vw, 2.35rem);
+  font-weight: 800;
+  color: #f8fafc;
+  text-transform: lowercase;
+}
+
+.database-connection-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 22px;
+  font-size: 1rem;
+  color: #cbd5e1;
+}
+
+.database-connection-status-badge {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 0 5px rgba(245, 158, 11, 0.15);
+}
+
+.database-connection-status-badge.success {
+  background: #22c55e;
+  box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.15);
+}
+
+.database-connection-status-badge.error {
+  background: #ef4444;
+  box-shadow: 0 0 0 5px rgba(239, 68, 68, 0.15);
+}
+
+.database-connection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.database-connection-item {
+  padding: 16px 18px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.database-connection-item .label {
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.database-connection-item .value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f8fafc;
+  word-break: break-word;
+}
+
+.database-connection-message {
+  margin-top: 18px;
+  padding: 14px 16px;
+  background: rgba(15, 118, 110, 0.12);
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  border-radius: 14px;
+  color: #ccfbf1;
+  font-weight: 600;
+}
+
+.database-connection-message.error {
+  background: rgba(127, 29, 29, 0.2);
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+
+@media (max-width: 640px) {
+  .database-connection-card {
+    padding: 20px 18px;
+  }
+}

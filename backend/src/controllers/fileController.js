@@ -297,7 +297,7 @@ async function ensureNumerosParteTable() {
                 peso_cantidad NUMERIC(10,3),
                 piezas INTEGER,
                 pais_origen VARCHAR(120),
-                similar VARCHAR(250),
+                "similar" VARCHAR(250),
                 imagen_nombre VARCHAR(255),
                 imagen_storage_key VARCHAR(1000),
                 imagen_storage_url TEXT,
@@ -345,7 +345,7 @@ async function ensureNumerosParteTable() {
 
         await pool.query(
             `ALTER TABLE numeros_parte
-             ADD COLUMN IF NOT EXISTS similar VARCHAR(250)`
+             ADD COLUMN IF NOT EXISTS "similar" VARCHAR(250)`
         );
 
         await pool.query(
@@ -965,7 +965,7 @@ async function listarNumerosParte(req, res) {
                     np.peso_cantidad,
                     np.piezas,
                     np.pais_origen,
-                    np.similar,
+                    np."similar",
                     np.imagen_nombre,
                     np.imagen_storage_url,
                     np.created_at,
@@ -1088,9 +1088,9 @@ async function crearNumeroParte(req, res) {
 
         const result = await pool.query(
             `INSERT INTO numeros_parte
-                 (numero_parte, descripcion, descripcion_esp, descripcion_ing, unidad_medida, unit_horas, peso_cantidad, piezas, pais_origen, similar, imagen_nombre, imagen_storage_key, imagen_storage_url, usuario_id, razon_social_id, empresa_id)
+                 (numero_parte, descripcion, descripcion_esp, descripcion_ing, unidad_medida, unit_horas, peso_cantidad, piezas, pais_origen, "similar", imagen_nombre, imagen_storage_key, imagen_storage_url, usuario_id, razon_social_id, empresa_id)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-             RETURNING id, numero_parte, descripcion, descripcion_esp, descripcion_ing, unidad_medida, unit_horas, peso_cantidad, piezas, pais_origen, similar, imagen_nombre, imagen_storage_key, imagen_storage_url, created_at, razon_social_id, empresa_id` ,
+             RETURNING id, numero_parte, descripcion, descripcion_esp, descripcion_ing, unidad_medida, unit_horas, peso_cantidad, piezas, pais_origen, "similar", imagen_nombre, imagen_storage_key, imagen_storage_url, created_at, razon_social_id, empresa_id` ,
             [
                 numeroParte,
                 descripcionEsp || null,

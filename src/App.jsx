@@ -16,6 +16,7 @@ import ExpDashboard from './components/ExpDashboard';
 import ExpHistorial from './components/ExpHistorial';
 import InventariosDashboard from './components/InventariosDashboard';
 import InventariosHistorial from './components/InventariosHistorial';
+import DatabaseConnectionDashboard from './components/DatabaseConnectionDashboard';
 import { getLandingPath, isAdminUser, isClientUser, isClusterUser, isExpUser, isImpUser, isInventariosUser } from './utils/roles';
 
 function DashboardRoute() {
@@ -185,6 +186,8 @@ function ClusterRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/" element={<Navigate to="/conexion-bms" replace />} />
+      <Route path="/conexion-bms" element={<DatabaseConnectionDashboard />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/dashboard" element={<DashboardRoute />} />
       <Route path="/cliente-dashboard" element={<ClientDashboardRoute />} />
