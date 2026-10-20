@@ -14,10 +14,11 @@ import ImpDashboard from './components/ImpDashboard';
 import ImpUpload from './components/ImpUpload';
 import ExpDashboard from './components/ExpDashboard';
 import ExpHistorial from './components/ExpHistorial';
+import OperacionesDashboard from './components/OperacionesDashboard';
 import InventariosDashboard from './components/InventariosDashboard';
 import InventariosHistorial from './components/InventariosHistorial';
 import DatabaseConnectionDashboard from './components/DatabaseConnectionDashboard';
-import { getLandingPath, isAdminUser, isClientUser, isClusterUser, isExpUser, isImpUser, isInventariosUser } from './utils/roles';
+import { getLandingPath, isAdminUser, isClientUser, isClusterUser, isExpUser, isImpUser, isInventariosUser, isOperacionesUser } from './utils/roles';
 
 function DashboardRoute() {
   const { user, loading } = useAuth();
@@ -141,6 +142,20 @@ function AdminRoute({ children }) {
   );
 }
 
+function OperacionesRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="app-loading">Cargando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isOperacionesUser(user)) return <Navigate to={getLandingPath(user)} replace />;
+
+  return (
+    <>
+      <Navbar />
+      <main className="app-main">{children}</main>
+    </>
+  );
+}
+
 function InventariosRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="app-loading">Cargando...</div>;
@@ -198,6 +213,7 @@ function AppRoutes() {
       <Route path="/exp-dashboard" element={<ExpRoute><ExpDashboard /></ExpRoute>} />
       <Route path="/exp-historial" element={<ExpRoute><ExpHistorial /></ExpRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+      <Route path="/operaciones" element={<OperacionesRoute><OperacionesDashboard /></OperacionesRoute>} />
       <Route path="/inventarios" element={<InventariosRoute><InventariosDashboard /></InventariosRoute>} />
       <Route path="/inventarios/historial" element={<InventariosHistorialRoute><InventariosHistorial /></InventariosHistorialRoute>} />
 

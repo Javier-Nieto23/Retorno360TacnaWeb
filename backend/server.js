@@ -62,7 +62,8 @@ async function logCloudflareConnectionStatus() {
 const allowedOrigins = [
     process.env.FRONTEND_URL,
     'http://localhost:5173',
-    'https://retorno.tacna.net'
+    'https://retorno.tacna.net',
+    'https://retorno360-tacna-web.vercel.app'
 ]
     .filter(Boolean)
     .map((origin) => origin.replace(/\/+$/, ''));

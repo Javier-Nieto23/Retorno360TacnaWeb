@@ -6,7 +6,7 @@ const normalizedApiUrl = typeof rawApiUrl === 'string'
     : rawApiUrl;
 const API_URL = (typeof normalizedApiUrl === 'string' && normalizedApiUrl.length > 0)
     ? normalizedApiUrl
-    : 'http://localhost:3001/api';
+    : 'https://retorno360tacnaweb-production.up.railway.app/api';
 const SESSION_TOKEN_KEY = 'session_token';
 const SESSION_EXPIRES_AT_KEY = 'session_expires_at';
 
@@ -130,6 +130,12 @@ export const databaseConnectionService = {
     statusAwsSql: () => api.get('/conexion-bms/status').catch((error) => {
         if (error.response?.status === 404) {
             return api.get('/sqlserver/status');
+        }
+        throw error;
+    }),
+    exportPedimentos: () => api.get('/conexion-bms/export-pedimentos').catch((error) => {
+        if (error.response?.status === 404) {
+            return api.get('/sqlserver/export-pedimentos');
         }
         throw error;
     }),

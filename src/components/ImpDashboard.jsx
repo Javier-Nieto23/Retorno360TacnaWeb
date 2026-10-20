@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { fileService } from '../services/api';
-import './InventariosDashboard.css';
+import './OperacionesDashboard.css';
 
 const MES_NAMES = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',

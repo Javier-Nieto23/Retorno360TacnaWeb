@@ -1,7 +1,7 @@
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, NavLink } from 'react-router-dom';
 import './Navbar.css';
-import { isAdminUser, isClientUser, isClusterUser, isExpUser, isImpUser, isInventariosUser } from '../utils/roles';
+import { isAdminUser, isClientUser, isClusterUser, isExpUser, isImpUser, isInventariosUser, isOperacionesUser } from '../utils/roles';
 
 export default function Navbar() {
     const { user, logout } = useAuth();
@@ -11,8 +11,9 @@ export default function Navbar() {
     const isCluster = isClusterUser(user);
     const isImp = isImpUser(user);
     const isExp = isExpUser(user);
+    const isOperaciones = isOperacionesUser(user);
     const isInventarios = isInventariosUser(user);
-    const dashboardPath = isImp ? '/dashboard' : isInventarios ? '/inventarios' : isExp ? '/exp-dashboard' : isClient ? '/cliente-dashboard' : '/dashboard';
+    const dashboardPath = isImp ? '/dashboard' : isOperaciones ? '/operaciones' : isInventarios ? '/inventarios' : isExp ? '/exp-dashboard' : isClient ? '/cliente-dashboard' : '/dashboard';
 
     const handleLogout = () => {
         logout();
@@ -39,13 +40,20 @@ export default function Navbar() {
                         </NavLink>
                     </>
                 )}
-                {isInventarios && (
+                {isOperaciones && (
                     <>
-                        <NavLink to="/inventarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                            Dashboard
+                        <NavLink to="/operaciones" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Dashboard operaciones
                         </NavLink>
                         <NavLink to="/inventarios/historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
                             Historial
+                        </NavLink>
+                    </>
+                )}
+                {isInventarios && !isOperaciones && (
+                    <>
+                        <NavLink to="/inventarios" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Dashboard inventarios
                         </NavLink>
                     </>
                 )}
