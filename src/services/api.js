@@ -121,8 +121,18 @@ export const rgceService = {
 };
 
 export const databaseConnectionService = {
-    testAwsSql: () => api.get('/sqlserver/test'),
-    statusAwsSql: () => api.get('/sqlserver/status'),
+    testAwsSql: () => api.get('/conexion-bms/test').catch((error) => {
+        if (error.response?.status === 404) {
+            return api.get('/sqlserver/test');
+        }
+        throw error;
+    }),
+    statusAwsSql: () => api.get('/conexion-bms/status').catch((error) => {
+        if (error.response?.status === 404) {
+            return api.get('/sqlserver/status');
+        }
+        throw error;
+    }),
 };
 
 // Razón Social

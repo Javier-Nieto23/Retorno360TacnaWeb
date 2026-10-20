@@ -19,8 +19,9 @@ export default function DatabaseConnectionDashboard() {
     useEffect(() => {
         let isMounted = true;
 
-        api.get('/sqlserver/test')
-            .then((response) => {
+        const requestConnectionStatus = async () => {
+            try {
+                const response = await api.get('/conexion-bms/test');
                 if (!isMounted) return;
                 setStatus({
                     connected: response.data.connected,
@@ -32,16 +33,39 @@ export default function DatabaseConnectionDashboard() {
                     user: response.data.user || connectionDetails.user,
                     database: response.data.database || connectionDetails.database,
                 });
-            })
-            .catch((error) => {
+            } catch (error) {
                 if (!isMounted) return;
+
+                if (error.response?.status === 404) {
+                    try {
+                        const fallbackResponse = await api.get('/sqlserver/test');
+                        if (!isMounted) return;
+                        setStatus({
+                            connected: fallbackResponse.data.connected,
+                            message: fallbackResponse.data.message || 'conexion a base de datos completa',
+                            status: fallbackResponse.data.connected ? 'ok' : 'error',
+                        });
+                        setDetails({
+                            server: fallbackResponse.data.server || connectionDetails.server,
+                            user: fallbackResponse.data.user || connectionDetails.user,
+                            database: fallbackResponse.data.database || connectionDetails.database,
+                        });
+                        return;
+                    } catch (fallbackError) {
+                        // Continuar con el manejo del error original.
+                    }
+                }
+
                 const errorMessage = error.response?.data?.message || 'No se pudo establecer la conexión.';
                 setStatus({
                     connected: false,
                     message: errorMessage,
                     status: 'error',
                 });
-            });
+            }
+        };
+
+        requestConnectionStatus();
 
         return () => {
             isMounted = false;
