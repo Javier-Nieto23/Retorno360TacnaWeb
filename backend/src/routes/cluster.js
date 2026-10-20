@@ -29,7 +29,7 @@ ORDER BY
         WHEN 'junio'      THEN 6
         WHEN 'julio'      THEN 7
         WHEN 'agosto'     THEN 8
-        WHEN 'septiembre' THEN 9
+        WHEN 'septiembre' THEN 9     
         WHEN 'setiembre'  THEN 9   -- variante ortográfica válida en español
         WHEN 'octubre'    THEN 10
         WHEN 'noviembre'  THEN 11
