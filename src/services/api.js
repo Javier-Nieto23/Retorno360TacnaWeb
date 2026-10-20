@@ -10,6 +10,13 @@ const API_URL = (typeof normalizedApiUrl === 'string' && normalizedApiUrl.length
 const SESSION_TOKEN_KEY = 'session_token';
 const SESSION_EXPIRES_AT_KEY = 'session_expires_at';
 
+function buildAbsoluteApiUrl(path) {
+    const normalizedBase = String(API_URL || '').replace(/\/+$/, '');
+    const normalizedPath = String(path || '').startsWith('/') ? String(path) : `/${path}`;
+    const baseWithApi = normalizedBase.endsWith('/api') ? normalizedBase : `${normalizedBase}/api`;
+    return `${baseWithApi}${normalizedPath}`;
+}
+
 if (typeof API_URL !== 'string' || !API_URL.startsWith('http')) {
     console.warn(`API base URL inválida detectada: ${String(API_URL)}. Revisar VITE_API_URL en Vercel.`);
 }
@@ -121,24 +128,72 @@ export const rgceService = {
 };
 
 export const databaseConnectionService = {
-    testAwsSql: () => api.get('/conexion-bms/test').catch((error) => {
-        if (error.response?.status === 404) {
-            return api.get('/sqlserver/test');
+    testAwsSql: async () => {
+        const fallbackPaths = [
+            buildAbsoluteApiUrl('/conexion-bms/test'),
+            buildAbsoluteApiUrl('/sqlserver/test'),
+            `${API_URL.replace(/\/+$/, '')}/conexion-bms/test`,
+            `${API_URL.replace(/\/+$/, '')}/sqlserver/test`,
+        ];
+
+        let lastError;
+        for (const url of fallbackPaths) {
+            try {
+                return await axios.get(url);
+            } catch (error) {
+                lastError = error;
+                if (error.response?.status !== 404) {
+                    throw error;
+                }
+            }
         }
-        throw error;
-    }),
-    statusAwsSql: () => api.get('/conexion-bms/status').catch((error) => {
-        if (error.response?.status === 404) {
-            return api.get('/sqlserver/status');
+
+        throw lastError;
+    },
+    statusAwsSql: async () => {
+        const fallbackPaths = [
+            buildAbsoluteApiUrl('/conexion-bms/status'),
+            buildAbsoluteApiUrl('/sqlserver/status'),
+            `${API_URL.replace(/\/+$/, '')}/conexion-bms/status`,
+            `${API_URL.replace(/\/+$/, '')}/sqlserver/status`,
+        ];
+
+        let lastError;
+        for (const url of fallbackPaths) {
+            try {
+                return await axios.get(url);
+            } catch (error) {
+                lastError = error;
+                if (error.response?.status !== 404) {
+                    throw error;
+                }
+            }
         }
-        throw error;
-    }),
-    exportPedimentos: () => api.get('/conexion-bms/export-pedimentos').catch((error) => {
-        if (error.response?.status === 404) {
-            return api.get('/sqlserver/export-pedimentos');
+
+        throw lastError;
+    },
+    exportPedimentos: async () => {
+        const fallbackPaths = [
+            buildAbsoluteApiUrl('/conexion-bms/export-pedimentos'),
+            buildAbsoluteApiUrl('/sqlserver/export-pedimentos'),
+            `${API_URL.replace(/\/+$/, '')}/conexion-bms/export-pedimentos`,
+            `${API_URL.replace(/\/+$/, '')}/sqlserver/export-pedimentos`,
+        ];
+
+        let lastError;
+        for (const url of fallbackPaths) {
+            try {
+                return await axios.get(url);
+            } catch (error) {
+                lastError = error;
+                if (error.response?.status !== 404) {
+                    throw error;
+                }
+            }
         }
-        throw error;
-    }),
+
+        throw lastError;
+    },
 };
 
 // Razón Social
