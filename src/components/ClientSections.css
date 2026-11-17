@@ -82,6 +82,57 @@
     letter-spacing: 0.04em;
 }
 
+.client-part-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.client-part-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+}
+
+.client-part-toggle input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: #2563eb;
+}
+
+.client-part-translation-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.client-part-translate-button {
+    border: none;
+    border-radius: 8px;
+    background: #e0f2fe;
+    color: #0f172a;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.client-part-translate-button:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.client-part-translate-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
 .client-part-field input,
 .client-part-field textarea {
     padding: 0.55rem 0.875rem;
@@ -145,6 +196,164 @@
 .client-part-submit:disabled {
     opacity: 0.65;
     cursor: not-allowed;
+}
+
+.client-part-stepper {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.client-part-stepper-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    position: relative;
+    color: #9ca3af;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.client-part-stepper-item::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: -50%;
+    width: 100%;
+    height: 2px;
+    background: #e5e7eb;
+    z-index: 0;
+    transition: background 0.3s ease;
+}
+
+.client-part-stepper-item:first-child::before {
+    display: none;
+}
+
+.client-part-stepper-item.active::before,
+.client-part-stepper-item.done::before {
+    background: #2563eb;
+}
+
+.client-part-stepper-dot {
+    position: relative;
+    z-index: 1;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #e5e7eb;
+    color: #6b7280;
+    transition: background 0.3s ease, color 0.3s ease, transform 0.3s ease;
+}
+
+.client-part-stepper-item.active {
+    color: #0f3460;
+}
+
+.client-part-stepper-item.active .client-part-stepper-dot {
+    background: linear-gradient(135deg, #0f3460, #2563eb);
+    color: white;
+    transform: scale(1.12);
+}
+
+.client-part-stepper-item.done .client-part-stepper-dot {
+    background: #2563eb;
+    color: white;
+}
+
+.client-part-step-hint {
+    margin: 0;
+    text-align: center;
+    color: #6b7280;
+    font-size: 0.84rem;
+}
+
+.client-part-step {
+    animation-duration: 0.35s;
+    animation-timing-function: ease;
+    animation-fill-mode: both;
+}
+
+.client-part-step.forward {
+    animation-name: client-part-slide-forward;
+}
+
+.client-part-step.backward {
+    animation-name: client-part-slide-backward;
+}
+
+@keyframes client-part-slide-forward {
+    from {
+        opacity: 0;
+        transform: translateX(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes client-part-slide-backward {
+    from {
+        opacity: 0;
+        transform: translateX(-40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .client-part-step {
+        animation: none;
+    }
+}
+
+.client-part-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.client-part-actions .client-part-submit {
+    flex: 1;
+}
+
+.client-part-back {
+    background: #f3f4f6;
+    color: #374151;
+    border: none;
+    border-radius: 8px;
+    padding: 0.8rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 44px;
+}
+
+.client-part-back:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.client-part-summary {
+    border: 1px solid #e5e7eb;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 0.7rem 0.85rem;
+    color: #475569;
+    font-size: 0.84rem;
+}
+
+.client-part-summary p {
+    margin: 0.15rem 0;
 }
 
 .client-part-list {

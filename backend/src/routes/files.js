@@ -8,6 +8,7 @@ const {
     empresasDisponibles,
     upload: uploadFile,
     listarNumerosParte,
+    resumenMensualNumerosParte,
     crearNumeroParte,
     historial,
     resumenHistorial,
@@ -42,6 +43,7 @@ router.post('/upload', authMiddleware, (req, res, next) => {
 router.get('/razones-sociales-disponibles', authMiddleware, razonesSocialesDisponibles);
 router.get('/empresas-disponibles', authMiddleware, empresasDisponibles);
 router.get('/numeros-parte', authMiddleware, listarNumerosParte);
+router.get('/numeros-parte/resumen-mensual', authMiddleware, resumenMensualNumerosParte);
 router.post('/numeros-parte', authMiddleware, uploadImage.single('imagen'), crearNumeroParte);
 router.get('/historial', authMiddleware, historial);
 router.get('/historial/resumen', authMiddleware, resumenHistorial);

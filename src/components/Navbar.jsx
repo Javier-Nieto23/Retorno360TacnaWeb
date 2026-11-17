@@ -68,17 +68,9 @@ export default function Navbar() {
                     </>
                 )}
                 {isClient && (
-                    <>
-                        <NavLink to="/cliente-dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                            Dashboard
-                        </NavLink>
-                        <NavLink to="/archivos" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                            Archivos
-                        </NavLink>
-                        <NavLink to="/solicitud-parte" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                            Solicitud de parte
-                        </NavLink>
-                    </>
+                    <NavLink to="/cliente-dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                        Dashboard
+                    </NavLink>
                 )}
                 {isAdmin && (
                     <>

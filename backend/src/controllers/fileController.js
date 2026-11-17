@@ -7,6 +7,8 @@ let historialEmpresaColumnReady = false;
 let historialEmpresaColumnInitPromise = null;
 let numerosParteTableReady = false;
 let numerosParteTableInitPromise = null;
+let solicitudParteTableReady = false;
+let solicitudParteTableInitPromise = null;
 let observacionesTableReady = false;
 let observacionesTableInitPromise = null;
 let observacionMensajesTableReady = false;
@@ -289,6 +291,7 @@ async function ensureNumerosParteTable() {
             `CREATE TABLE IF NOT EXISTS numeros_parte (
                 id SERIAL PRIMARY KEY,
                 numero_parte VARCHAR(120) NOT NULL,
+                id_solicitud VARCHAR(80),
                 descripcion VARCHAR(500),
                 descripcion_esp VARCHAR(500),
                 descripcion_ing VARCHAR(500),
@@ -306,6 +309,11 @@ async function ensureNumerosParteTable() {
                 empresa_id INTEGER REFERENCES empresa(id) ON DELETE SET NULL,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )`
+        );
+
+        await pool.query(
+            `ALTER TABLE numeros_parte
+             ADD COLUMN IF NOT EXISTS id_solicitud VARCHAR(80)`
         );
 
         await pool.query(
@@ -364,6 +372,11 @@ async function ensureNumerosParteTable() {
         );
 
         await pool.query(
+            `CREATE INDEX IF NOT EXISTS idx_numeros_parte_id_solicitud
+             ON numeros_parte (id_solicitud)`
+        );
+
+        await pool.query(
             `CREATE INDEX IF NOT EXISTS idx_numeros_parte_created_at
              ON numeros_parte (created_at DESC)`
         );
@@ -385,6 +398,33 @@ async function ensureNumerosParteTable() {
         await numerosParteTableInitPromise;
     } finally {
         numerosParteTableInitPromise = null;
+    }
+}
+
+async function ensureSolicitudParteTable() {
+    if (solicitudParteTableReady) return;
+    if (solicitudParteTableInitPromise) {
+        await solicitudParteTableInitPromise;
+        return;
+    }
+
+    solicitudParteTableInitPromise = (async () => {
+        await pool.query(
+            `CREATE TABLE IF NOT EXISTS solicitud_parte (
+                id SERIAL PRIMARY KEY,
+                status VARCHAR(50),
+                fecha_creacion TIMESTAMP DEFAULT NOW(),
+                id_solicitud VARCHAR(500)
+            )`
+        );
+
+        solicitudParteTableReady = true;
+    })();
+
+    try {
+        await solicitudParteTableInitPromise;
+    } finally {
+        solicitudParteTableInitPromise = null;
     }
 }
 
@@ -958,6 +998,9 @@ async function listarNumerosParte(req, res) {
         const result = await pool.query(
             `SELECT np.id,
                     np.numero_parte,
+                    np.id_solicitud,
+                    np.id_solicitud AS solicitud_id,
+                    sp.fecha_creacion AS solicitud_fecha,
                     COALESCE(np.descripcion_esp, np.descripcion) AS descripcion_esp,
                     np.descripcion_ing,
                     np.unidad_medida,
@@ -971,6 +1014,7 @@ async function listarNumerosParte(req, res) {
                     np.created_at,
                     u.alias AS usuario_alias
                FROM numeros_parte np
+               LEFT JOIN solicitud_parte sp ON sp.id_solicitud = np.id_solicitud
                LEFT JOIN usuarios u ON u.id = np.usuario_id
               WHERE np.empresa_id = $1
                 AND np.razon_social_id = $2
@@ -989,13 +1033,63 @@ async function listarNumerosParte(req, res) {
     }
 }
 
+// GET /api/files/numeros-parte/resumen-mensual
+async function resumenMensualNumerosParte(req, res) {
+    if (!isClientUser(req)) {
+        return res.status(403).json({ error: 'Solo el rol cliente puede consultar los números de parte.' });
+    }
+
+    try {
+        await ensureNumerosParteTable();
+        await ensureSolicitudParteTable();
+
+        const companyResult = await pool.query(
+            `SELECT u.empresa_id, e.razon_social_id
+               FROM usuarios u
+               JOIN empresa e ON e.id = u.empresa_id
+              WHERE u.id = $1`,
+            [req.user.id]
+        );
+
+        if (companyResult.rows.length === 0) {
+            return res.status(400).json({ error: 'El usuario no tiene una empresa válida asociada.' });
+        }
+
+        const { empresa_id: empresaId, razon_social_id: razonSocialId } = companyResult.rows[0];
+        const result = await pool.query(
+            `SELECT EXTRACT(YEAR FROM sp.fecha_creacion)::int AS anio,
+                    EXTRACT(MONTH FROM sp.fecha_creacion)::int AS mes,
+                    COUNT(DISTINCT sp.id_solicitud)::int AS total
+               FROM solicitud_parte sp
+               INNER JOIN numeros_parte np ON np.id_solicitud = sp.id_solicitud
+              WHERE np.empresa_id = $1
+                AND np.razon_social_id = $2
+              GROUP BY 1, 2
+              ORDER BY 1, 2`,
+            [empresaId, razonSocialId]
+        );
+
+        return res.json({ resumen: result.rows });
+    } catch (err) {
+        console.error('[FILES][NUMEROS_PARTE][RESUMEN] Error:', err);
+        return res.status(500).json({ error: 'Error al obtener el resumen de números de parte.' });
+    }
+}
+
 // POST /api/files/numeros-parte
+function generateSolicitudId() {
+    const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randomSuffix = String(Math.floor(Math.random() * 900000) + 100000);
+    return `SOL-${fecha}-${randomSuffix}`;
+}
+
 async function crearNumeroParte(req, res) {
     if (!isClientUser(req)) {
         return res.status(403).json({ error: 'Solo el rol cliente puede registrar números de parte.' });
     }
 
     const numeroParte = String(req.body?.numero_parte || '').trim();
+    const solicitudId = String(req.body?.id_solicitud || '').trim();
     const descripcionEsp = String(req.body?.descripcion_esp || req.body?.descripcion || '').trim();
     const descripcionIng = String(req.body?.descripcion_ing || '').trim();
     const unidadMedida = String(req.body?.unidad_medida || '').trim();
@@ -1011,6 +1105,12 @@ async function crearNumeroParte(req, res) {
 
     if (!numeroParte) {
         return res.status(400).json({ error: 'El número de parte es requerido.' });
+    }
+
+    const solicitudIdGenerado = solicitudId || generateSolicitudId();
+
+    if (solicitudIdGenerado.length > 80) {
+        return res.status(400).json({ error: 'El identificador de la solicitud no puede superar 80 caracteres.' });
     }
 
     if (numeroParte.length > 120) {
@@ -1051,6 +1151,7 @@ async function crearNumeroParte(req, res) {
 
     try {
         await ensureNumerosParteTable();
+        await ensureSolicitudParteTable();
 
         const companyResult = await pool.query(
             `SELECT u.empresa_id,
@@ -1069,52 +1170,90 @@ async function crearNumeroParte(req, res) {
         }
 
         const company = companyResult.rows[0];
-        let imagenNombre = null;
-        let imagenStorageKey = null;
-        let imagenStorageUrl = null;
 
-        if (req.file) {
-            const ext = (req.file.originalname.match(/\.[^.]+$/) || [''])[0];
-            const mesPadded = String(new Date().getMonth() + 1).padStart(2, '0');
-            const timestamp = Date.now();
-            const imagenBase = toStorageSegment(numeroParte) || 'numero_parte';
-            const empresaFolder = toStorageSegment(company.empresa_nombre || 'empresa');
-            const razonSocialFolder = toStorageSegment(company.razon_social_nombre || 'razon_social');
-            imagenNombre = `${imagenBase}-${timestamp}${ext}`;
-            imagenStorageKey = `${razonSocialFolder}/${empresaFolder}/numeros-parte/${mesPadded}/${imagenNombre}`;
-            const uploadResult = await uploadFile(req.file.buffer, imagenStorageKey, req.file.mimetype);
-            imagenStorageUrl = uploadResult.storageUrl;
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+
+            await client.query(
+                `INSERT INTO solicitud_parte (status, fecha_creacion, id_solicitud)
+                 SELECT $2, NOW(), $1::varchar
+                  WHERE NOT EXISTS (SELECT 1 FROM solicitud_parte WHERE id_solicitud = $1::varchar)`,
+                [solicitudIdGenerado, 'Abierto']
+            );
+
+            let imagenNombre = null;
+            let imagenStorageKey = null;
+            let imagenStorageUrl = null;
+
+            if (req.file) {
+                const ext = (req.file.originalname.match(/\.[^.]+$/) || [''])[0];
+                const mesPadded = String(new Date().getMonth() + 1).padStart(2, '0');
+                const timestamp = Date.now();
+                const imagenBase = toStorageSegment(numeroParte) || 'numero_parte';
+                const empresaFolder = toStorageSegment(company.empresa_nombre || 'empresa');
+                const razonSocialFolder = toStorageSegment(company.razon_social_nombre || 'razon_social');
+                imagenNombre = `${imagenBase}-${timestamp}${ext}`;
+                imagenStorageKey = `${razonSocialFolder}/${empresaFolder}/numeros-parte/${mesPadded}/${imagenNombre}`;
+                const uploadResult = await uploadFile(req.file.buffer, imagenStorageKey, req.file.mimetype);
+                imagenStorageUrl = uploadResult.storageUrl;
+            }
+
+            const result = await client.query(
+                `INSERT INTO numeros_parte (
+                    numero_parte,
+                    id_solicitud,
+                    descripcion,
+                    descripcion_esp,
+                    descripcion_ing,
+                    unidad_medida,
+                    unit_horas,
+                    peso_cantidad,
+                    piezas,
+                    pais_origen,
+                    "similar",
+                    imagen_nombre,
+                    imagen_storage_key,
+                    imagen_storage_url,
+                    usuario_id,
+                    razon_social_id,
+                    empresa_id
+                )
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                 RETURNING id, numero_parte, id_solicitud, id_solicitud AS solicitud_id, descripcion, descripcion_esp, descripcion_ing, unidad_medida, unit_horas, peso_cantidad, piezas, pais_origen, "similar", imagen_nombre, imagen_storage_key, imagen_storage_url, created_at, razon_social_id, empresa_id`,
+                [
+                    numeroParte,
+                    solicitudIdGenerado,
+                    descripcionEsp || null,
+                    descripcionEsp || null,
+                    descripcionIng || null,
+                    unidadMedida || null,
+                    unitHoras,
+                    pesoCantidad,
+                    piezas,
+                    paisOrigen || null,
+                    similar || null,
+                    imagenNombre,
+                    imagenStorageKey,
+                    imagenStorageUrl,
+                    req.user.id,
+                    company.razon_social_id,
+                    company.empresa_id,
+                ]
+            );
+
+            await client.query('COMMIT');
+
+            return res.status(201).json({
+                mensaje: 'Número de parte registrado correctamente.',
+                numero_parte: result.rows[0],
+            });
+        } catch (txErr) {
+            await client.query('ROLLBACK');
+            throw txErr;
+        } finally {
+            client.release();
         }
-
-        const result = await pool.query(
-            `INSERT INTO numeros_parte
-                 (numero_parte, descripcion, descripcion_esp, descripcion_ing, unidad_medida, unit_horas, peso_cantidad, piezas, pais_origen, "similar", imagen_nombre, imagen_storage_key, imagen_storage_url, usuario_id, razon_social_id, empresa_id)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-             RETURNING id, numero_parte, descripcion, descripcion_esp, descripcion_ing, unidad_medida, unit_horas, peso_cantidad, piezas, pais_origen, "similar", imagen_nombre, imagen_storage_key, imagen_storage_url, created_at, razon_social_id, empresa_id` ,
-            [
-                numeroParte,
-                descripcionEsp || null,
-                descripcionEsp || null,
-                descripcionIng || null,
-                unidadMedida || null,
-                unitHoras,
-                pesoCantidad,
-                piezas,
-                paisOrigen || null,
-                similar || null,
-                imagenNombre,
-                imagenStorageKey,
-                imagenStorageUrl,
-                req.user.id,
-                company.razon_social_id,
-                company.empresa_id,
-            ]
-        );
-
-        return res.status(201).json({
-            mensaje: 'Número de parte registrado correctamente.',
-            numero_parte: result.rows[0],
-        });
     } catch (err) {
         console.error('[FILES][NUMEROS_PARTE][CREAR] Error:', err);
         return res.status(500).json({ error: 'Error al registrar el número de parte.' });
@@ -2235,6 +2374,7 @@ module.exports = {
     empresasDisponibles,
     upload,
     listarNumerosParte,
+    resumenMensualNumerosParte,
     crearNumeroParte,
     historial,
     resumenHistorial,

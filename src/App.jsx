@@ -8,8 +8,6 @@ import AdminDashboard from './components/AdminDashboard';
 import DashboardCalidad from './components/DashboardCalidad';
 import ConfiguracionUsuarios from './components/ConfiguracionUsuarios';
 import './App.css';
-import ArchivosCliente from './components/ArchivosCliente';
-import SolicitudParte from './components/SolicitudParte';
 import ImpDashboard from './components/ImpDashboard';
 import ImpUpload from './components/ImpUpload';
 import ExpDashboard from './components/ExpDashboard';
@@ -67,20 +65,6 @@ function ClientDashboardRoute() {
     <>
       <Navbar />
       <main className="app-main"><Dashboard /></main>
-    </>
-  );
-}
-
-function ClientRoute({ children }) {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="app-loading">Cargando...</div>;
-  if (!user) return <Navigate to="/login" replace />;
-  if (!isClientUser(user)) return <Navigate to={getLandingPath(user)} replace />;
-
-  return (
-    <>
-      <Navbar />
-      <main className="app-main">{children}</main>
     </>
   );
 }
@@ -206,8 +190,7 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/dashboard" element={<DashboardRoute />} />
       <Route path="/cliente-dashboard" element={<ClientDashboardRoute />} />
-      <Route path="/archivos" element={<ClientRoute><ArchivosCliente /></ClientRoute>} />
-      <Route path="/solicitud-parte" element={<ClientRoute><SolicitudParte /></ClientRoute>} />
+      <Route path="/solicitud-parte" element={<Navigate to="/cliente-dashboard" replace />} />
       <Route path="/historial" element={<HistorialRoute><Historial /></HistorialRoute>} />
       <Route path="/imp-upload" element={<ImpRoute><ImpUpload /></ImpRoute>} />
       <Route path="/exp-dashboard" element={<ExpRoute><ExpDashboard /></ExpRoute>} />

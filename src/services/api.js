@@ -100,6 +100,7 @@ export const fileService = {
             headers: { 'Content-Type': 'multipart/form-data' },
         }),
     listarNumerosParte: () => api.get('/files/numeros-parte'),
+    resumenMensualNumerosParte: () => api.get('/files/numeros-parte/resumen-mensual'),
     crearNumeroParte: (data) => api.post('/files/numeros-parte', data),
     razonesSocialesDisponibles: () => api.get('/files/razones-sociales-disponibles'),
     empresasDisponibles: (params) => api.get('/files/empresas-disponibles', { params }),

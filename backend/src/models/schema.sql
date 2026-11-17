@@ -43,10 +43,25 @@ CREATE TABLE IF NOT EXISTS public.empresa
     CONSTRAINT empresa_pkey PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS public.solicitud_parte
+(
+    id serial NOT NULL,
+    id_solicitud character varying(80) COLLATE pg_catalog."default" NOT NULL,
+    status character varying(50) COLLATE pg_catalog."default" NOT NULL DEFAULT 'pendiente'::character varying,
+    fecha_creacion timestamp with time zone DEFAULT now(),
+    usuario_id integer,
+    razon_social_id integer,
+    empresa_id integer,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT solicitud_parte_pkey PRIMARY KEY (id),
+    CONSTRAINT solicitud_parte_id_solicitud_key UNIQUE (id_solicitud)
+);
+
 CREATE TABLE IF NOT EXISTS public.numeros_parte
 (
     id serial NOT NULL,
     numero_parte character varying(120) COLLATE pg_catalog."default" NOT NULL,
+    id_solicitud character varying(80) COLLATE pg_catalog."default",
     descripcion character varying(500) COLLATE pg_catalog."default",
     usuario_id integer,
     razon_social_id integer,
