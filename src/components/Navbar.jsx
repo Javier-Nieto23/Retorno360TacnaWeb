@@ -68,9 +68,14 @@ export default function Navbar() {
                     </>
                 )}
                 {isClient && (
-                    <NavLink to="/cliente-dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
-                        Dashboard
-                    </NavLink>
+                    <>
+                        <NavLink to="/cliente-dashboard" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Dashboard
+                        </NavLink>
+                        <NavLink to="/cliente-historial" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+                            Historial
+                        </NavLink>
+                    </>
                 )}
                 {isAdmin && (
                     <>

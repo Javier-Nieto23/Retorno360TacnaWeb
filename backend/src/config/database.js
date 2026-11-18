@@ -1,22 +1,17 @@
 const { Pool } = require('pg');
 
 function buildPoolConfig() {
-    const useRemoteSsl = Boolean(process.env.DATABASE_URL) && (process.env.NODE_ENV === 'production' || String(process.env.PGSSLMODE || '').toLowerCase() === 'require');
+    const connectionString = String(process.env.DATABASE_URL || '').trim();
 
-    if (process.env.DATABASE_URL) {
-        return {
-            connectionString: process.env.DATABASE_URL,
-            ssl: useRemoteSsl ? { rejectUnauthorized: false } : false,
-        };
+    if (!connectionString) {
+        throw new Error('DATABASE_URL no está definida. El backend solo opera contra la base de datos de Railway: define DATABASE_URL (y PGSSLMODE=require) en backend/.env.');
     }
 
+    const useRemoteSsl = process.env.NODE_ENV === 'production' || String(process.env.PGSSLMODE || '').toLowerCase() === 'require';
+
     return {
-        host: process.env.DB_HOST || process.env.PGHOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || process.env.PGPORT || '5432', 10),
-        database: process.env.DB_NAME || process.env.PGDATABASE || 'retorno360db',
-        user: process.env.DB_USER || process.env.PGUSER || 'postgres',
-        password: process.env.DB_PASSWORD || process.env.PGPASSWORD,
-        ssl: false,
+        connectionString,
+        ssl: useRemoteSsl ? { rejectUnauthorized: false } : false,
     };
 }
 

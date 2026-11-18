@@ -24,15 +24,9 @@ const HOST = process.env.HOST || '0.0.0.0';
 async function logDatabaseConnectionStatus() {
     try {
         await pool.query('SELECT 1');
-        const usingRailway = Boolean(String(process.env.DATABASE_URL || '').trim());
-        const dbSource = usingRailway
-            ? 'Railway (DATABASE_URL)'
-            : `${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432}/${process.env.DB_NAME || 'retorno360db'}`;
-        console.log(
-            `Conexion a PostgreSQL OK (${dbSource})`
-        );
+        console.log('Conexion a PostgreSQL OK (Railway)');
     } catch (error) {
-        console.error('No se pudo conectar a PostgreSQL. Verifica DATABASE_URL (Railway) o variables DB_* en .env.');
+        console.error('No se pudo conectar a PostgreSQL. Verifica DATABASE_URL (Railway) y PGSSLMODE=require en .env.');
         console.error(`Detalle: ${error.message}`);
     }
 }

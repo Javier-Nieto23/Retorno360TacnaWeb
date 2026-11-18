@@ -29,16 +29,6 @@ const EMPTY_FORM = {
     similar: '',
 };
 
-function formatDate(value) {
-    return new Date(value).toLocaleString('es-PE', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-}
-
 function generateSolicitudId() {
     const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     return `SOL-${datePart}-${String(Math.floor(Math.random() * 900000) + 100000)}`;
@@ -54,8 +44,6 @@ export default function Dashboard() {
 
     const [step, setStep] = useState(0);
     const [direction, setDirection] = useState('forward');
-    const [numerosParte, setNumerosParte] = useState([]);
-    const [loadingNumerosParte, setLoadingNumerosParte] = useState(true);
     const [numeroParteForm, setNumeroParteForm] = useState(EMPTY_FORM);
     const [imagenArchivo, setImagenArchivo] = useState(null);
     const [imagenPreview, setImagenPreview] = useState('');
@@ -103,23 +91,9 @@ export default function Dashboard() {
         }
     }, []);
 
-    const cargarNumerosParte = useCallback(async () => {
-        setLoadingNumerosParte(true);
-        try {
-            const { data } = await fileService.listarNumerosParte();
-            setNumerosParte(data?.numeros_parte || []);
-        } catch (err) {
-            setNumerosParte([]);
-            setNumeroParteError(err.response?.data?.error || 'No se pudieron cargar los números de parte.');
-        } finally {
-            setLoadingNumerosParte(false);
-        }
-    }, []);
-
     useEffect(() => {
         cargarResumen();
-        cargarNumerosParte();
-    }, [cargarResumen, cargarNumerosParte]);
+    }, [cargarResumen]);
 
     useEffect(() => {
         if (!imagenArchivo) {
@@ -273,7 +247,7 @@ export default function Dashboard() {
             await fileService.crearNumeroParte(formData);
             resetForm();
             setNumeroParteSuccess('Número de parte registrado correctamente.');
-            await Promise.all([cargarNumerosParte(), cargarResumen()]);
+            await cargarResumen();
         } catch (err) {
             setNumeroParteError(err.response?.data?.error || 'No se pudo registrar el número de parte.');
         } finally {
@@ -354,7 +328,6 @@ export default function Dashboard() {
                         <h2 className="section-title">Solicitud de parte</h2>
                         <p>Registra un número de parte asociado a tu empresa.</p>
                     </div>
-                    <span className="client-section-badge">{numerosParte.length} registrados</span>
                 </div>
 
                 <form className="client-part-form" onSubmit={handleSubmit}>
@@ -649,42 +622,6 @@ export default function Dashboard() {
                         )}
                     </div>
                 </form>
-
-                <div className="client-part-list">
-                    {loadingNumerosParte ? (
-                        <div className="client-part-empty">Cargando números de parte...</div>
-                    ) : numerosParte.length === 0 ? (
-                        <div className="client-part-empty">
-                            <span>🔧</span>
-                            <p>No hay números de parte registrados aún.</p>
-                        </div>
-                    ) : (
-                        numerosParte.map((item) => (
-                            <article key={item.id} className="client-part-item">
-                                <div className="client-part-item-body">
-                                    <p className="client-part-code">{item.numero_parte}</p>
-                                    <p className="client-part-meta">Solicitud: {item.id_solicitud || '—'}</p>
-                                    <p className="client-part-meta">ES: {item.descripcion_esp || item.descripcion || 'Sin descripción'}</p>
-                                    <p className="client-part-meta">EN: {item.descripcion_ing || 'Sin descripción en inglés'}</p>
-                                    <div className="client-part-details">
-                                        <span>Unidad: {item.unidad_medida || '—'}</span>
-                                        <span>Horas: {item.unit_horas ?? '—'}</span>
-                                        <span>Peso: {item.peso_cantidad ?? '—'}</span>
-                                        <span>Piezas: {item.piezas ?? '—'}</span>
-                                        <span>País: {item.pais_origen || '—'}</span>
-                                        <span>Similar: {item.similar || '—'}</span>
-                                    </div>
-                                    {item.imagen_storage_url && (
-                                        <a className="client-part-image-link" href={item.imagen_storage_url} target="_blank" rel="noreferrer">
-                                            Ver imagen
-                                        </a>
-                                    )}
-                                </div>
-                                <span className="client-part-date">{formatDate(item.created_at)}</span>
-                            </article>
-                        ))
-                    )}
-                </div>
             </section>
         </div>
     );

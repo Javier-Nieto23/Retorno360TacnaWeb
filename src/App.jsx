@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Login from './components/Login';
 import Dashboard from './components/Dashboard';
+import ClienteHistorial from './components/ClienteHistorial';
 import Historial from './components/Historial';
 import AdminDashboard from './components/AdminDashboard';
 import DashboardCalidad from './components/DashboardCalidad';
@@ -65,6 +66,20 @@ function ClientDashboardRoute() {
     <>
       <Navbar />
       <main className="app-main"><Dashboard /></main>
+    </>
+  );
+}
+
+function ClientRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="app-loading">Cargando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isClientUser(user)) return <Navigate to={getLandingPath(user)} replace />;
+
+  return (
+    <>
+      <Navbar />
+      <main className="app-main">{children}</main>
     </>
   );
 }
@@ -191,6 +206,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<DashboardRoute />} />
       <Route path="/cliente-dashboard" element={<ClientDashboardRoute />} />
       <Route path="/solicitud-parte" element={<Navigate to="/cliente-dashboard" replace />} />
+      <Route path="/cliente-historial" element={<ClientRoute><ClienteHistorial /></ClientRoute>} />
       <Route path="/historial" element={<HistorialRoute><Historial /></HistorialRoute>} />
       <Route path="/imp-upload" element={<ImpRoute><ImpUpload /></ImpRoute>} />
       <Route path="/exp-dashboard" element={<ExpRoute><ExpDashboard /></ExpRoute>} />

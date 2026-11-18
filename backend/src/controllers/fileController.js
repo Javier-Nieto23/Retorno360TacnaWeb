@@ -1001,6 +1001,10 @@ async function listarNumerosParte(req, res) {
                     np.id_solicitud,
                     np.id_solicitud AS solicitud_id,
                     sp.fecha_creacion AS solicitud_fecha,
+                    sp.status AS solicitud_status,
+                    CASE WHEN LOWER(TRIM(sp.status)) = 'abierto'
+                         THEN GREATEST(0, CURRENT_DATE - sp.fecha_creacion::date)
+                    END AS dias_abierto,
                     COALESCE(np.descripcion_esp, np.descripcion) AS descripcion_esp,
                     np.descripcion_ing,
                     np.unidad_medida,
@@ -1019,7 +1023,7 @@ async function listarNumerosParte(req, res) {
               WHERE np.empresa_id = $1
                 AND np.razon_social_id = $2
               ORDER BY np.created_at DESC
-              LIMIT 20`,
+              LIMIT 200`,
             [company.empresa_id, company.razon_social_id]
         );
 
